@@ -1,0 +1,70 @@
+\documentclass{article}
+\usepackage{pgfgantt}
+\usepackage{geometry}
+\usepackage{pdflscape}
+
+
+\begin{document}
+\newgeometry{vmargin=1cm, hmargin=1cm}
+\begin{landscape}
+\begin{figure}[tbp]
+    \centering
+    \begin{ganttchart}[y unit title=0.5cm,
+    y unit chart=0.5cm,
+    vgrid,hgrid,
+    % title label anchor/.style={below=-1.6ex},
+    % title left shift=.05,
+    % title right shift=-.05,
+    title height=1.5,
+    % progress label text={Progress},
+    bar height=0.8,
+    % group right shift=0,
+    group top shift=.8,
+    ]{1}{30}
+    %labels
+    \gantttitle{\bf{Month}}{30} \\ \\
+    \gantttitle{October}{4} 
+    \gantttitle{November}{4} 
+    \gantttitle{December}{4} 
+    \gantttitle{January}{4} 
+    \gantttitle{February}{4} 
+    \gantttitle{March}{4}
+    \gantttitle{April}{4}
+    \gantttitle{May}{2} \\
+    %tasks
+    \ganttgroup{Overview of SC vulnerabilities}{1}{9} \\
+    \ganttbar{Common smart contract exploits}{2}{7} \\
+    \ganttbar{Survey of SC languages}{3}{8} \\
+    \ganttbar{Formal verification analysis}{6}{9} \\
+    \ganttbar{Evaluation of current solutions and issues}{6}{8} \\ \\
+
+    \ganttmilestone{Progress Report}{9} \\
+
+    \ganttgroup{The design of the proposal solution}{7}{14} \\
+    \ganttbar{Requirements}{7}{8} \\
+    \ganttbar{BNF Grammar}{7}{9} \\
+    \ganttbar{Sample programs}{9}{12} \\
+    \ganttbar{Brief evaluation of the BNF grammar}{12}{14} \\ \\
+
+    \ganttgroup{Implementation}{12}{24} \\
+    \ganttbar{Syntax}{12}{14} \\
+    \ganttbar{Type Checker}{15}{18} \\
+    \ganttbar{Evaluator}{18}{24} \\
+    \ganttbar{Model Checker}{18}{21} \\
+    \ganttbar{Functional correctness checker}{20}{23} \\ \\
+
+    \ganttgroup{Evaluation}{23}{28} \\ 
+    \ganttbar{Testing}{23}{26} \\
+    \ganttbar{Safety evaluation}{27}{27} \\
+    \ganttbar{Overview of sample solutions}{27}{27} \\
+    \ganttbar{Future work}{28}{28} \\ \\
+
+    \ganttmilestone{Submission Deadline}{28}
+    %relations 
+
+    \end{ganttchart}
+    \caption{Gantt Chart}
+
+\end{figure}
+\end{landscape}
+\end{document}
