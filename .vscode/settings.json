@@ -1,0 +1,5 @@
+{
+    "latex-workshop.latex.outDir": "output",
+    "latex-workshop.latex.clean.args": [],
+    "latex-workshop.latex.clean.command": "latexclean"
+}
