@@ -1,16 +1,18 @@
 %% ----------------------------------------------------------------
-%% Project.tex
+%% Progress.tex
 %% ---------------------------------------------------------------- 
 
-\documentclass{ecsproject}     % Use the Project Style
+\documentclass[oneside]{ecsproject}     % Use the Project Style
 \usepackage{titlesec}
+\usepackage{makecell}
 \titleformat{\chapter}
-  {\normalfont\huge\bfseries}{\ \thechapter.}{20pt}{\huge}
+  {\normalfont\huge\bfseries}{\ \thechapter.}{18pt}{\huge}
 \graphicspath{{figures/}}   % Location of your graphics files
 \usepackage{natbib}            % Use Natbib style for the refs.
 \hypersetup{colorlinks=false}   % Set to false for black/white printing
 
-%% ----------------------------------------------------------------
+\newcommand{\vref}[1]{\textit{\hyperref[#1]{#1}}}
+
 \begin{document}
 \frontmatter
 \title      {Folidity - Safe Functional Smart Contract Language}
@@ -34,49 +36,89 @@
 % \listoftables
 % \lstlistoflistings
 % \listofsymbols{ll}{$w$ & The weight vector}
-% \acknowledgements{Thanks to no one.}
-% \dedicatory{To \dots}
 \mainmatter
 %% ----------------------------------------------------------------
 
-\chapter{Introduction} \label{Chapter:Introduction}
-You probably found all the files from \cite{test_this_nodate}.
-\tref{Table:tabex} illustrates the results of my work.
+\chapter{Introduction}
+
+The idea of "smart contract" [SC] was first coined by Nick Szabo as a computerised transaction protocol \cite{nz_sc}.
+He later defined smart contracts as observable, verifiable, privity-applicable, and enforceable programs. \cite{nz_sc_bb}.
+In other words, it was envisioned for smart contracts to inherit the natural properties of the traditional
+"paper-based" contracts.
+
+It was only in 2014 when SCs were technically formalised at the protocol level, as an arbitrary program
+written in some programming language (Solidity) and executed in the blockchain's virtual machine (EVM) \cite{eth_yellow_paper}.
+
+Ethereum Virtual Machine (EVM) iterated over the idea of Bitcoin Scripting allowing developers to deploy general-purpose, Turing-Complete
+programs that can have own storage, hence state. This enabled the development of more sophisticated applications that spanned beyond
+the simple transfers of funds among users.
+
+Overall, SC can be summarised as an \textit{immutable}, \textit{permissionless}, \textit{deterministic} computer programs 
+that are executed as part of state transition in the blockchain system. 
+At the time of writing, Solidity is still the most widely used SC language (SCL) \cite{sc_survey}.
+
+After a relatively short time, SCs have come a long way and allowed users to access different online services in a completely trustless and decentralised way.
+The applications have spanned across financial, health, construction and many other sectors. 
+
+\chapter{Security of Smart Contracts}
+
+\section{Overview}
+
+With the increased adoption of decentralised applications (DApps) and the increased total value locked in DApps, 
+there has been evidence of numerous attacks and exploits focused on extracting funds from SCc in an unconventional way. 
+Due to the permissionless nature of SCs, the most common way of attacks is by exploiting the mistakes in the SC's source code.
+Specifically, the attacker can not tamper with the protocol code due to consensus mechanisms. 
+Instead, they can cleverly tamper with the publicly accessible parameters to force the SC into an unexpected state, essentially gaining partial control of it.
+
+A notorious example of such attacks is the DAO hack when hackers exploited unprotected re-entrance calls to withdraw \textbf{\$50 million worth of ETH}. 
+This event forced the community to hard-fork the protocol to revert the transaction provoking a debate on the soundness of the action \cite{the_dao}.
+
+Another less-known example is the "King of the Ether" attack which was caused by the unchecked low-level Solidity \texttt{send} call to transfer funds to some account \cite{king_of_the_ether}.
+
+\section{Vulnerability classification}
+
+There has been an effort in both academia and industry to classify common vulnerabilities 
+and exploits in SCs in blockchain systems \cite{owasp}\cite{stefano}\cite{atzei_survey}. 
+Some of the work has been recycled by bug bounty platforms growing the community of auditors
+and encouraging peer-review of SCs such as "code4rena"\footnote{https://code4rena.com}, "Solodit"\footnote{https://solodit.xyz},
+and many others.
+
+Analysing the work mentioned above, SCs vulnerabilities can be categorised into the 6 general groups that are outlined in \tref{Table:classification}
+
 \begin{table}[!htb]
   \centering
-  \begin{tabular}{cc}
+  \begin{tabular}{ccc}
   \toprule
-  \textbf{Training Error} & \textbf{Testing Error}\\
+  \textbf{Code} & \textbf{Title} & \textbf{Summary}\\
   \midrule
-  0 & $\infty$\\
+  \textit{SCV1}\label{SCV:1} & \makecell{Timestamp\\manipulation} & \makecell{\\Timestamp used in \\control-flow, randomness and storage,\\can open an exploit due to an ability\\for validator to manipulate the timestamp}\\\\
+  \hline
+  \textit{SCV2}\label{SCV:2} & \makecell{Pseudo-randomness} & \makecell{\\Using block number, block hash,\\block timestamp\\are not truly random generated parameters,\\and can be manipulated by the adversary validator}\\\\
+  \hline
+  \textit{SCV3}\label{SCV:3} & \makecell{Invalidly-coded\\states} & \makecell{\\When coding business logic,\\ control-flow checks\\can be incorrectly coded resulting the SC\\entering into invalid state}\\\\
+  \hline
+  \textit{SCV4}\label{SCV:4} & \makecell{Access Control\\exploits} & \makecell{\\This is a more categorisation of vulnerabilities.\\It occurs when an adversary calls a restricted function.\\This is specifically present in\\\textit{upgradeability} and \textit{deleteability} of SCs}\\\\
+  \hline
+  \textit{SCV5}\label{SCV:5} & \makecell{Arithmetic operations} & \makecell{\\SCs are suspected to the same arithmetic bugs\\as classic programs.\\Therefore, unchecked operations can result\\in underflow/overflow or deletion by zero}\\\\
+  \hline
+  \textit{SCV6}\label{SCV:6} & \makecell{Unchecked externall\\calls} & \makecell{\\Unchecked re-entrant, forward, delegate\\calls can result in the contract\\entering into unexpected state}\\\\
   \bottomrule
   \end{tabular}
-  \caption{The Results}
-  \label{Table:tabex}
+  \caption{classification of SC Vulnerabilities}
+  \label{Table:classification}
 \end{table}
 
-\fref{Figure:figex} shows why this is the case.
-\begin{figure}[!htb]
-  \centering
-  \includegraphics[width=8cm]{test.JPG}
-  \caption{A colourful picture.}
-  \label{Figure:figex}
-\end{figure}
-\newpage\textsl{}
-This page shows you a subfigure example in \fref{Figure:figsubex}.
-\begin{figure}[!htb]
-  \centering
-  \subfigure[The left caption]{
-    \includegraphics[width=4.2cm]{figure}
-    \label{Figure:figsubex:left}
-  }
-  \subfigure[The right caption]{
-    \includegraphics[width=4.2cm]{figure}
-    \label{Figure:figsubex:right}
-  }
-  \caption{A doubly colourful picture.}
-  \label{Figure:figsubex}
-\end{figure}
+Note, for the sake of this paper, we do not evaluate the listed vulnerabilities based on their severity. 
+As far as this paper is concerned, all vulnerabilities are considered to be of equal weight for the reasons described in \sref{Section:Scene}
+
+\newpage
+\section{Setting the scene} \label{Section:Scene}
+
+
+
+\chapter{Current solution}
+
+\chapter{Proposed Solution} \label{Chapter:Solution}
 
 %% ----------------------------------------------------------------
 
