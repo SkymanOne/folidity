@@ -5,6 +5,8 @@
 \documentclass[oneside]{ecsproject}     % Use the Project Style
 \usepackage{titlesec}
 \usepackage{makecell}
+\usepackage{pgfgantt}
+\usepackage{pdflscape}
 \titleformat{\chapter}
   {\normalfont\huge\bfseries}{\ \thechapter.}{18pt}{\huge}
 \graphicspath{{figures/}}   % Location of your graphics files
@@ -60,7 +62,7 @@ At the time of writing, Solidity is still the most widely used SC language (SCL)
 After a relatively short time, SCs have come a long way and allowed users to access different online services in a completely trustless and decentralised way.
 The applications have spanned across financial, health, construction and many other sectors. 
 
-\chapter{Security of Smart Contracts}
+\chapter{Security and Safety of Smart Contracts}
 
 \section{Overview}
 
@@ -74,6 +76,9 @@ A notorious example of such attacks is the DAO hack when hackers exploited unpro
 This event forced the community to hard-fork the protocol to revert the transaction provoking a debate on the soundness of the action \cite{the_dao}.
 
 Another less-known example is the "King of the Ether" attack which was caused by the unchecked low-level Solidity \texttt{send} call to transfer funds to some account \cite{king_of_the_ether}.
+
+Other issues involve the \textit{safety} and \textit{usability} of SCs. Due to programmer mistakes, SCs can enter an unexpected state preventing its intended functionality \cite{ondo_report}.
+
 
 \section{Vulnerability classification}
 
@@ -108,30 +113,126 @@ Analysing the work mentioned above, SCs vulnerabilities can be categorised into 
   \label{Table:classification}
 \end{table}
 
-Note, for the sake of this paper, we do not evaluate the listed vulnerabilities based on their severity. 
-As far as this paper is concerned, all vulnerabilities are considered to be of equal weight for the reasons described in \sref{Section:Scene}
+Note that we do not evaluate the listed vulnerabilities based on their severity. 
+As far as this paper is concerned, all vulnerabilities are considered to be of equal weight for the reasons described in \sref{Section:Scene}.
 
 \newpage
 \section{Setting the scene} \label{Section:Scene}
 
+Numerous deployed DApps allowed the community of developers and auditors to learn from the mistakes and the past,
+and generally improve the code quality and security of SCs. Audits are now an essential part of the release cycle of any DApp.
 
+However, even with the raised awareness for the security and safety of SCs, recent reports from "code4rena" still show \vref{SCV:3}, \vref{SCV:4} and \vref{SCV:5}
+present in the recent audit reports\cite{arcade_report}\cite{ondo_report}\cite{centrifuge_report}.
 
-\chapter{Current solution}
+In particular, in \cite{centrifuge_report} a relatively simple calculation mistake resulted in other SC users being unable to withdraw their funds.
+
+It can be seen that SC Vulnerabilities illustrated in \tref{Table:classification} are still evident in modern SCs resulting in opening them up to vulnerabilities of different severity levels.
+Therefore, as mentioned earlier, we can not classify any particular vulnerability to be more severe than the other as it solely depends on the context in the code it is present in.
+
+Furthermore, given the pattern in the mistakes made by SC developers, 
+it has been realised that additional tooling or alternative SCLs need to be discovered to minimise the exposure of SC code to the earlier-mentioned vulnerabilities.
+
+\chapter{Current Solutions}
+
+\section{Overview}
+
+As mentioned earlier, given the increased use of SCs and the consistency in the presence of vulnerabilities and programmer mistakes
+different solutions have been presented to mitigate those. 
+We can generally categorise them into 2 groups: safe SCLs which allow users to write safe and secure code, particularly described in \cref{Chapter:SCL}, 
+and formal verification tools which are used alongside traditional SCLs and are described in \cref{Chapter:FVT}.
+
+At the end of the chapter, we will have reviewed both categories of tools allowing us to evaluate their effectiveness in correlation to usability.
+Particularly, this chapter aims to provide a clear and concise framework to analyze and work with the SC tools dedicated to producing
+error-proof DApps. 
+\section{Safe Smart Contract Languages} \label{Chapter:SCL}
+
+\section{Formal Verification Tools} \label{Chapter:FVT}
+
+\section{Summary}
 
 \chapter{Proposed Solution} \label{Chapter:Solution}
 
 %% ----------------------------------------------------------------
 
-\chapter{Conclusions} \label{Chapter:Conclusions}
-It works.
+\chapter{Project Planning}
+
+
 
 
 %% ----------------------------------------------------------------
 
-% \appendix
-% \include{AppendixA}
+\appendix
+
+\chapter{Gannt Chart}
+\begin{landscape}
+  \begin{figure}[tbp]
+      \centering
+      \begin{ganttchart}[y unit title=0.5cm,
+      y unit chart=0.5cm,
+      vgrid,hgrid,
+      % title label anchor/.style={below=-1.6ex},
+      % title left shift=.05,
+      % title right shift=-.05,
+      title height=1.5,
+      % progress label text={Progress},
+      bar height=0.8,
+      % group right shift=0,
+      group top shift=.8,
+      ]{1}{30}
+      %labels
+      \gantttitle{\bf{Month}}{30} \\ \\
+      \gantttitle{October}{4} 
+      \gantttitle{November}{4} 
+      \gantttitle{December}{4} 
+      \gantttitle{January}{4} 
+      \gantttitle{February}{4} 
+      \gantttitle{March}{4}
+      \gantttitle{April}{4}
+      \gantttitle{May}{2} \\
+      %tasks
+      \ganttgroup{Overview of SC vulnerabilities}{1}{9} \\
+      \ganttbar{Common smart contract exploits}{2}{7} \\
+      \ganttbar{Survey of SC languages}{3}{8} \\
+      \ganttbar{Formal verification analysis}{6}{9} \\
+      \ganttbar{Evaluation of current solutions and issues}{6}{8} \\ \\
+  
+      \ganttmilestone{Progress Report}{9} \\
+  
+      \ganttgroup{The design of the proposal solution}{7}{14} \\
+      \ganttbar{Requirements}{7}{8} \\
+      \ganttbar{BNF Grammar}{7}{9} \\
+      \ganttbar{Sample programs}{9}{12} \\
+      \ganttbar{Brief evaluation of the BNF grammar}{12}{14} \\ \\
+  
+      \ganttgroup{Implementation}{12}{24} \\
+      \ganttbar{Syntax}{12}{14} \\
+      \ganttbar{Type Checker}{15}{18} \\
+      \ganttbar{Evaluator}{18}{24} \\
+      \ganttbar{Model Checker}{18}{21} \\
+      \ganttbar{Functional correctness checker}{20}{23} \\ \\
+  
+      \ganttgroup{Evaluation}{23}{28} \\ 
+      \ganttbar{Testing}{23}{26} \\
+      \ganttbar{Safety evaluation}{27}{27} \\
+      \ganttbar{Overview of sample solutions}{27}{27} \\
+      \ganttbar{Future work}{28}{28} \\ \\
+  
+      \ganttmilestone{Submission Deadline}{28}
+      %relations 
+  
+      \end{ganttchart}
+      \caption{Gantt Chart}
+  
+  \end{figure}
+  \end{landscape}
+
+%% ----------------------------------------------------------------
+
+
 \backmatter
 \bibliographystyle{unsrt}
 \bibliography{ECS}
+\include{AppendixA}
 \end{document}
 %% ----------------------------------------------------------------
