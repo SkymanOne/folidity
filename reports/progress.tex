@@ -37,12 +37,26 @@
 \examiner   {TBD}
 \degree     {BSc Computer Science}
 \maketitle
+
+\begin{abstract}
+  This paper addresses the long-lasting problem involving the exploits of Smart Contract vulnerabilities.
+  There are tools such as in the formal verification field and alternative Smart Contract languages that
+  attempt to address these issues. However, neither of the approaches have managed to combine
+  the static formal verification and the generation of runtime assertions. 
+  Furthermore, this work believes that implicit hidden state transition is the root cause
+  of security compromises. In light of the above, we introduce Folidity, a safe functional Smart Contract language
+  with a unique approach to reasoning about modelling and development of Smart Contract systems.
+  Folidity features explicit state transition checks, a model-first approach, and built-in formal verification
+  tooling.
+\end{abstract}
+
 \tableofcontents
 % \listoffigures
 % \listoftables
 % \lstlistoflistings
 % \listofsymbols{ll}{$w$ & The weight vector}
 \mainmatter
+
 %% ----------------------------------------------------------------
 
 \chapter{Introduction}
@@ -269,7 +283,7 @@ for developers to opt-in for them.
 
 \section{Safe Smart Contract Languages} \label{Chapter:SCL}
 
-As mentioned above, Solidity imperative programming style compromises a safe development process. Therefore,
+As mentioned above, Solidity's imperative style compromises a safe development process. Therefore,
 multiple attempts have been made to address a flawed programming model\cite{sc_survey}. Alternative SCLs aim to provide
 built-in safety features in a type system, modelling, and function declaration in order to minimise the need for
 external tooling. 
@@ -429,7 +443,7 @@ Folidity also requires SMT-solver for formal verification and generation of runt
 Z3\footnote{https://microsoft.github.io/z3guide} will be used since it also provides Rust bindings. It was debated to use Boogie, since it provides
 a higher-level abstraction, but it was quickly discarded due to lack of documentation and increased development time.
 
-As a target blockchain for the language, Algorand\footnote{https://developer.algorand.org}. 
+As a target blockchain for the language, Algorand\footnote{https://developer.algorand.org} has been selected. 
 Algorand is a decentralized blockchain platform designed for high-performance and low-cost transactions, 
 utilising a unique consensus algorithm called Pure Proof-of-Stake to achieve scalability, security, and decentralization\cite{algorand}.
 One of the potential drawbacks of the language is
