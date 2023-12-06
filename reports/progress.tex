@@ -49,22 +49,21 @@
 
 The concept of "smart contract" [SC] was first coined by Nick Szabo as a computerised transaction protocol \cite{nz_sc}.
 He later defined smart contracts as observable, verifiable, privity-applicable, and enforceable programs. \cite{nz_sc_bb}.
-In other words, it was envisioned for smart contracts to inherit the natural properties of the traditional
-"paper-based" contracts.
+In other words, smart contracts were envisioned to inherit the natural properties of traditional "paper-based" contracts.
 
-It was only in 2014 when SCs were technically formalised at the protocol level by Dr. Gavin Wood, as an arbitrary program
+It was only in 2014 when SCs were technically formalised at the protocol level by Dr. Gavin Wood as an arbitrary program
 written in some programming language (Solidity) and executed in the blockchain's virtual machine of Ethereum (EVM) \cite{eth_yellow_paper}.
 
-Ethereum Virtual Machine (EVM) iterated over the idea of Bitcoin Scripting allowing developers to deploy general-purpose, Turing-Complete
+Ethereum Virtual Machine (EVM) iterated over the idea of Bitcoin Scripting, allowing developers to deploy general-purpose, Turing-Complete
 programs that can have own storage, hence state. This enabled the development of more sophisticated applications that grew beyond
-the simple transfers of funds among users.
+the simple funds transfers among users.
 
 Overall, SC can be summarised as an \textit{immutable}, \textit{permissionless}, \textit{deterministic} computer programs 
 that are executed as part of state transition in the blockchain system. 
 At the time of writing, Solidity is still the most widely used SC language (SCL) \cite{sc_survey}.
 
 After a relatively short time, SCs have come a long way and allowed users to access different online services in a completely trustless and decentralised way.
-The applications have spanned across financial, health, construction\cite{cad_blockchain}, and other sectors. 
+The applications have spanned financial, health, construction\cite{cad_blockchain}, and other sectors. 
 
 \chapter{Security and Safety of Smart Contracts}
 
@@ -72,21 +71,21 @@ The applications have spanned across financial, health, construction\cite{cad_bl
 
 With the increased adoption of decentralised applications (DApps) and the increased total value locked in DApps, 
 there has been evidence of numerous attacks and exploits focused on extracting funds from SCs. 
-Due to the permissionless nature of SCs, the most common attack vector is exploiting the mistakes in the SC's source code.
+Due to the permissionless nature of SCs, the most common attack vector exploits the mistakes in the SC's source code.
 Specifically, the attacker can not tamper with the protocol code due to consensus mechanisms.
 Instead, they can cleverly tamper with the publicly accessible parameters and interfaces to force the SC into an unexpected state, essentially gaining partial control of it.
 
 A notorious example of such attacks is the DAO hack when hackers exploited unprotected re-entrance calls to withdraw \textbf{\$50 million worth of ETH}. 
-This event forced the community to hard-fork the protocol to revert the transaction provoking a debate on the soundness of the action \cite{the_dao}.
+This event forced the community to hard-fork the protocol to revert the transaction, provoking a debate on the soundness of the action \cite{the_dao}.
 
-Another less-known example is the "King of the Ether" attack which was caused by the unchecked low-level Solidity \texttt{send} call to transfer funds to a contract-based wallet \cite{king_of_the_ether}.
-The "King of the Ether Throne" contract was not able to recognise the failed transaction on the wallet side. Instead, the contract proceeded with the operation, incorrectly mutating its internal state.
+Another less-known example is the "King of the Ether" attack, which was caused by the unchecked low-level Solidity \texttt{send} call to transfer funds to a contract-based wallet \cite{king_of_the_ether}.
+The "King of the Ether Throne" contract could not recognise the failed transaction on the wallet side. Instead, the contract proceeded with the operation, incorrectly mutating its internal state.
 
 Other issues involve the \textit{safety} and \textit{liveness} of SCs. 
 The term \textit{safety} is used to describe the \textit{functional safety} and \textit{type safety}. It is often used interchangeably with the \textit{security} of code
-as compromising the former has effects on the latter. When talking about \textit{liveness}, we describe the business logic of a DApp, in particular, whether it transitions into the expected new state.
+as compromising the former affects the latter. When talking about \textit{liveness}, we describe the business logic of a DApp, particularly whether it transitions into the expected new state.
 
-\textit{Safety} and \textit{liveness} can be compromised due to the programmer's mistakes in the source code that can result in the SC entering the terminal unexpected state
+\textit{Safety} and \textit{liveness} can be compromised due to the programmer's mistakes in the source code that can result in the SC entering the terminal in an unexpected state
 preventing users from interacting with it\cite{ondo_report}.
 
 
@@ -94,11 +93,11 @@ preventing users from interacting with it\cite{ondo_report}.
 
 There has been an effort in both academia and industry to classify common vulnerabilities 
 and exploits in SCs in blockchain systems \cite{owasp}\cite{stefano}\cite{atzei_survey}. 
-Some of the work has been recycled by bug bounty platforms growing the community of auditors
+Some of the work has been recycled by bug bounty platforms, growing the community of auditors
 and encouraging peer-review of SCs such as \textit{Code4rena}\footnote{https://code4rena.com}, \textit{Solodit}\footnote{https://solodit.xyz},
 and many others.
 
-Analysing the work mentioned above, SCs vulnerabilities can be categorised into the 6 general groups that are outlined in \tref{Table:classification}.
+Analysing the work mentioned above, SC vulnerabilities can be categorised into the six general groups outlined in \tref{Table:classification}.
 
 \begin{table}[!htb]
   \centering
@@ -124,21 +123,21 @@ Analysing the work mentioned above, SCs vulnerabilities can be categorised into 
 \end{table}
 
 Note that we do not evaluate the listed vulnerabilities based on their severity. 
-As far as this paper is concerned, all vulnerabilities are considered to be of equal weight for the reasons described in \sref{Section:Scene}.
+As far as this paper is concerned, all vulnerabilities are considered equal weight for the reasons described in \sref{Section:Scene}.
 
 \section{Setting the scene} \label{Section:Scene}
 
-Numerous deployed DApps allowed the community of developers and auditors to learn from the mistakes and the past,
+Numerous deployed DApps allowed the community of developers and auditors to learn from the mistakes and the past
 and generally improve the code quality and security of SCs. Audits are now an essential part of the release cycle of any DApp.
 
 However, even with the raised awareness for the security and safety of SCs, recent reports from "code4rena" still show \vref{SCV:3}, \vref{SCV:4} and \vref{SCV:5}
 commonly present in the recent audit reports\cite{arcade_report}\cite{ondo_report}\cite{centrifuge_report}.
 
-In particular, in \cite{centrifuge_report} a relatively simple calculation mistake resulted in other SC users being unable to withdraw their funds.
+In particular, in \cite{centrifuge_report}, a relatively simple calculation mistake resulted in other SC users being unable to withdraw their funds.
 
-It can be seen that SC Vulnerabilities illustrated in \tref{Table:classification} are still evident in modern SCs resulting in opening them up to vulnerabilities of different severity levels.
+It can be seen that SC Vulnerabilities illustrated in \tref{Table:classification} are still evident in modern SCs, resulting in opening them up to vulnerabilities of different severity levels.
 Looking at the mentioned reports, there is little consensus about the weight of each vulnerability.
-Therefore, as mentioned earlier, we can not classify any particular vulnerability to be more severe than the other as it solely depends on the context in the code it is present in.
+Therefore, as mentioned earlier, we can not classify any particular vulnerability as more severe than the other as it solely depends on the context in the code it is present in.
 Furthermore, given the pattern in the mistakes made by SC developers, 
 it has been realised that additional tooling or alternative SCLs need to be discovered to minimise the exposure of SC code to the earlier-mentioned vulnerabilities.
 
@@ -148,35 +147,35 @@ it has been realised that additional tooling or alternative SCLs need to be disc
 
 Given the increased use of SCs and the consistency in the presence of vulnerabilities and programmer mistakes
 different solutions have been presented to attempt to mitigate those. 
-We can generally categorise them into 2 groups: safe SCLs which allow users to write safe and secure code, particularly described in \cref{Chapter:SCL}, 
-and formal verification tools which are used alongside traditional SCLs and are described in \cref{Chapter:FVT}.
+We can generally categorise them into two groups: safe SCLs, which allow users to write safe and secure code, particularly described in \cref{Chapter:SCL}, 
+and formal verification tools used alongside traditional SCLs and described in \cref{Chapter:FVT}.
 
-At the end of the chapter, we will have reviewed both categories of tools allowing us to evaluate their effectiveness in correlation to usability.
+At the end of the chapter, we will have reviewed both categories of tools, allowing us to evaluate their effectiveness in correlation to usability.
 Particularly, this chapter aims to provide a clear and concise framework to analyze and work with the SC tools dedicated to producing
 error-proof DApps. 
 
 \section{Solidity: the good and the bad}
 
-Before we begin the analysis of existing solutions, it is essential to introduce the first and most popular SCL, Solidity\cite{sc_survey}\cite{solidity_docs}.
-Solidity has paved the way for SC development and become a de facto standard in the blockchain space. We will later discover a lot of similarities with Solidity in other SCLs.
-Understanding the way Solidity works will enable us to understand its limitations, and how other SCLs and toolings try to address them.
+Before we begin analysing existing solutions, we should introduce the first and most popular SCL, Solidity\cite{sc_survey}\cite{solidity_docs}.
+Solidity has paved the way for SC development and has become a de facto standard in the blockchain space. We will later discover a lot of similarities with Solidity in other SCLs.
+Understanding how Solidity works will enable us to understand its limitations and how other SCLs and toolings try to address them.
 
-Solidity is a domain-specific, object-oriented\footnote{It is also often referred to as \textit{contract-oriented}. We will use these terms interchangeably.}, statically-typed, compiled
+Solidity is a domain-specific, object-oriented\footnote{It is also often referred to as \textit{contract-oriented}. We will use these terms interchangeably.}, statically typed, compiled
 programming language\cite{solidity_docs}.
 
 Looking at the \lref{Listing:solidity}, we can identify some similarities with the OOP languages and C-like syntax.
-In particular, Solidity shares visibility keywords on lines \textit{6} and \textit{20}, variable declarations, methods.
-Noting the differences, Solidity has blockchain-specific data types such as \textit{address} which intuitively represents an address on the system.
+In particular, Solidity shares visibility keywords on lines \textit{6} and \textit{20}, variable declarations, and methods.
+Noting the differences, Solidity has blockchain-specific data types such as \textit{address}, which intuitively represents an address on the system.
 Importantly, functions have to be declared \textit{public} in order to be callable externally by the user or other contracts.
 We can also see the event declaration on the line \textit{7}, which allows EVM to log an action on the system to be accessed by the client.
-Solidity also offers specific functions, called modifiers that allow for a change of behaviour of the function it is used on\cite{solidity_docs}.
+Solidity also offers specific functions, called modifiers, that allow for a change of behaviour of the function it is used on\cite{solidity_docs}.
 Finally, \textit{view} keyword allows that the function does not modify the state and only reads from it.
 Other specification details are omitted as they touch upon more EVM-specific functionality.
 
 It is evident from the listing the similarity of Solidity with other C-inspired systems languages that reduces
 the learning curve and makes it more appealing for developers to pick up.
-The syntax simplicity also enables clarity in reading the code and auditing it. The imperative, and object-oriented style
-provides additional familiarity for developers allowing them to think of an individual contract as a class object.
+The simplicity of syntax also enables clarity in reading the code and auditing it. The imperative and object-oriented style
+provides additional familiarity for developers, allowing them to think of an individual contract as a class object.
 
 \begin{listing}
 \begin{minted}[linenos]{c}
@@ -216,20 +215,20 @@ contract Owner {
 On the other side, programming in Solidity comes with similar challenges as its parents. 
 Developers need to be aware of its operations on memory and storage when designing complex storage applications, 
 how the execution stack is handled at the VM level, 
-and implications on the use of unchecked arithmetic operations \vref{SCV:5}.
+and implications on using unchecked arithmetic operations \vref{SCV:5}.
 Additionally, the vulnerabilities listed in \tref{Table:classification} 
 has been mainly composed of Solidity SC exploits.
 Moreover, the immutable nature of SCs restricts the iterative approach in development,
-posing an even greater responsibility on developers to carefully model and design programs.
+posing an even greater responsibility on developers to model and design programs carefully.
 This is where formal verification tools have found strong applications.
 
 \section{Formal Verification Tools} \label{Chapter:FVT}
 \paragraph*{}
 Formal verification describes the assessment of the correctness of a system with respect
 to a formal specification\cite{eth_formal_verification}. The specification is usually described
-in terms of models that are verified using mathematical proofs. There are multiple ways to formally verify a program
+in terms of verified models using mathematical proofs. There are multiple ways to formally verify a program
 that are focused on the specific parts of it. \textit{Model checking} utilises propositional logic 
-to verify the mathematical abstractions of the system. \textit{Theorem proving} involves the verification of
+to verify the mathematical abstractions of the system. \textit{Theorem proving} involves verifying
 relations between the model and the statements about the system. Finally, \textit{symbolic execution} focuses
 on the execution of the program using symbolic values instead of concrete values\cite{eth_formal_verification}.
 Different tools utilise different combinations of methods mentioned above. We are going to look at a couple of them.
@@ -238,28 +237,28 @@ KEVM\footnote{https://jellopaper.org/index.html} is a tool that provides an exec
 It uses reachability logic to reason symbolically about the system\cite{kevm}. KEVM is a powerful tool that operates at the EVM bytecode level.
 Specifically, SC developers are required to write a specification in a separate file that is checked against the compiled EVM bytecode of the SC.
 Whilst this provides more fine-grained assurance of the safety and correctness, it requires specialised knowledge of the $\mathbb{K}$ framework and EVM
-semantics, hence, significantly increasing the development time.
+semantics, hence significantly increasing the development time.
 
 The other interesting tool is Dafny\footnote{https://dafny.org/latest/DafnyRef/DafnyRef}. Dafny is a general-purpose tool that checks inputs in any language 
 using Hoare-logic and high-level annotations. Although Dafny offers compilation to some system languages, Solidity is not yet a supported target. 
 Notably, work in the field suggests that the Dafny can be an effective and easy-to-use tool to produce a formal specification\cite{dafny_deductive}.
 The syntax resembles a traditional imperative style and is substantially easier to learn and understand than KEVM.
 
-Going further, there are tools that can used alongside Solidity code such as Scribble\footnote{https://docs.scribble.codes/}. 
-Scribble enables developers to provide formal specification of functions inside docstrings seamlessly integrating with existing 
-Solidity code. It offers VS Code extensions and is actively maintained by Consensys. 
+Some tools can be used alongside Solidity code, such as Scribble\footnote{https://docs.scribble.codes/}. 
+Scribble enables developers to provide formal specifications of functions inside docstrings seamlessly integrating with existing Solidity code. 
+It offers VS Code extensions and is actively maintained by Consensys. 
 The trade-off is the limited expressiveness in comparison with KEVM and Dafny.
 
 Finally, there have been experiments to formally verify SC without any additional annotations. In particular, VeriSmart specifically
 focuses on ensuring arithmetic safety and preciseness in SCs\cite{so2019verismart}. However, VeriSmart fails to detect other types of errors, 
-although the effort to apply to verifier to more areas of SC has been made.
+although an effort has been made to apply the verifier to more areas of SC.
 
 \paragraph*{}
 Formal verification is a multi-disciplinary field offering multiple ways of reason about the systems. One of the actively researched fields
 is bounded model verification\cite{SMBC}. Developers are required to reason about the programs as finite state machines (FSM).
 This reasoning approach is more apparent in SC development since the state transition is at the core of blockchain execution.
-Bounded model checking has been realised by only a few experimental projects such as Solidifier\cite{solidifer}, and Microsoft\cite{azure}.
-Both projects attempt to translate Solidity code to an intermediate modeling language, Boogie\cite{boogie}. Boogie then leverages
+Bounded model checking has been realised by only a few experimental projects such as Solidifier\cite{solidifer} and Microsoft\cite{azure}.
+Both projects attempt to translate Solidity code to an intermediate modelling language, Boogie\cite{boogie}. Boogie then leverages
 SMT solvers in order to find any assertion violations.
 
 All in all, we can see that formal verification tools provide a robust way of ensuring the safety and security of SCs. 
@@ -271,8 +270,8 @@ for developers to opt-in for them.
 \section{Safe Smart Contract Languages} \label{Chapter:SCL}
 
 As mentioned above, Solidity imperative programming style compromises a safe development process. Therefore,
-multiple attempts have been made to address a flawed programming model\cite{sc_survey}. Alternative SCLs aim at providing
-built-in safety features in a type system, modeling, and function declaration in order to minimise the need for
+multiple attempts have been made to address a flawed programming model\cite{sc_survey}. Alternative SCLs aim to provide
+built-in safety features in a type system, modelling, and function declaration in order to minimise the need for
 external tooling. 
 
 Some languages, such as Vyper\footnote{https://docs.vyperlang.org/en/latest/index.html}, strive for simplicity.
@@ -281,15 +280,14 @@ It also provides overflow checking, signed integers, and other safe arithmetic o
 and the recent bug in the compiler caused a massive re-entrancy exploit in the \textit{curve.fi} AMM protocol\cite{curve}.
 Furthermore, Vyper still suffers from the same implicit state transition problem as Solidity.
 
-To address the problem, it has been realised that a functional programming style may suit better for SC development due to
-an explicit approach to reason about a state transition. Although some small effort has been made in adapting Haskell,
-neither of the projects received any long-term support. It is still worth looking at some of the languages that suggest novice approaches to development. 
+To address the problem, it has been realised that a functional programming style may be better for SC development due to
+an explicit approach to reason about a state transition. Although some small effort has been made to adapt Haskell, neither project received any long-term support. It is still worth looking at some of the languages that suggest novice approaches to development. 
 
 Flint is an experiment language with protected calls and asset types\cite{flint}. Protected calls introduce a role-based access system
 where the SC developer can specify the permitted caller to a message function. Another unique feature is array-bounded loops
 that partially address the halting problem. Flint also addresses a state-transition problem by allowing developers to specify
-all possible states in the contract. The message functions then need to explicitly specify then the state transition occurs.
-The language provides a significant improvement in a modeling approach. However, it still lacks the modeling SC input data in terms
+all possible states in the contract. The message functions need to specify the state transition, which occurs explicitly.
+The language provides a significant improvement in a modelling approach. However, it still lacks the modelling SC input data in terms
 of constraints and invariants, and explicit state transition is still an optional feature that the developer can miss in using.
 
 Another promising SCL reasons about SC development through dependent and polymorphic types\cite{idris}. It extends Idris\footnote{https://www.idris-lang.org} 
@@ -302,13 +300,13 @@ it has been stated that the language does not strive for simplicity and sacrific
 \section{Problem statement}
 
 Analysing the solutions mentioned earlier, we can identify the positive trend in providing the safety and security of SCs.
-Modern formal verification methods offer support to SC developers in ensuring that their code satisfies the requirements of the system, while
+Modern formal verification methods offer support to SC developers in ensuring that their code satisfies the requirements of the system while
 proposed SCL solutions offer runtime safety minimising the need for the former.
 
 However, there has been no effort in attempting to combine the two approaches into a single development process. Formal verification tools
 focus on the validation of functional correctness and model consistency of a program at the compile time, whereas SCLs focus on data validation 
 at the runtime. Recent work suggests that the improved optimisation of SMT solvers allows us to turn the formal model specification into 
-the runtime assertions\cite{runtime_assert}. Furthermore, no effort has been made to minimise false negatives in SC formal modeling, 
+the runtime assertions\cite{runtime_assert}. Furthermore, no effort has been made to minimise false negatives in SC formal modelling, 
 even though the methods have been developed for traditional systems\cite{event_b}.
 
 %% ----------------------------------------------------------------
@@ -322,16 +320,16 @@ about their program in terms of FSM models that can be verified at the compile t
 and enable an automatic generation of invariants and constraints to validate the data at runtime.
 
 We propose \textit{Folidity}, a safe smart contract language. Folidity will offer the model-first approach to the development process
-while featuring the functional-first programming style. The language intends to offer a safe and secure-by-design approach to the programming
-ensuring that the developer is aware of any state transitions that take place during execution.
+while featuring the functional-first programming style. The language intends to offer a safe and secure-by-design approach to the programming, 
+ensuring that the developer is aware of any state transitions during execution.
 
-The list of requirements for features has been comprised based on the vulnerabilities described in \tref{Table:classification}.
+The list of feature requirements has been comprised based on the vulnerabilities described in \tref{Table:classification}.
 
 \begin{description}
-  \item[1. Provide abstraction over timestamp]\label{Requirements:1} in response to \vref{SCV:1}. We are interested in the limited use of timestamp in SCs either in favor of block number or another safe primitive.
+  \item[1. Provide abstraction over timestamp]\label{Requirements:1} in response to \vref{SCV:1}. We are interested in the limited use of timestamps in SCs in favour of block number or another safe primitive.
   \item[2. Provide a safe interface for randomness]\label{Requirements:2} in response to \vref{SCV:2}. Folidity should also provide source of randomness through a standardised interface.
   \item[3. Enable model-first approach in development]\label{Requirements:3} in response to \vref{SCV:3}. Developers should reason about the storage in terms of models and how they are updated by events. 
-This approach is inspired by the Event-B\cite{event_b} work which can be applied to SC development as well.
+This approach is inspired by the Event-B\cite{event_b} work, which can be applied to SC development as well.
   \item[4. Explicit state checks at runtime]\label{Requirements:4} in response to \vref{SCV:3} and \vref{SCV:6}. Similar to \rref{Requirements:3}, SC developers should be aware of any state transitions
 that update the state of the model. State transitions must happen explicitly and be validated at the runtime to guarantee \textit{liveness}.
   \item[5. Static typing]\label{Requirements:5} in response to \vref{SCV:3} and \vref{SCV:5}. Static types should be first-class citizen of the language.
@@ -340,13 +338,13 @@ during state transition and model mutation\footnote{\textit{Model mutation} and 
   \item[7. Role-based access]\label{Requirements: 7} in response to \vref{SCV:4}. 
 All message functions that mutate the model should be annotated with the role-access header specifying which set of accounts is allowed to call it.
   \item[8. Checked arithmetic operations]\label{Requirements:8} in response to \vref{SCV:5}. 
-All arithmetic operations should be checked by default and the developer is responsible for explicitly specifying the behaviour during over/underflow, similar to Rust.
+All arithmetic operations should be checked by default, and the developer is responsible for explicitly specifying the behaviour during over/underflow, similar to Rust.
   \item[9. Enforced checked recursion or bounded loops]\label{Requirements:9} in response to \vref{SCV:3}.
-Infinite loops should not be permitted, and any loops should generally be discouraged in favour of recursion. Recursion base case should be specified explicitly with appropriate invariants.
-Bounded loops may be used, but should be limited to list or mapping iterations.
+Infinite loops should not be permitted, and any loops should generally be discouraged in favour of recursion. The recursion base case should be specified explicitly with appropriate invariants.
+Bounded loops may be used but should be limited to list or mapping iterations.
 \end{description}
 
-As part of the language design the SC building workflow is illustrated in \fref{Figure:compilation}
+As part of the language design, the SC building workflow is illustrated in \fref{Figure:compilation}
 
 \begin{figure}[!htb]
   \centering
@@ -356,7 +354,7 @@ As part of the language design the SC building workflow is illustrated in \fref{
 \end{figure}
 
 As one of the core features of Folidity, it is important to note that formal verification is part of the build process.
-Having verified the model consistency, invariants, and constraints, the program is considered to be safe to generate runtime asserts.
+Having verified the model consistency, invariants, and constraints, the program is considered safe to generate runtime assertions.
 
 \newpage
 \subsection{Model consistency: Simple example}
@@ -387,7 +385,7 @@ For the denoted event, suppose we mutate the model by adding an address to a set
   A := A \cup \{a\}
 \end{equation*}
 
-Then we can verify the model consistency for some state transition $S \to S'$ using propositional logic.
+Then, we can verify the model consistency for some state transition $S \to S'$ using propositional logic.
 
 \begin{equation*}
   \begin{gathered} 
@@ -409,16 +407,16 @@ The language will be implemented using Rust\footnote{https://www.rust-lang.org} 
 Different parser-combinators alongside custom lexers are going to be used for the development of the parser. 
 Folidity also requires SMT-solver for formal verification and generation of runtime assertions. In order to facilitate this functionality,
 Z3\footnote{https://microsoft.github.io/z3guide} will be used since it also provides Rust bindings. It was debated to use Boogie, since it provides
-a higher-level abstraction, but it was quickly discarded due to lack of documentation and increased time of the development.
+a higher-level abstraction, but it was quickly discarded due to lack of documentation and increased development time.
 
 As a target blockchain for the language, Algorand\footnote{https://developer.algorand.org}. 
 Algorand is a decentralized blockchain platform designed for high-performance and low-cost transactions, 
 utilising a unique consensus algorithm called Pure Proof-of-Stake to achieve scalability, security, and decentralization\cite{algorand}.
 One of the potential drawbacks of the language is
 increased complexity due to complex abstractions and additional assertions. EVM-based blockchains have varying costs for the execution, i.e. fees,
-that depend on the complexity of a SC. On the contrary, although Algorand has a limited execution stack, it offers extremely fixed low transaction fees.
+that depend on the complexity of a SC. On the contrary, although Algorand has a limited execution stack, it offers extremely fixed, low transaction fees.
 Additionally, Algorand execution context explicitly executes in terms of state transition, which perfectly suits the paradigm of Folidity.
-Finally, Algorand offers opt-in functionality, and a local wallet storage that allows users to explicitly opt-in for using the SC.
+Finally, Algorand offers opt-in functionality and local wallet storage, allowing users to explicitly opt-in to use the SC.
 This provides additional support in the role-based access control in Folidity.
 
 As a target compilation language, Tealish\footnote{https://tealish.tinyman.org} has been chosen.
@@ -442,7 +440,7 @@ A significant groundwork in research of current solutions and their limitations 
 Since the requirements have been composed, some progress has been made in the design of BNF grammar that will later pave the way for the development
 of the parser. During the design of the grammar, it is still possible to research more formal verification methods.
 
-From the beginning of January, the first iteration of grammar should be completed, and the active development of the type checker and formal verifier begin.
+From the beginning of January, the first iteration of grammar should be completed, and the active development of the type checker and formal verifier should begin.
 
 
 %% ----------------------------------------------------------------
