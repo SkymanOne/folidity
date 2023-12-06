@@ -135,9 +135,6 @@ Analysing the work mentioned above, SC vulnerabilities can be categorised into t
   \label{Table:classification}
 \end{table}
 
-Note that we do not evaluate the listed vulnerabilities based on their severity. 
-As far as this paper is concerned, all vulnerabilities are considered equal weight for the reasons described in \sref{Section:Scene}.
-
 \section{Setting the scene} \label{Section:Scene}
 
 Even with the raised awareness for the security and safety of SCs, recent reports from "code4rena" still show \vref{SCV:3}, \vref{SCV:4} and \vref{SCV:5}
@@ -154,7 +151,7 @@ Furthermore, it has been realised that additional tooling or alternative SCLs ne
 
 \section{Overview}
 
-Given the consistency in the presence of vulnerabilities and programmer mistakes, different solutions have been presented to mitigate those. 
+Different solutions have been presented to mitigate the consistency in the presence of vulnerabilities and programmer mistakes. 
 We can generally categorise them into two groups: safe SCLs, which allow users to write safe and secure code, particularly described in \cref{Chapter:SCL}, 
 and formal verification tools used alongside traditional SCLs presented in \cref{Chapter:FVT}.
 
@@ -234,8 +231,7 @@ error-proof DApps.
 \paragraph*{}
 Formal verification describes the assessment of the correctness of a system concerning a formal specification\cite{eth_formal_verification}. 
 The specification is usually described
-in terms of verified models using mathematical proofs. There are multiple ways to verify a program
-that is formally focused on specific parts. \textit{Model checking} utilises propositional logic 
+in terms of verified models using mathematical proofs. There are multiple ways to verify a program formally focused on specific parts. \textit{Model checking} utilises propositional logic 
 to verify the mathematical abstractions of the system. \textit{Theorem proving} involves verifying
 relations between the model and the statements about the system. Finally, \textit{symbolic execution} focuses
 on the execution of the program using symbolic values instead of concrete values\cite{eth_formal_verification}.
@@ -272,9 +268,7 @@ SMT solvers to find any assertion violations.
 
 Overall, we can see that formal verification tools provide a robust way of ensuring the safety of SCs. 
 While significant effort has been made in the field, it is evident that formal verification tools in SC development
-attempt to compensate for Solidity's implicit state transitions and lack of \textit{implicit} safety. 
-Furthermore, the current tools significantly complicate the development process and provide very little comfort
-for developers to use them.
+attempt to compensate for Solidity's implicit state transitions and lack of \textit{implicit} safety.
 
 \section{Safe Smart Contract Languages} \label{Chapter:SCL}
 
@@ -288,8 +282,8 @@ It also provides overflow checking, signed integers, and other safe arithmetic o
 and the recent bug in the compiler caused a massive re-entrancy exploit in the \textit{curve.fi} AMM protocol\cite{curve}.
 Furthermore, Vyper still suffers from the same implicit state transition problem as Solidity.
 
-To address the problem, it has been realised that a functional programming style may be better for SC development due to
-an explicit approach to reason about a state transition. Although some small effort has been made to adapt Haskell, neither project received any long-term support. It is still worth looking at some of the languages that suggest novice approaches to development. 
+% To address the problem, it has been realised that a functional programming style may be better for SC development due to
+% an explicit approach to reason about a state transition. Although some small effort has been made to adapt Haskell, neither project received any long-term support. It is still worth looking at some of the languages that suggest novice approaches to development. 
 
 Flint is an experiment language with protected calls and asset types\cite{flint}. Protected calls introduce a role-based access system
 where the SC developer can specify the permitted caller to a message function. Another unique feature is array-bounded loops
@@ -307,7 +301,7 @@ it has been stated that the language does not strive for simplicity and sacrific
 
 \section{Problem statement}
 
-We can identify the positive trend in providing the safety and security of SCs.
+We can identify the positive trend in providing the safety of SCs.
 Modern formal verification methods offer support to SC developers in ensuring that their code satisfies the requirements of the system, while
 proposed SCL solutions offer runtime safety, minimising the need for the former.
 
