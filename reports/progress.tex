@@ -40,7 +40,7 @@
 
 \begin{abstract}
   This paper addresses the long-lasting problem involving the exploits of Smart Contract vulnerabilities.
-  There are tools such as in the formal verification field and alternative Smart Contract languages that
+  There are tools, such as in the formal verification field and alternative Smart Contract languages, that
   attempt to address these issues. However, neither approach has managed to combine
   the static formal verification and the generation of runtime assertions. 
   Furthermore, this work believes that implicit hidden state transition is the root cause
@@ -49,6 +49,80 @@
   Folidity features explicit state transition checks, a model-first approach, and built-in formal verification
   tooling.
 \end{abstract}
+
+\chapter{Statement of Originality}
+\small
+\begin{itemize}
+    \item I have read and understood the \href{http://ecs.gg/ai}{ECS Academic Integrity} information and the University’s \href{https://www.southampton.ac.uk/quality/assessment/academic_integrity.page}{Academic Integrity Guidance for Students}.
+    
+    \item I am aware that failure to act in accordance with the \href{http://www.calendar.soton.ac.uk/sectionIV/academic-integrity-regs.html}{Regulations Governing Academic Integrity} may lead to the imposition of penalties which, for the most serious cases, may include termination of programme.
+
+    \item I consent to the University copying and distributing any or all of my work in any form and using third parties (who may be based outside the EU/EEA) to verify whether my work contains plagiarised material, and for quality assurance purposes.
+\end{itemize}
+
+\textbf{You must change the statements in the boxes if you do not agree with them.}
+
+We expect you to acknowledge all sources of information (e.g. ideas, algorithms, data) using citations. You must also put quotation marks around any sections of text that you have copied without paraphrasing. If any figures or tables have been taken or modified from another source, you must explain this in the caption and cite the original source. 
+
+\footnotesize
+\begin{tabular}{|p{\textwidth}|}
+\hline
+\textbf{I have acknowledged all sources, and identified any content taken from elsewhere.} \\
+\hline
+\end{tabular}
+\small
+
+ If you have used any code (e.g. open-source code), reference designs, or similar resources that have been produced by anyone else, you must list them in the box below. In the report, you must explain what was used and how it relates to the work you have done.
+
+\footnotesize
+\begin{tabular}{|p{\textwidth}|}
+\hline
+\textbf{I have not used any resources produced by anyone else.} \\
+\hline
+\end{tabular}
+\small
+
+ You can consult with module teaching staff/demonstrators, but you should not show anyone else your work (this includes uploading your work to publicly-accessible repositories e.g. Github, unless expressly permitted by the module leader), or help them to do theirs. For individual assignments, we expect you to work on your own. For group assignments, we expect that you work only with your allocated group. You must get permission in writing from the module teaching staff before you seek outside assistance, e.g. a proofreading service, and declare it here.
+
+\footnotesize
+\begin{tabular}{|p{\textwidth}|}
+\hline
+\textbf{I did all the work myself, or with my allocated group, and have not helped anyone else.} \\
+\hline
+\end{tabular}
+\small
+
+ We expect that you have not fabricated, modified or distorted any data, evidence, references, experimental results, or other material used or presented in the report. You must clearly describe your experiments and how the results were obtained, and include all data, source code and/or designs (either in the report, or submitted as a separate file) so that your results could be reproduced. 
+
+\footnotesize
+\begin{tabular}{|p{\textwidth}|}
+\hline
+\textbf{The material in the report is genuine, and I have included all my data/code/designs. } \\
+\hline
+\end{tabular}
+\small
+
+ We expect that you have not previously submitted any part of this work for another assessment. You must get permission in writing from the module teaching staff before re-using any of your previously submitted work for this assessment.
+
+\footnotesize
+\begin{tabular}{|p{\textwidth}|}
+\hline
+\textbf{I have not submitted any part of this work for another assessment.} \\
+\hline
+\end{tabular}
+\small
+
+ If your work involved research/studies (including surveys) on human participants, their cells or data, or on animals, you must have been granted ethical approval before the work was carried out, and any experiments must have followed these requirements\textit{.} You must give details of this in the report, and list the ethical approval reference number(s) in the box below.
+
+\footnotesize
+\begin{tabular}{|p{\textwidth}|}
+\hline
+\textbf{My work did not involve human participants, their cells or data, or animals.} \\
+\hline
+\end{tabular}
+\small
+
+ \normalsize
 
 \tableofcontents
 % \listoffigures
@@ -107,7 +181,7 @@ preventing users from interacting with it\cite{ondo_report}.
 There has been an effort in both academia and industry to classify common vulnerabilities 
 and exploits in SCs in blockchain systems \cite{owasp}\cite{stefano}\cite{atzei_survey}. 
 Some of the work has been recycled by bug bounty platforms, growing the community of auditors
-and encouraging peer-review of SCs such as \textit{Code4rena}\footnote{https://code4rena.com}, \textit{Solodit}\footnote{https://solodit.xyz},
+and encouraging peer-review of SCs through the websites such as \textit{Code4rena}\footnote{https://code4rena.com}, \textit{Solodit}\footnote{https://solodit.xyz},
 and many others.
 
 Analysing the work mentioned above, SC vulnerabilities can be categorised into the six general groups outlined in \tref{Table:classification}.
@@ -131,13 +205,13 @@ Analysing the work mentioned above, SC vulnerabilities can be categorised into t
   \textit{SCV6}\label{SCV:6} & \makecell{Unchecked externall\\calls} & \makecell{\\Unchecked re-entrant, forward, delegate\\calls can result in the contract\\entering into unexpected state}\\\\
   \bottomrule
   \end{tabular}
-  \caption{classification of SC Vulnerabilities}
+  \caption{Classification of SC vulnerabilities}
   \label{Table:classification}
 \end{table}
 
 \section{Setting the scene} \label{Section:Scene}
 
-Even with the raised awareness for the security and safety of SCs, recent reports from "code4rena" still show \vref{SCV:3}, \vref{SCV:4} and \vref{SCV:5}
+Even with the raised awareness for the security and safety of SCs, recent reports from \textit{Code4rena} still show \vref{SCV:3}, \vref{SCV:4} and \vref{SCV:5}
 commonly present in the recent audit reports\cite{arcade_report}\cite{ondo_report}\cite{centrifuge_report}.
 
 In particular, in \cite{centrifuge_report}, a relatively simple calculation mistake resulted in other SC users being unable to withdraw their funds.
@@ -256,7 +330,7 @@ The trade-off is the limited expressiveness in comparison with KEVM and Dafny.
 Finally, experiments have been conducted to verify SC without any formal annotations. 
 In particular, VeriSmart focuses explicitly on ensuring arithmetic safety and preciseness in SCs\cite{so2019verismart}. 
 However, VeriSmart fails to detect other types of errors, 
-although an effort has been made to apply the verifier to more areas of SC.
+although an effort has been made to apply the verifier to more areas of SC\cite{azure}.
 
 \paragraph*{}
 Formal verification is a multi-disciplinary field offering multiple ways of reason about the systems. One of the actively researched topics
@@ -309,7 +383,7 @@ However, there has been no effort to combine the two approaches into a single de
 focus on the validation of functional correctness and model consistency of a program at the compile time, whereas SCLs focus on data validation 
 at the runtime. Recent work suggests that the improved optimisation of SMT solvers allows us to turn the formal model specification into 
 the runtime assertions\cite{runtime_assert}. Furthermore, no effort has been made to minimise false negatives in SC formal modelling, 
-even though the methods have been developed for traditional systems\cite{event_b}.
+even though the methods have been developed for traditional systems, such as Event-B\cite{event_b}.
 
 %% ----------------------------------------------------------------
 
@@ -366,11 +440,11 @@ as shown in \fref{Figure:context:transformed}.
 \begin{figure}[!htb]
   \centering
   \subfigure[Traditional execution context]{
-    \includegraphics[width=8.0cm]{trad_context.png}
+    \includegraphics[width=7.5cm]{trad_context.png}
     \label{Figure:context:old}
   }
   \subfigure[Transfomed execution context]{
-    \includegraphics[width=8.0cm]{new_context.png}
+    \includegraphics[width=7.5cm]{new_context.png}
     \label{Figure:context:transformed}
   }
   \caption{Changes to the execution context}
@@ -381,7 +455,7 @@ as shown in \fref{Figure:context:transformed}.
 \newpage
 \subsection{Model consistency: Simple example}
 
-As an example of the theory behind model consistency in SCs. we can look at role-based access. Suppose:
+As an example of the theory behind model consistency in SCs, let's look at role-based access. Suppose:
 \begin{itemize}
   \item $* = \{ \text{All addresses} \}$
   \item $M = \{ \text{Moderators of the system} \}$
@@ -391,14 +465,19 @@ As an example of the theory behind model consistency in SCs. we can look at role
 Then, we can model a role-based access hierarchy as 
 \[ A \subseteq M \subseteq * \]
 
-Subsequently, given the invariant for some event \textit{add\_mod(a: Address)} we can define following invariant:
+Subsequently, given the invariant for the system \textit{add\_mod(a: Address)} we can define following invariant:
 \begin{equation*}
     \begin{gathered}
       i_0 := card(A) = 1 \\
-      i_1 := c \in A \\
-      i_2 := card(M) = 5
+      i_1 := card(M) = 5
     \end{gathered}
   \end{equation*}
+
+And the invariant for the event:
+
+$$
+i_2 := c \in A
+$$
 
 Where $c$ - caller's address.
 
@@ -415,13 +494,13 @@ Then, we can verify the model consistency for some state transition $S \to S'$ u
   \end{gathered}
 \end{equation*}
 
-However, as it can be seen, we can see that one of the premises violates the invariant, in particular:
+However, as it can be seen, one of the premises violates the invariant, in particular:
 \begin{equation*}
   \frac{card(A) = 1 \rightarrow A \cup \{a\}, a \in *}{A \cup \{a\}}
 \end{equation*}.
 
 In practice, the following error can be picked at the compile time by using symbolic execution of the code.
-The other invariant, $i_1$, can be picked at the runtime by generating an appropriate assertion.
+The other invariant, $i_2$, can be picked at the runtime by generating an appropriate assertion.
 
 \section{Implementation}
 
