@@ -154,73 +154,73 @@ At the end of the chapter, we will have reviewed both categories of tools, allow
 Particularly, this chapter aims to provide a clear and concise framework to analyze and work with the SC tools dedicated to producing
 error-proof DApps. 
 
-\section{Solidity: the good and the bad}
+% \section{Solidity: the good and the bad}
 
-Before we begin analysing existing solutions, we should introduce the first and most popular SCL, Solidity\cite{sc_survey}\cite{solidity_docs}.
-Solidity has paved the way for SC development and has become a de facto standard in the blockchain space. We will later discover a lot of similarities with Solidity in other SCLs.
-Understanding how Solidity works will enable us to understand its limitations and how other SCLs and toolings try to address them.
+% Before we begin analysing existing solutions, we should introduce the first and most popular SCL, Solidity\cite{sc_survey}\cite{solidity_docs}.
+% Solidity has paved the way for SC development and has become a de facto standard in the blockchain space. We will later discover a lot of similarities with Solidity in other SCLs.
+% Understanding how Solidity works will enable us to understand its limitations and how other SCLs and toolings try to address them.
 
-Solidity is a domain-specific, object-oriented\footnote{It is also often referred to as \textit{contract-oriented}. We will use these terms interchangeably.}, statically typed, compiled
-programming language\cite{solidity_docs}.
+% Solidity is a domain-specific, object-oriented\footnote{It is also often referred to as \textit{contract-oriented}. We will use these terms interchangeably.}, statically typed, compiled
+% programming language\cite{solidity_docs}.
 
-Looking at the \lref{Listing:solidity}, we can identify some similarities with the OOP languages and C-like syntax.
-In particular, Solidity shares visibility keywords on lines \textit{6} and \textit{20}, variable declarations, and methods.
-Noting the differences, Solidity has blockchain-specific data types such as \textit{address}, which intuitively represents an address on the system.
-Importantly, functions have to be declared \textit{public} in order to be callable externally by the user or other contracts.
-We can also see the event declaration on the line \textit{7}, which allows EVM to log an action on the system to be accessed by the client.
-Solidity also offers specific functions, called modifiers, that allow for a change of behaviour of the function it is used on\cite{solidity_docs}.
-Finally, \textit{view} keyword allows that the function does not modify the state and only reads from it.
-Other specification details are omitted as they touch upon more EVM-specific functionality.
+% Looking at the \lref{Listing:solidity}, we can identify some similarities with the OOP languages and C-like syntax.
+% In particular, Solidity shares visibility keywords on lines \textit{6} and \textit{20}, variable declarations, and methods.
+% Noting the differences, Solidity has blockchain-specific data types such as \textit{address}, which intuitively represents an address on the system.
+% Importantly, functions have to be declared \textit{public} in order to be callable externally by the user or other contracts.
+% We can also see the event declaration on the line \textit{7}, which allows EVM to log an action on the system to be accessed by the client.
+% Solidity also offers specific functions, called modifiers, that allow for a change of behaviour of the function it is used on\cite{solidity_docs}.
+% Finally, \textit{view} keyword allows that the function does not modify the state and only reads from it.
+% Other specification details are omitted as they touch upon more EVM-specific functionality.
 
-It is evident from the listing the similarity of Solidity with other C-inspired systems languages that reduces
-the learning curve and makes it more appealing for developers to pick up.
-The simplicity of syntax also enables clarity in reading the code and auditing it. The imperative and object-oriented style
-provides additional familiarity for developers, allowing them to think of an individual contract as a class object.
+% It is evident from the listing the similarity of Solidity with other C-inspired systems languages that reduces
+% the learning curve and makes it more appealing for developers to pick up.
+% The simplicity of syntax also enables clarity in reading the code and auditing it. The imperative and object-oriented style
+% provides additional familiarity for developers, allowing them to think of an individual contract as a class object.
 
-\begin{listing}
-\begin{minted}[linenos]{c}
-// SPDX-License-Identifier: GPL-3.0
-pragma solidity >=0.7.0 <0.9.0;
+% \begin{listing}
+% \begin{minted}[linenos]{c}
+% // SPDX-License-Identifier: GPL-3.0
+% pragma solidity >=0.7.0 <0.9.0;
 
-contract Owner {
+% contract Owner {
 
-    address private owner;
-    event OwnerSet(address indexed oldOwner, address indexed newOwner);
+%     address private owner;
+%     event OwnerSet(address indexed oldOwner, address indexed newOwner);
 
-    modifier isOwner() {
-        require(msg.sender == owner, "Caller is not owner");
-        _;
-    }
+%     modifier isOwner() {
+%         require(msg.sender == owner, "Caller is not owner");
+%         _;
+%     }
 
-    constructor() {
-        console.log("Owner contract deployed by:", msg.sender);
-        owner = msg.sender;
-        emit OwnerSet(address(0), owner);
-    }
+%     constructor() {
+%         console.log("Owner contract deployed by:", msg.sender);
+%         owner = msg.sender;
+%         emit OwnerSet(address(0), owner);
+%     }
 
-    function changeOwner(address newOwner) public isOwner {
-        emit OwnerSet(owner, newOwner);
-        owner = newOwner;
-    }
+%     function changeOwner(address newOwner) public isOwner {
+%         emit OwnerSet(owner, newOwner);
+%         owner = newOwner;
+%     }
 
-    function getOwner() external view returns (address) {
-        return owner;
-    }
-}
-\end{minted}
-\caption{Simple Solidity contract}
-\label{Listing:solidity}
-\end{listing}
+%     function getOwner() external view returns (address) {
+%         return owner;
+%     }
+% }
+% \end{minted}
+% \caption{Simple Solidity contract}
+% \label{Listing:solidity}
+% \end{listing}
 
-On the other side, programming in Solidity comes with similar challenges as its parents. 
-Developers need to be aware of its operations on memory and storage when designing complex storage applications, 
-how the execution stack is handled at the VM level, 
-and implications on using unchecked arithmetic operations \vref{SCV:5}.
-Additionally, the vulnerabilities listed in \tref{Table:classification} 
-has been mainly composed of Solidity SC exploits.
-Moreover, the immutable nature of SCs restricts the iterative approach in development,
-posing an even greater responsibility on developers to model and design programs carefully.
-This is where formal verification tools have found strong applications.
+% On the other side, programming in Solidity comes with similar challenges as its parents. 
+% Developers need to be aware of its operations on memory and storage when designing complex storage applications, 
+% how the execution stack is handled at the VM level, 
+% and implications on using unchecked arithmetic operations \vref{SCV:5}.
+% Additionally, the vulnerabilities listed in \tref{Table:classification} 
+% has been mainly composed of Solidity SC exploits.
+% Moreover, the immutable nature of SCs restricts the iterative approach in development,
+% posing an even greater responsibility on developers to model and design programs carefully.
+% This is where formal verification tools have found strong applications.
 
 \section{Formal Verification Tools} \label{Chapter:FVT}
 \paragraph*{}
@@ -356,6 +356,26 @@ As part of the language design, the SC building workflow is illustrated in \fref
 As one of the core features of Folidity, it is important to note that formal verification is part of the build process.
 Having verified the model consistency, invariants, and constraints, the program is considered safe to generate runtime assertions.
 
+Another core feature is a pure computation context of the SC in Folidity. As illustrated in \fref{Figure:context:old},
+state mutations to the contract storage and the global state (e.g. account balances) happen independently of each other. 
+Folidity proposes a new execution model when the language \textit{embeds} a portion of a global state into the local state of the SC 
+as shown in \fref{Figure:context:transformed}. 
+
+\begin{figure}[!htb]
+  \centering
+  \subfigure[Traditional execution context]{
+    \includegraphics[width=8.0cm]{trad_context.png}
+    \label{Figure:context:old}
+  }
+  \subfigure[Transfomed execution context]{
+    \includegraphics[width=8.0cm]{new_context.png}
+    \label{Figure:context:transformed}
+  }
+  \caption{Changes to the execution context}
+  \label{Figure:context}
+\end{figure}
+
+
 \newpage
 \subsection{Model consistency: Simple example}
 
@@ -433,8 +453,11 @@ Additionally, optimisation of the execution is also not considered relevant at t
 Finally, Algorand offers smart signatures, a program that is delegated a signing authority\footnote{https://developer.algorand.org/docs/get-details/dapps/smart-contracts/smartsigs}.
 As they operate in a different way from SCs, they are also outside the scope of this project.
 
-
+\begingroup
+\renewcommand{\cleardoublepage}{}
+\renewcommand{\clearpage}{}
 \chapter{Project Planning}
+\endgroup
 
 A significant groundwork in research of current solutions and their limitations has been done as illustrated by Gannt chart in \aref{Appendix:Gannt}.
 Since the requirements have been composed, some progress has been made in the design of BNF grammar that will later pave the way for the development
