@@ -17,6 +17,7 @@
 
 \newcommand{\vref}[1]{\textit{\hyperref[#1]{#1}}}
 \newcommand{\lref}[1]{Listing~\ref{#1}}
+\newcommand{\rref}[1]{\textit{\hyperref[#1]{#1}}}
 
 \begin{document}
 \frontmatter
@@ -33,7 +34,7 @@
             {\href{mailto:gn2g21@soton.ac.uk}{Prof. Vladimiro Sassone}}
             {Prof. Vladimiro Sassone}
 }
-\examiner   {Dr Butthead}
+\examiner   {TBD}
 \degree     {BSc Computer Science}
 \maketitle
 \tableofcontents
@@ -46,7 +47,7 @@
 
 \chapter{Introduction}
 
-The idea of "smart contract" [SC] was first coined by Nick Szabo as a computerised transaction protocol \cite{nz_sc}.
+The concept of "smart contract" [SC] was first coined by Nick Szabo as a computerised transaction protocol \cite{nz_sc}.
 He later defined smart contracts as observable, verifiable, privity-applicable, and enforceable programs. \cite{nz_sc_bb}.
 In other words, it was envisioned for smart contracts to inherit the natural properties of the traditional
 "paper-based" contracts.
@@ -145,7 +146,7 @@ it has been realised that additional tooling or alternative SCLs need to be disc
 
 \section{Overview}
 
-As mentioned earlier, given the increased use of SCs and the consistency in the presence of vulnerabilities and programmer mistakes
+Given the increased use of SCs and the consistency in the presence of vulnerabilities and programmer mistakes
 different solutions have been presented to attempt to mitigate those. 
 We can generally categorise them into 2 groups: safe SCLs which allow users to write safe and secure code, particularly described in \cref{Chapter:SCL}, 
 and formal verification tools which are used alongside traditional SCLs and are described in \cref{Chapter:FVT}.
@@ -258,7 +259,7 @@ Formal verification is a multi-disciplinary field offering multiple ways of reas
 is bounded model verification\cite{SMBC}. Developers are required to reason about the programs as finite state machines (FSM).
 This reasoning approach is more apparent in SC development since the state transition is at the core of blockchain execution.
 Bounded model checking has been realised by only a few experimental projects such as Solidifier\cite{solidifer}, and Microsoft\cite{azure}.
-Both words attempt to translate Solidity code to an intermediate modeling language, Boogie\cite{boogie}. Boogie then leverages
+Both projects attempt to translate Solidity code to an intermediate modeling language, Boogie\cite{boogie}. Boogie then leverages
 SMT solvers in order to find any assertion violations.
 
 All in all, we can see that formal verification tools provide a robust way of ensuring the safety and security of SCs. 
@@ -291,8 +292,8 @@ all possible states in the contract. The message functions then need to explicit
 The language provides a significant improvement in a modeling approach. However, it still lacks the modeling SC input data in terms
 of constraints and invariants, and explicit state transition is still an optional feature that the developer can miss in using.
 
-Another promising SCL reasons about SC development through dependent and polymorphic types\cite{idris}. It extends Idris\footnote{https://www.idris-lang.org}.
-It makes the developer model the SC as part of a state transition function by adopting a functional programming style. Dependent types provide a more
+Another promising SCL reasons about SC development through dependent and polymorphic types\cite{idris}. It extends Idris\footnote{https://www.idris-lang.org} 
+and makes the developer model the SC as part of a state transition function by adopting a functional programming style. Dependent types provide a more
 fine-grained controller over the input and output data that flow through the SC functions. In particular, similar to Haskell, the language offers \textit{side-effects} 
 functionality that resembles \textit{IO} monads in Haskell. The downside of the approach is that the syntax has become too cumbersome for other developers to learn. Thus,
 it has been stated that the language does not strive for simplicity and sacrifices it for safety.
@@ -308,15 +309,140 @@ However, there has been no effort in attempting to combine the two approaches in
 focus on the validation of functional correctness and model consistency of a program at the compile time, whereas SCLs focus on data validation 
 at the runtime. Recent work suggests that the improved optimisation of SMT solvers allows us to turn the formal model specification into 
 the runtime assertions\cite{runtime_assert}. Furthermore, no effort has been made to minimise false negatives in SC formal modeling, 
-even though the methods have been developed for traditional systems\cite{even_b}.
+even though the methods have been developed for traditional systems\cite{event_b}.
 
 %% ----------------------------------------------------------------
 
 \chapter{Proposed Solution} \label{Chapter:Solution}
 
+\section{Outline}
+
+In light of the above, we believe there is a need for a solution that combines two approaches to allow SC developers to reason
+about their program in terms of FSM models that can be verified at the compile time for functional correctness and model consistency,
+and enable an automatic generation of invariants and constraints to validate the data at runtime.
+
+We propose \textit{Folidity}, a safe smart contract language. Folidity will offer the model-first approach to the development process
+while featuring the functional-first programming style. The language intends to offer a safe and secure-by-design approach to the programming
+ensuring that the developer is aware of any state transitions that take place during execution.
+
+The list of requirements for features has been comprised based on the vulnerabilities described in \tref{Table:classification}.
+
+\begin{description}
+  \item[1. Provide abstraction over timestamp]\label{Requirements:1} in response to \vref{SCV:1}. We are interested in the limited use of timestamp in SCs either in favor of block number or another safe primitive.
+  \item[2. Provide a safe interface for randomness]\label{Requirements:2} in response to \vref{SCV:2}. Folidity should also provide source of randomness through a standardised interface.
+  \item[3. Enable model-first approach in development]\label{Requirements:3} in response to \vref{SCV:3}. Developers should reason about the storage in terms of models and how they are updated by events. 
+This approach is inspired by the Event-B\cite{event_b} work which can be applied to SC development as well.
+  \item[4. Explicit state checks at runtime]\label{Requirements:4} in response to \vref{SCV:3} and \vref{SCV:6}. Similar to \rref{Requirements:3}, SC developers should be aware of any state transitions
+that update the state of the model. State transitions must happen explicitly and be validated at the runtime to guarantee \textit{liveness}.
+  \item[5. Static typing]\label{Requirements:5} in response to \vref{SCV:3} and \vref{SCV:5}. Static types should be first-class citizen of the language.
+  \item[6. Polymorphic-dependent types]\label{Requirements:6} in response to \vref{SCV:3}. Polymorphic-dependent types should be part of a runtime assertion check 
+during state transition and model mutation\footnote{\textit{Model mutation} and \textit{state transition} refer to the same process. They are used interchangeably}.
+  \item[7. Role-based access]\label{Requirements: 7} in response to \vref{SCV:4}. 
+All message functions that mutate the model should be annotated with the role-access header specifying which set of accounts is allowed to call it.
+  \item[8. Checked arithmetic operations]\label{Requirements:8} in response to \vref{SCV:5}. 
+All arithmetic operations should be checked by default and the developer is responsible for explicitly specifying the behaviour during over/underflow, similar to Rust.
+  \item[9. Enforced checked recursion or bounded loops]\label{Requirements:9} in response to \vref{SCV:3}.
+Infinite loops should not be permitted, and any loops should generally be discouraged in favour of recursion. Recursion base case should be specified explicitly with appropriate invariants.
+Bounded loops may be used, but should be limited to list or mapping iterations.
+\end{description}
+
+As part of the language design the SC building workflow is illustrated in \fref{Figure:compilation}
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=10cm]{compilation.png}
+  \caption{Build workflow}
+  \label{Figure:compilation}
+\end{figure}
+
+As one of the core features of Folidity, it is important to note that formal verification is part of the build process.
+Having verified the model consistency, invariants, and constraints, the program is considered to be safe to generate runtime asserts.
+
+\newpage
+\subsection{Model consistency: Simple example}
+
+As an example of the theory behind model consistency in SCs. we can look at role-based access. Suppose:
+\begin{itemize}
+  \item $* = \{ \text{All addresses} \}$
+  \item $M = \{ \text{Moderators of the system} \}$
+  \item $A = \{ \text{Admins of the system} \}$
+\end{itemize}
+
+Then we can model a role-based access hierarchy as 
+\[ A \subseteq M \subseteq * \]
+
+Subsequently, given the invariant for some event \textit{add\_mod(a: Address)} we can define following invariant:
+\begin{equation*}
+    \begin{gathered}
+      i_0 := card(A) = 1 \\
+      i_1 := c \in A \\
+      i_2 := card(M) = 5
+    \end{gathered}
+  \end{equation*}
+
+Where $c$ - caller's address.
+
+For the denoted event, suppose we mutate the model by adding an address to a set of admins:
+\begin{equation*}
+  A := A \cup \{a\}
+\end{equation*}
+
+Then we can verify the model consistency for some state transition $S \to S'$ using propositional logic.
+
+\begin{equation*}
+  \begin{gathered} 
+   \frac{(i_0 \wedge i_1 \wedge i_2 ) \rightarrow A \cup \{a\}, a \in *, c \in A}{A \cup \{a\}}
+  \end{gathered}
+\end{equation*}
+
+However, as it can be seen, we can see that one of the premises violates the invariant, in particular:
+\begin{equation*}
+  \frac{card(A) = 1 \rightarrow A \cup \{a\}, a \in *}{A \cup \{a\}}
+\end{equation*}.
+
+In practice, the following error can be picked at the compile time by using symbolic execution of the code.
+The other invariant, $i_1$, can be picked at the runtime by generating an appropriate assertion.
+
+\section{Implementation}
+
+The language will be implemented using Rust\footnote{https://www.rust-lang.org} due to its memory-safety guarantees and efficiency. 
+Different parser-combinators alongside custom lexers are going to be used for the development of the parser. 
+Folidity also requires SMT-solver for formal verification and generation of runtime assertions. In order to facilitate this functionality,
+Z3\footnote{https://microsoft.github.io/z3guide} will be used since it also provides Rust bindings. It was debated to use Boogie, since it provides
+a higher-level abstraction, but it was quickly discarded due to lack of documentation and increased time of the development.
+
+As a target blockchain for the language, Algorand\footnote{https://developer.algorand.org}. 
+Algorand is a decentralized blockchain platform designed for high-performance and low-cost transactions, 
+utilising a unique consensus algorithm called Pure Proof-of-Stake to achieve scalability, security, and decentralization\cite{algorand}.
+One of the potential drawbacks of the language is
+increased complexity due to complex abstractions and additional assertions. EVM-based blockchains have varying costs for the execution, i.e. fees,
+that depend on the complexity of a SC. On the contrary, although Algorand has a limited execution stack, it offers extremely fixed low transaction fees.
+Additionally, Algorand execution context explicitly executes in terms of state transition, which perfectly suits the paradigm of Folidity.
+Finally, Algorand offers opt-in functionality, and a local wallet storage that allows users to explicitly opt-in for using the SC.
+This provides additional support in the role-based access control in Folidity.
+
+As a target compilation language, Tealish\footnote{https://tealish.tinyman.org} has been chosen.
+Although, Algorand offers Teal\footnote{https://developer.algorand.org/docs/get-details/dapps/avm/teal/} –
+a low-level, stack-based programming language. Due to increased complexity, it is more realistic to use Tealish.
+It offers the same access control to stack and storage while providing the developer with useful high-level abstractions.
+
+
+\section{Scope}
+
+As part of the development process, it has been decided to limit the scope to supporting only a single SC execution.
+Cross-contract calls require extra consideration in design and development. Therefore, \vref{SCV:6} may not be fully addressed in the final report.
+Additionally, optimisation of the execution is also not considered relevant at this stage in favour of safety and simplicity.
+Finally, Algorand offers smart signatures, a program that is delegated a signing authority\footnote{https://developer.algorand.org/docs/get-details/dapps/smart-contracts/smartsigs}.
+As they operate in a different way from SCs, they are also outside the scope of this project.
+
 
 \chapter{Project Planning}
 
+A significant groundwork in research of current solutions and their limitations has been done as illustrated by Gannt chart in \aref{Appendix:Gannt}.
+Since the requirements have been composed, some progress has been made in the design of BNF grammar that will later pave the way for the development
+of the parser. During the design of the grammar, it is still possible to research more formal verification methods.
+
+From the beginning of January, the first iteration of grammar should be completed, and the active development of the type checker and formal verifier begin.
 
 
 %% ----------------------------------------------------------------
@@ -382,6 +508,7 @@ even though the methods have been developed for traditional systems\cite{even_b}
   
       \end{ganttchart}
       \caption{Gantt Chart}
+      \label{Appendix:Gannt}
   
   \end{figure}
   \end{landscape}
