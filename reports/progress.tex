@@ -135,28 +135,28 @@ We expect you to acknowledge all sources of information (e.g. ideas, algorithms,
 
 \chapter{Introduction}
 
-The concept of "smart contract" [SC] was first coined by Nick Szabo as a computerised transaction protocol \cite{nz_sc}.
+The concept of "smart contract" (SC) was first coined by Nick Szabo as a computerised transaction protocol \cite{nz_sc}.
 He later defined smart contracts as observable, verifiable, privity-applicable, and enforceable programs. \cite{nz_sc_bb}.
 In other words, smart contracts were envisioned to inherit the natural properties of traditional "paper-based" contracts.
 
 In 2014 SCs were technically formalised at the protocol level by Dr. Gavin Wood as an arbitrary program
 written in some programming language (Solidity) and executed in the blockchain's virtual machine of Ethereum.\cite{eth_yellow_paper}.
 
-Ethereum Virtual Machine (EVM) iterated over the idea of Bitcoin Scripting, allowing developers to deploy general-purpose, Turing-Complete
+Ethereum Virtual Machine (EVM) iterated over the idea of Bitcoin Scripting\cite{bitcoin}, allowing developers to deploy general-purpose, Turing-Complete
 programs that can have their own storage, hence the state, written in Solidity\cite{solidity_docs}. This enabled sophisticated applications that grew beyond
 the simple funds transfers among users.
 
-Overall, SC can be summarised as an \textit{immutable}, \textit{permissionless}, \textit{deterministic} computer programs 
-that are executed as part of state transition in the blockchain system. 
+Overall, SC can be summarised as an \textit{immutable}, \textit{permissionless}, \textit{deterministic} computer program
+that is executed as part of state transition in the blockchain system\cite{hardvard_sc}\cite{eth_yellow_paper}. 
 
-After a relatively short time, SCs have come a long way and allowed users to access different online services in a completely trustless and decentralised way.
-The applications have spanned financial, health, construction\cite{cad_blockchain}, and other sectors. 
+After a relatively short time, SCs have come a long way and allowed users to access different online services, also known as Decentralised Applications (DApps), in a completely trustless and decentralised way.
+The applications have spanned financial, health, construction\cite{cad_blockchain}, and other sectors.
 
 \chapter{Security and Safety of Smart Contracts}
 
 \section{Overview}
 
-With the increased adoption of decentralised applications (DApps) and total value locked in DApps, 
+With the increased adoption of DApps and total value locked in them, 
 there have been numerous attacks focused on extracting funds from SCs. 
 Due to the permissionless nature of SCs, the most common attack vector exploits the mistakes in the SC's source code.
 Specifically, the attacker can not tamper with the protocol code due to consensus mechanisms.
@@ -169,8 +169,11 @@ Another less-known example is the "King of the Ether" attack, which was caused b
 The "King of the Ether Throne" contract could not recognise the failed transaction on the wallet side. Instead, the contract proceeded with the operation, incorrectly mutating its internal state.
 
 Other issues involve the \textit{safety} and \textit{liveness} of SCs. 
-The term \textit{safety} is used to describe the \textit{functional safety} and \textit{type safety}. It is often used interchangeably with the \textit{security} of code
-as compromising the former affects the latter. When talking about \textit{liveness}, we describe the business logic of a DApp, particularly whether it transitions into the expected new state.
+The term \textit{safety} is used to describe the \textit{functional safety} and \textit{type safety}. \textit{Functional safety} refers to the guarantees that the system behaves according to the specification irrespective of the input data\cite{func_safety},
+whereas \textit{type safety} refers to the guarantees that the language provides a sound type system\cite{types_pierce}.
+It is often used interchangeably with the \textit{security} of code
+as compromising the former affects the latter. When talking about \textit{liveness}, we describe the business logic of a DApp, particularly whether it transitions into the expected new state\cite{liveness_rob}.
+This is particularly important for the execution for mission-critical software in a distributed context.
 
 \textit{Safety} and \textit{liveness} can be compromised due to the programmer's mistakes in the source code that can result in the SC entering the terminal in an unexpected state
 preventing users from interacting with it\cite{ondo_report}.
@@ -185,6 +188,8 @@ and encouraging peer-review of SCs through the websites such as \textit{Code4ren
 and many others.
 
 Analysing the work mentioned above, SC vulnerabilities can be categorised into the six general groups outlined in \tref{Table:classification}.
+The six categories have been defined based on the analysis of the most common vulnerabilities and how they affect the SC execution. 
+Each category represents the general scope for a specific set of vulnerabilities that should be addressed in the SC development.
 
 \begin{table}[!htb]
   \centering
@@ -306,8 +311,8 @@ error-proof DApps.
 Formal verification describes the assessment of the correctness of a system concerning a formal specification\cite{eth_formal_verification}. 
 The specification is usually described
 in terms of verified models using mathematical proofs. There are multiple ways to verify a program formally focused on specific parts. \textit{Model checking} utilises propositional logic 
-to verify the mathematical abstractions of the system. \textit{Theorem proving} involves verifying
-relations between the model and the statements about the system. Finally, \textit{symbolic execution} focuses
+to verify the mathematical abstractions of the system\cite{model_checking}. \textit{Theorem proving} involves verifying
+relations between the model and the statements about the system\cite{theorem_proving}. Finally, \textit{symbolic execution} focuses
 on the execution of the program using symbolic values instead of concrete values\cite{eth_formal_verification}.
 Different tools utilise different combinations of methods mentioned above.
 
@@ -324,7 +329,7 @@ The syntax resembles a traditional imperative style and is substantially easier 
 
 Some tools can be used alongside Solidity code, such as Scribble\footnote{https://docs.scribble.codes/}. 
 Scribble enables developers to provide formal specifications of functions inside docstrings seamlessly integrating with existing Solidity code. 
-It offers VS Code extensions and is actively maintained by Consensys. 
+It offers VS Code extensions and is actively maintained by Consensys\footnote{https://consensys.io/diligence/scribble}. 
 The trade-off is the limited expressiveness in comparison with KEVM and Dafny.
 
 Finally, experiments have been conducted to verify SC without any formal annotations. 
@@ -334,7 +339,7 @@ although an effort has been made to apply the verifier to more areas of SC\cite{
 
 \paragraph*{}
 Formal verification is a multi-disciplinary field offering multiple ways of reason about the systems. One of the actively researched topics
-is bounded model verification\cite{SMBC}. Developers are required to reason about the programs as finite state machines (FSM).
+is bounded model verification\cite{SMBC}. Developers are required to reason about the programs as finite state machines (FSM)\cite{model_fsm}.
 This reasoning approach is more apparent in SC development since the state transition is at the core of blockchain execution.
 Bounded model checking has been realised by only a few experimental projects such as Solidifier\cite{solidifer} and Microsoft\cite{azure}.
 Both projects attempt to translate Solidity code to an intermediate modelling language, Boogie\cite{boogie}. Boogie then leverages
@@ -479,14 +484,20 @@ $$
 i_2 := c \in A
 $$
 
-Where $c$ - caller's address.
+\newpage
+Where 
+\begin{itemize}
+  \item $c$ - caller's address of the entity submitting the transaction.
+  \item $i_n$ - enumerated invariant with some boolean statement
+  \item $card(...)$ - cardinality of a set
+\end{itemize}
 
 For the denoted event, suppose we mutate the model by adding an address to a set of admins:
 \begin{equation*}
   A := A \cup \{a\}
 \end{equation*}
 
-Then, we can verify the model consistency for some state transition $S \to S'$ using propositional logic.
+Then, we can verify the model consistency for some state transition from an initial state $S$ to a new state $S'$ $S \to S'$ using propositional logic.
 
 \begin{equation*}
   \begin{gathered} 
@@ -513,7 +524,7 @@ a higher-level abstraction, but it was quickly discarded due to lack of document
 As a target blockchain for the language, Algorand\footnote{https://developer.algorand.org} has been selected. 
 Algorand is a decentralized blockchain platform designed for high-performance and low-cost transactions, 
 utilising a unique consensus algorithm called Pure Proof-of-Stake to achieve scalability, security, and decentralisation\cite{algorand}.
-One of the potential drawbacks of the language is increased complexity due to complex abstractions and additional assertions. 
+One of the potential drawbacks of Folidity is a computational overhead due to complex abstractions and additional assertions. 
 EVM-based blockchains have varying costs for the execution, i.e. fees, that depend on the complexity of a SC. 
 On the contrary, although Algorand has a limited execution stack, it offers fixed, low transaction fees.
 Additionally, Algorand execution context explicitly executes in terms of state transition, which perfectly suits the paradigm of Folidity.
@@ -522,8 +533,8 @@ This provides additional support in the role-based access control in Folidity.
 
 As a target compilation language, Tealish\footnote{https://tealish.tinyman.org} has been chosen.
 Although, Algorand offers Teal\footnote{https://developer.algorand.org/docs/get-details/dapps/avm/teal/} –
-a low-level, stack-based programming language. Due to increased complexity, it is more realistic to use Tealish.
-It offers the same access control to stack and storage while providing the developer with useful high-level abstractions.
+a low-level, stack-based programming language. Due to time limitations of the project, it is more realistic to use Tealish.
+It operates on the same level as Teal while offering useful abstractions speeding up the development of Folidity.
 
 
 \section{Scope}
