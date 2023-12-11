@@ -187,8 +187,8 @@ Some of the work has been recycled by bug bounty platforms, growing the communit
 and encouraging peer-review of SCs through the websites such as \textit{Code4rena}\footnote{https://code4rena.com}, \textit{Solodit}\footnote{https://solodit.xyz},
 and many others.
 
-Analysing the abovementioned work, SC vulnerabilities can be categorised into the six general groups outlined in \tref{Table:classification}.
-The six categories have been defined based on the most common vulnerabilities and how they affect the SC execution. 
+Analysing the work mentioned above, SC vulnerabilities can be categorised into the six general groups outlined in \tref{Table:classification}.
+The six categories have been defined based on the analysis of the most common vulnerabilities and how they affect the SC execution. 
 Each category represents the general scope for a specific set of vulnerabilities that should be addressed in the SC development.
 
 \begin{table}[!htb]
@@ -440,7 +440,8 @@ Having verified the model consistency, invariants, and constraints, the program 
 Another core feature is a pure computation context of the SC in Folidity. As illustrated in \fref{Figure:context:old},
 state mutations to the contract storage and the global state (e.g. account balances) happen independently of each other. 
 Folidity proposes a new execution model when a portion of a global state is \textit{embedded} into the local state of the SC 
-as shown in \fref{Figure:context:transformed}. 
+as shown in \fref{Figure:context:transformed}. \textit{Global state} refers to the overall state of the blockchain system (e.g. account balances), 
+whereas \textit{local state} describes the storage of an individual SC.
 
 \begin{figure}[!htb]
   \centering
@@ -487,7 +488,7 @@ $$
 \newpage
 Where 
 \begin{itemize}
-  \item $c$ - caller's address of the entity submitting the transaction.
+  \item $c$ - caller's address
   \item $i_n$ - enumerated invariant with some boolean statement
   \item $card(...)$ - cardinality of a set
 \end{itemize}
@@ -553,7 +554,7 @@ As they operate in a different way from SCs, they are also outside the scope of 
 
 A significant groundwork in research of current solutions and their limitations has been done as illustrated by Gannt chart in \aref{Appendix:Gannt}.
 Since the requirements have been composed, some progress has been made in the design of BNF grammar that will later pave the way for the development
-of the parser. Researching more formal verification methods during the grammar design is still possible.
+of the parser. It is still possible to research more formal verification methods during the grammar design.
 
 From the beginning of January, the first iteration of grammar should be completed, and the active development of the type checker and formal verifier should begin.
 
