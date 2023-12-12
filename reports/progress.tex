@@ -135,12 +135,12 @@ We expect you to acknowledge all sources of information (e.g. ideas, algorithms,
 
 \chapter{Introduction}
 
-The concept of "smart contract" (SC) was first coined by Nick Szabo as a computerised transaction protocol \cite{nz_sc}.
-He later defined smart contracts as observable, verifiable, privity-applicable, and enforceable programs. \cite{nz_sc_bb}.
+The concept of "smart contract" (SC) was first coined by Nick Szabo as a computerised transaction protocol\cite{nz_sc}.
+He later defined smart contracts as observable, verifiable, privity-applicable, and enforceable programs\cite{nz_sc_bb}.
 In other words, smart contracts were envisioned to inherit the natural properties of traditional "paper-based" contracts.
 
 In 2014 SCs were technically formalised at the protocol level by Dr. Gavin Wood as an arbitrary program
-written in some programming language (Solidity) and executed in the blockchain's virtual machine of Ethereum.\cite{eth_yellow_paper}.
+written in some programming language (Solidity) and executed in the blockchain's virtual machine of Ethereum\cite{eth_yellow_paper}.
 
 Ethereum Virtual Machine (EVM) iterated over the idea of Bitcoin Scripting\cite{bitcoin}, allowing developers to deploy general-purpose, Turing-Complete
 programs that can have their own storage, hence the state, written in Solidity\cite{solidity_docs}. This enabled sophisticated applications that grew beyond
@@ -171,7 +171,7 @@ The "King of the Ether Throne" contract could not recognise the failed transacti
 Other issues involve the \textit{safety} and \textit{liveness} of SCs. 
 The term \textit{safety} is used to describe the \textit{functional safety} and \textit{type safety}. \textit{Functional safety} refers to the guarantees that the system behaves according to the specification irrespective of the input data\cite{func_safety},
 whereas \textit{type safety} refers to the guarantees that the language provides a sound type system\cite{types_pierce}.
-It is often used interchangeably with the \textit{security} of code
+The two are often used interchangeably with the \textit{security} of code
 as compromising the former affects the latter. When talking about \textit{liveness}, we describe the business logic of a DApp, particularly whether it transitions into the expected new state\cite{liveness_rob}.
 This is particularly important for the execution of mission-critical software in a distributed context.
 
@@ -182,13 +182,13 @@ preventing users from interacting with it\cite{ondo_report}.
 \section{Vulnerability classification}
 
 There has been an effort in both academia and industry to classify common vulnerabilities 
-and exploits in SCs in blockchain systems \cite{owasp}\cite{stefano}\cite{atzei_survey}. 
+and exploits in SCs in blockchain systems\cite{owasp}\cite{stefano}\cite{atzei_survey}. 
 Some of the work has been recycled by bug bounty platforms, growing the community of auditors
 and encouraging peer-review of SCs through the websites such as \textit{Code4rena}\footnote{https://code4rena.com}, \textit{Solodit}\footnote{https://solodit.xyz},
 and many others.
 
 Analysing the work mentioned above, SC vulnerabilities can be categorised into the six general groups outlined in \tref{Table:classification}.
-The six categories have been defined based on the analysis of the most common vulnerabilities and how they affect the SC execution. 
+The six categories have been defined based on the analysis of the most common vulnerabilities, and how they affect the SC execution. 
 Each category represents the general scope for a specific set of vulnerabilities that should be addressed in the SC development.
 
 \begin{table}[!htb]
@@ -221,7 +221,7 @@ commonly present in the recent audit reports\cite{arcade_report}\cite{ondo_repor
 
 In particular, in \cite{centrifuge_report}, a relatively simple calculation mistake resulted in other SC users being unable to withdraw their funds.
 
-It can be seen that SC Vulnerabilities illustrated in \tref{Table:classification} are still evident in modern SCs, resulting in opening them up to vulnerabilities of different severity levels.
+It can be seen that SC Vulnerabilities illustrated in \tref{Table:classification} are still evident in modern SCs, resulting in opening them up to exploits of different severity levels.
 Looking at the mentioned reports, there is little consensus about the weight of each vulnerability.
 Therefore, we can not classify any particular vulnerability as more severe than the other as it solely depends on the context in the code it is present.
 Furthermore, it has been realised that additional tooling or alternative SCLs need to be discovered to minimise the exposure of SC code to the earlier-mentioned vulnerabilities.
@@ -235,7 +235,7 @@ We can generally categorise them into two groups: safe SCLs, which allow users t
 and formal verification tools used alongside traditional SCLs presented in \cref{Chapter:FVT}.
 
 This chapter reviews both categories of tools, allowing us to evaluate their effectiveness in correlation to usability,
-aiming to provide a concise framework to analyze and work with the SC tools dedicated to producing
+aiming to provide a concise framework to analyse and work with the SC tools dedicated to producing
 error-proof DApps. 
 
 % \section{Solidity: the good and the bad}
@@ -307,10 +307,9 @@ error-proof DApps.
 % This is where formal verification tools have found strong applications.
 
 \section{Formal Verification Tools} \label{Chapter:FVT}
-\paragraph*{}
 Formal verification describes the assessment of the correctness of a system concerning a formal specification\cite{eth_formal_verification}. 
 The specification is usually described
-in terms of verified models using mathematical proofs. There are multiple ways to verify a program formally focused on specific parts. \textit{Model checking} utilises propositional logic 
+in terms of verifiable models using mathematical proofs. There are multiple ways to verify a program formally focused on specific parts. \textit{Model checking} utilises propositional logic 
 to verify the mathematical abstractions of the system\cite{model_checking}. \textit{Theorem proving} involves verifying
 relations between the model and the statements about the system\cite{theorem_proving}. Finally, \textit{symbolic execution} focuses
 on the execution of the program using symbolic values instead of concrete values\cite{eth_formal_verification}.
@@ -337,7 +336,7 @@ In particular, VeriSmart focuses explicitly on ensuring arithmetic safety and pr
 However, VeriSmart fails to detect other types of errors, 
 although an effort has been made to apply the verifier to more areas of SC\cite{azure}.
 
-\paragraph*{}
+
 Formal verification is a multi-disciplinary field offering multiple ways of reason about the systems. One of the actively researched topics
 is bounded model verification\cite{SMBC}. Developers are required to reason about the programs as finite state machines (FSM)\cite{model_fsm}.
 This reasoning approach is more apparent in SC development since the state transition is at the core of blockchain execution.
@@ -373,7 +372,7 @@ of constraints and invariants, and explicit state transition is still an optiona
 
 Another promising SCL reasons about SC development through dependent and polymorphic types\cite{idris}. It extends Idris\footnote{https://www.idris-lang.org} 
 and makes the developer model the SC as part of a state transition function by adopting a functional programming style. Dependent types provide a more
-fine-grained controller over the input and output data that flow through the SC functions. In particular, similar to Haskell, the language offers \textit{side-effects} 
+fine-grained control over the input and output data that flow through the SC functions. In particular, similar to Haskell, the language offers \textit{side-effects} 
 functionality that resembles \textit{IO} monads in Haskell. The downside of the approach is that the syntax has become too cumbersome for other developers to learn. Thus,
 it has been stated that the language does not strive for simplicity and sacrifices it for safety.
 
@@ -471,7 +470,7 @@ As an example of the theory behind model consistency in SCs, let's look at role-
 Then, we can model a role-based access hierarchy as 
 \[ A \subseteq M \subseteq * \]
 
-Subsequently, given the invariant for the system \textit{add\_mod(a: Address)} we can define following invariant:
+Subsequently, given some event for the system \textit{add\_mod(a: Address)}, we can define following invariants for the system:
 \begin{equation*}
     \begin{gathered}
       i_0 := card(A) = 1 \\
@@ -498,7 +497,7 @@ For the denoted event, suppose we mutate the model by adding an address to a set
   A := A \cup \{a\}
 \end{equation*}
 
-Then, we can verify the model consistency for some state transition from an initial state $S$ to a new state $S'$ $S \to S'$ using propositional logic.
+Then, we can verify the model consistency for some state transition from an initial state $S$ to a new state $S'$, $S \to S'$, using propositional logic.
 
 \begin{equation*}
   \begin{gathered} 
@@ -528,7 +527,7 @@ utilising a unique consensus algorithm called Pure Proof-of-Stake to achieve sca
 One of the potential drawbacks of Folidity is a computational overhead due to complex abstractions and additional assertions. 
 EVM-based blockchains have varying costs for the execution, i.e. fees, that depend on the complexity of a SC. 
 On the contrary, although Algorand has a limited execution stack, it offers fixed, low transaction fees.
-Additionally, Algorand execution context explicitly executes in terms of state transition, which perfectly suits the paradigm of Folidity.
+Additionally, Algorand execution context explicitly operates in terms of state transition, which perfectly suits the paradigm of Folidity.
 Finally, Algorand offers opt-in functionality and local wallet storage, allowing users to explicitly opt-in to use the SC.
 This provides additional support in the role-based access control in Folidity.
 
@@ -553,7 +552,7 @@ As they operate in a different way from SCs, they are also outside the scope of 
 \endgroup
 
 A significant groundwork in research of current solutions and their limitations has been done as illustrated by Gannt chart in \aref{Appendix:Gannt}.
-Since the requirements have been composed, some progress has been made in the design of BNF grammar that will later pave the way for the development
+Since the requirements have been collected, some progress has been made in the design of BNF grammar that will later pave the way for the development
 of the parser. It is still possible to research more formal verification methods during the grammar design.
 
 From the beginning of January, the first iteration of grammar should be completed, and the active development of the type checker and formal verifier should begin.
