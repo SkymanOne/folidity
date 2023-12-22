@@ -99,9 +99,11 @@ state ExecuteState {
 // messages are reason as events
 
 // `any` means anyone can call this function
+// functions are private by default
+// `pub` makes them public and callable externally
 @(any)
 @init
-fn () init(proposal: String, 
+pub fn () init(proposal: String, 
           start_block: int, 
           max_size: int, 
           end_block: int) 
@@ -116,7 +118,7 @@ when () -> BeginState
 }
 
 @(any)
-fn () join() when BeginState s -> BeginState {
+pub fn () join() when BeginState s -> BeginState {
     // `caller()` is the built-in function
     let caller = caller();
 
@@ -136,13 +138,13 @@ fn () join() when BeginState s -> BeginState {
 // sets can be combined
 // `@(X | Y | Z)`
 @(voters)
-fn () start_voting() when BeginState -> VotingState {
+pub fn () start_voting() when BeginState -> VotingState {
     commits = new Set();
     BeginState(model) -> VotingState(commits, model)
 }
 
 @(voters)
-fn () commit(h: Hash) when VotingState s -> VotingState {
+pub fn () commit(h: Hash) when VotingState s -> VotingState {
     let caller = caller();
     let { commits, params } = s;
 
@@ -161,7 +163,7 @@ fn () commit(h: Hash) when VotingState s -> VotingState {
 }
 
 @(any)
-fn () start_reveal() when VotingState -> RevealState {
+pub fn () start_reveal() when VotingState -> RevealState {
     VotingState { end_block, proposal, commits, params } 
         -> RevealState {
             end_block = endblock + 10,
@@ -173,7 +175,7 @@ fn () start_reveal() when VotingState -> RevealState {
 }
 
 @(any)
-fn int reveal(salt: int, vote: Choice) 
+pub fn int reveal(salt: int, vote: Choice) 
 when RevealState s1 -> (RevealState s2, ExecuteState s3) // we can transition to 2 different states
 // we ensure that the size of mapping doesn't change
 st s1.commits.size == s2.commits.size
@@ -193,7 +195,7 @@ st s1.commits.size == s2.commits.size
 }
 
 @(any)
-fn () execute() st RevealState s -> ExecuteState {
+pub fn () execute() st RevealState s -> ExecuteState {
     let votes = s.commits.values;
     let yay = votes.filter(|v| v == Choice::Yay).sum();
     let mut passed = false;
