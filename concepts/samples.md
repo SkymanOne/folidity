@@ -13,6 +13,8 @@ author: Gherman Nicolisin <gn2g21@soton.ac.uk>
 
 // This is a comment.
 
+// Structs and Enums do not have guards and constraints
+// since they solely depend on the context of the model.
 enum Choice {
     None,
     Yay,
@@ -139,7 +141,7 @@ pub fn () join() when BeginState s -> BeginState {
     }
 }
 
-// `@()` accepts a `Set<Address>` or `Mapping<Address, X>` or `List<Address>`
+// `@()` accepts a `Set<Address>` or `List<Address>` or `Address`
 // sets can be combined
 // `@(X | Y | Z)`
 @(voters)
@@ -193,6 +195,11 @@ st s1.commits.size == s2.commits.size
 {
     let calc_hash = hash(caller(), vote, salt);
     let { commits, params } = s1;
+
+    // `.set()` is built-in function that works on 1-1 mapping
+    // it looks-up a keys or a value and updates
+    // otherwise errors out
+    // `.add()` add a new entry instead
     s.set(commits, vote)
 
     if s1.current_block > s1.end_block {
@@ -225,6 +232,14 @@ pub fn () execute() st RevealState s -> ExecuteState {
         }
     }
 }
+
+// `view(State s)` is a special visibility token 
+// that allows to read any intermediate state variables.
+// It doesn't mutate the state in any way
+view(BeginState s) fn List<Address> get_voters() {
+    // here we simply return the list of voter addresses
+    s.voters
+} 
 
 
 ```
