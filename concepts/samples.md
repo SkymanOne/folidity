@@ -4,7 +4,7 @@ Sampled as part of the design of BNF grammar.
 
 Let's design an on-chain commit-reveal voting smart contract
 
-```rust
+```folidity
 // metadata is in the header
 
 // version of the compiler
@@ -118,6 +118,11 @@ when () -> BeginState
 }
 
 @(any)
+// `BeginState s` we create a binding to the state to access its data fields
+// Binding to the state is optional
+//
+// It can be seen that we don't transition into the new state,
+// but modify the old one which is still a state transition
 pub fn () join() when BeginState s -> BeginState {
     // `caller()` is the built-in function
     let caller = caller();
@@ -138,9 +143,15 @@ pub fn () join() when BeginState s -> BeginState {
 // sets can be combined
 // `@(X | Y | Z)`
 @(voters)
-pub fn () start_voting() when BeginState -> VotingState {
+pub fn () start_voting() when BeginState s -> VotingState {
     commits = new Set();
-    BeginState(model) -> VotingState(commits, model)
+    VotingState {
+        commits,
+        // embed previous state into the new one
+        // since it is inherited in the model
+        ..s 
+    }
+    
 }
 
 @(voters)
