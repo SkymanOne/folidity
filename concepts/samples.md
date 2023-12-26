@@ -46,10 +46,8 @@ model BeginModel {
 
 // Voting model extends `BeginModel` and its guards
 model VotingModel: BeginModel {
-    commits: Mapping<Address, Hash>,
+    commits: Mapping<Address -> Hash>, // `->` means one-to-one relationship
 } st {
-    // Specify the type of mapping
-    commits: Address -> int, // `->` means one-to-one relationship
     // voter must be in the set of voters
     commits.key in voters,
 }
@@ -59,13 +57,11 @@ model RevealModel {
     proposal: String
     end_block: int,
     // we only interested in commitments at this stage
-    commits: Mapping<Hash, Choice>,
+    commits: Mapping<Hash -> Choice>,
 } st {
     end_block > (current_block + 15),
     yays >= 0,
     nays >= 0,
-    // we set 1-1 relation between 
-    commits: Hash -> Choice,
     //total sum of `yays` and `nays` must not exceed the total commits size
     (yays + nays) <= commits.size
 }
@@ -255,7 +251,7 @@ version: "1.0.0"
 author: Gherman Nicolisin <gn2g21@soton.ac.uk>
 
 // We have empty state, no data stored
-state SimpleState;
+state NoState;
 
 // `out: int` creates binding for the return value to check the post-condition
 // Note that we don't have state transition spec as we don't mutate the storage.
@@ -264,8 +260,8 @@ st value > 0,
    out < 10000
 {
     match value {
-        case 1 => SimpleState (return value),
-        case other => return calculate(
+        case 1 -> SimpleState (return value),
+        case other -> return calculate(
                         // `.or(int)` specify what happens when operation fails
                         value * (value - 1).or(1)
                         )
