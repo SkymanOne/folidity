@@ -2,6 +2,8 @@
 
 Sampled as part of the design of BNF grammar.
 
+## Voting app
+
 Let's design an on-chain commit-reveal voting smart contract
 
 ```folidity
@@ -103,6 +105,7 @@ state ExecuteState {
 // `any` means anyone can call this function
 // functions are private by default
 // `pub` makes them public and callable externally
+// `@init` identifies it as a constructor
 @(any)
 @init
 pub fn () init(proposal: String, 
@@ -146,7 +149,7 @@ pub fn () join() when BeginState s -> BeginState {
 // `@(X | Y | Z)`
 @(voters)
 pub fn () start_voting() when BeginState s -> VotingState {
-    commits = new Set();
+    commits = Set();
     VotingState {
         commits,
         // embed previous state into the new one
@@ -200,7 +203,7 @@ st s1.commits.size == s2.commits.size
     // it looks-up a keys or a value and updates
     // otherwise errors out
     // `.add()` add a new entry instead
-    s.set(commits, vote)
+    commits.set(calc_hash, vote)
 
     if s1.current_block > s1.end_block {
         execute()
@@ -213,7 +216,7 @@ st s1.commits.size == s2.commits.size
 }
 
 @(any)
-pub fn () execute() st RevealState s -> ExecuteState {
+pub fn () execute() when RevealState s -> ExecuteState {
     let votes = s.commits.values;
     let yay = votes.filter(|v| v == Choice::Yay).sum();
     let mut passed = false;
@@ -243,3 +246,44 @@ view(BeginState s) fn List<Address> get_voters() {
 
 
 ```
+
+## Simple factorial
+
+
+```
+version: "1.0.0"
+author: Gherman Nicolisin <gn2g21@soton.ac.uk>
+
+// We have empty state, no data stored
+state SimpleState;
+
+// `out: int` creates binding for the return value to check the post-condition
+// Note that we don't have state transition spec as we don't mutate the storage.
+fn (out: int) calculate(value: int)
+st value > 0,
+   out < 10000
+{
+    match value {
+        case 1 => SimpleState (return value),
+        case other => return calculate(
+                        // `.or(int)` specify what happens when operation fails
+                        value * (value - 1).or(1)
+                        )
+    }
+}
+
+pub fn (int) get_factorial(value: int)
+st value < 100
+{
+    calculate(value)
+}
+
+```
+
+
+## Notes on the design
+
+You can notice some elements of imperative, OOP, and functional styles.
+This is because we want to give readability while preserving expressiveness and succinctness.
+This is heavily inspired from [F#](https://fsharp.org/) that has functional-first nature,
+but also provides support for classes, interfaces and inheritance.
