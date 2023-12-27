@@ -46,7 +46,7 @@ model BeginModel {
 
 // Voting model extends `BeginModel` and its guards
 model VotingModel: BeginModel {
-    commits: Mapping<Address -> Hash>, // `->` means one-to-one relationship
+    commits: Mapping<Address >-/> Hash>, // `>-/>` means partial injective function
 } st {
     // voter must be in the set of voters
     commits.key in voters,
@@ -240,7 +240,6 @@ view(BeginState s) fn List<Address> get_voters() {
     s.voters
 } 
 
-
 ```
 
 ## Simple factorial
@@ -268,6 +267,7 @@ st value > 0,
     }
 }
 
+@(any)
 pub fn (int) get_factorial(value: int)
 st value < 100
 {
@@ -278,6 +278,21 @@ st value < 100
 
 
 ## Notes on the design
+
+### Mapping relations
+
+`Mapping<A -> B>`: generic mapping, not all elements, domain is unrestricted, not all domain elements can be mapped
+For the function below, domain must be restricted.
+`Mapping<A >-> B>`: Injective mapping,
+`Mapping<A ->> B>`: Surjective mapping
+`Mapping<A >->> B>`: Bijective mapping, every element is mapped 1-1
+
+grammar: 
+- `->` total function
+- `-/>` partial function, not every element in domain may have a mapping
+- `> + <f>` - injective function
+- `<f> + >` - surjective function
+
 
 You can notice some elements of imperative, OOP, and functional styles.
 This is because we want to give readability while preserving expressiveness and succinctness.
