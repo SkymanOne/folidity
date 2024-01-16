@@ -2,6 +2,9 @@
 
 Based on the [sample program](samples.md) we can design the first version of eBNF grammar
 
+## Grammar
+Based on holistic approach
+
 ```xml
 <program>      := <metadata> <decl>+
 <metadata>     := (<version> <author>) | (<author> <version>)
@@ -9,8 +12,6 @@ Based on the [sample program](samples.md) we can design the first version of eBN
 <author>       := `author:` `"` <string> `<` <string> `>`
 
 <decl>         := <func_decl> | <model_decl> | <state_decl> | <enum_decl> | <struct_decl>
-
-<--- Function Decl --->
 
 <func_decl>    := <attrs>+ <vis> fn <type_decl> <ident> `(` <params>? `)` <state_bound>? <st_block>? `{` <func_body `}`
 <type_decl>    := <type> | `(` <param> `)`
@@ -44,8 +45,6 @@ Based on the [sample program](samples.md) we can design the first version of eBN
 <struct_args>  := <expr> | (<struct_args> `,`)* | <arg_obj>
 <struct_arg>   := <ident> `:` <expr>
 <arg_obj>      := `..` <ident>
-
-<--- Function Decl --->
 
 <model_decl>   := `model` <ident> `{` params `}` <st_block>?
 
@@ -93,7 +92,7 @@ Based on the [sample program](samples.md) we can design the first version of eBN
 
 ```
 
-Legend:
+## Legend:
 - `<ident>` - eBNF element
 - `?` - optional element
 - `(  )` - grouping
