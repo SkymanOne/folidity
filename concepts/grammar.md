@@ -99,4 +99,4 @@ Legend:
 - `(  )` - grouping
 -  `+` - one or more
 -  `*` - zero or more
--  `\`ident\`` - literal token
+-  \`ident\` - literal token
