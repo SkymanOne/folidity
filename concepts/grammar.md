@@ -13,7 +13,7 @@ Based on holistic approach
 
 <decl>         := <func_decl> | <model_decl> | <state_decl> | <enum_decl> | <struct_decl>
 
-<func_decl>    := <attrs>+ <vis> fn <type_decl> <ident> `(` <params>? `)` <state_bound>? <st_block>? `{` <func_body `}`
+<func_decl>    := <attrs>+ <vis> `fn` <type_decl> <ident> `(` <params>? `)` <state_bound>? <st_block>? `{` <func_body> `}`
 <type_decl>    := <type> | `(` <param> `)`
 
 <attrs>        := `@` `(` <attr_ident> `)` | `@init`
