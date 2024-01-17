@@ -38,32 +38,15 @@ pub type Spanned<Tok, Loc> = (Loc, Tok, Loc);
 #[logos(skip r"[ \t\n\f]+")] // Ignore this regex pattern between tokens
 #[logos(error = LogosError)]
 pub enum Token {
-    // Tokens can be literal strings, of any length.
-    #[token("version:")]
-    Version,
-
-    #[token(".")]
-    Period,
-
-    #[token("\"")]
-    Quote,
-
-    #[token("author:")]
-    Author,
-
     // Type values
     #[regex("[0-9]+", |lex| lex.slice().parse().ok(), priority = 2)]
-    Integer(i128),
-
+    Number(String),
     #[regex("([0-9]*[.])?[0-9]+", |lex| lex.slice().parse().ok(), priority = 1)]
     Float(f64),
-
     #[regex("\'[a-zA-Z]\'", |lex| lex.slice().parse().ok())]
     Char(char),
-
     #[regex("\"[a-zA-Z]+\"", |lex| lex.slice().parse().ok())]
     String(String),
-
     #[token("true")]
     True,
     #[token("false")]
@@ -79,45 +62,183 @@ pub enum Token {
     #[token("}")]
     RCurly,
 
+    #[token("<")]
+    LAngle,
+    #[token(">")]
+    RAngle,
+
     #[token("=")]
     Assign,
-    #[token(";")]
-    Semicolon,
 
+    // Math ops
     #[token("+")]
-    Add,
+    Plus,
     #[token("-")]
-    Sub,
+    Minus,
     #[token("*")]
     Mul,
     #[token("/")]
     Div,
+
+    // Bool relations
+    #[token("==")]
+    Eq,
+    #[token("!=")]
+    Neq,
+    #[token("<=")]
+    Leq,
+    #[token(">=")]
+    Meq,
+    #[token("in")]
+    In,
+
+    //Types
+    #[token("int")]
+    IntType,
+    #[token("unit")]
+    UIntType,
+    #[token("float")]
+    FloatType,
+    #[token("char")]
+    CharType,
+    #[token("string")]
+    StringType,
+    #[token("hash")]
+    HashType,
+    #[token("address")]
+    AddressType,
+    #[token("bool")]
+    BoolType,
+    #[token("()")]
+    UnitType,
+
+    //Keywords
+    #[token("Mapping")]
+    Mapping,
+    #[token("Set")]
+    Set,
+    #[token("List")]
+    List,
+    #[token("struct")]
+    Struct,
+    #[token("enum")]
+    Enum,
+    #[token("state")]
+    State,
+    #[token("fn")]
+    Func,
+    #[token("from")]
+    From,
+    #[token("return")]
+    Return,
+    #[token("range")]
+    Range,
+    #[token("for")]
+    For,
+    #[token("to")]
+    To,
+    #[token("if")]
+    If,
+    #[token("else")]
+    Else,
+    #[token("st")]
+    St,
+    #[token("when")]
+    When,
+    #[token("pub")]
+    Pub,
+    #[token("view")]
+    View,
+    #[token("@init")]
+    Init,
+    #[token("version")]
+    Version,
+    #[token("author")]
+    Author,
+
+    // Misc chars
+    #[token("->")]
+    Arr,
+    #[token(";")]
+    SemiCol,
+    #[token(":")]
+    Col,
+    #[token("@")]
+    At,
+    #[token(":>")]
+    Pipe,
+    #[token("|")]
+    MatchOr,
+    #[token(".")]
+    Dot,
+    #[token("..")]
+    DoubleDot,
 }
 
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut word = |s: &str| -> fmt::Result { write!(f, "{s}") };
         match self {
-            Token::Version => write!(f, "version:"),
-            Token::Integer(n) => write!(f, "{}", n),
-            Token::Period => write!(f, "."),
-            Token::Quote => write!(f, "\""),
-            Token::String(s) => write!(f, "{}", s),
-            Token::Author => write!(f, "author:"),
-            Token::Float(n) => write!(f, "float{}", n),
-            Token::Char(c) => write!(f, "{}", c),
-            Token::True => write!(f, "true"),
-            Token::False => write!(f, "false"),
-            Token::LParen => write!(f, "("),
-            Token::RParen => write!(f, ")"),
-            Token::LCurly => write!(f, "{{"),
-            Token::RCurly => write!(f, "}}"),
-            Token::Assign => write!(f, "="),
-            Token::Semicolon => write!(f, ";"),
-            Token::Add => write!(f, "+"),
-            Token::Sub => write!(f, "-"),
-            Token::Mul => write!(f, "*"),
-            Token::Div => write!(f, "/"),
-            
+            Token::Number(n) => write!(f, "{n}"),
+            Token::Float(n) => write!(f, "{n}"),
+            Token::Char(c) => write!(f, "\'{c}'"),
+            Token::String(s) => write!(f, "\"{s}\""),
+            Token::True => word("true"),
+            Token::False => word("false"),
+            Token::LParen => word("("),
+            Token::RParen => word(")"),
+            Token::LCurly => word("{"),
+            Token::RCurly => word("}"),
+            Token::LAngle => word("<"),
+            Token::RAngle => word(">"),
+            Token::Assign => word("="),
+            Token::Plus => word("+"),
+            Token::Minus => word("-"),
+            Token::Mul => word("*"),
+            Token::Div => word("/"),
+            Token::Eq => word("=="),
+            Token::Neq => word("/="),
+            Token::Leq => word("<="),
+            Token::Meq => word(">="),
+            Token::In => word("in"),
+            Token::IntType => word("int"),
+            Token::UIntType => word("unit"),
+            Token::FloatType => word("float"),
+            Token::CharType => word("char"),
+            Token::StringType => word("string"),
+            Token::HashType => word("hash"),
+            Token::AddressType => word("address"),
+            Token::BoolType => word("bool"),
+            Token::UnitType => word("()"),
+            Token::Mapping => word("Mapping"),
+            Token::Set => word("Set"),
+            Token::List => word("List"),
+            Token::Struct => word("struct"),
+            Token::Enum => word("enum"),
+            Token::State => word("state"),
+            Token::Func => word("fn"),
+            Token::From => word("from"),
+            Token::Return => word("return"),
+            Token::Range => word("range"),
+            Token::For => word("for"),
+            Token::To => word("to"),
+            Token::If => word("if"),
+            Token::Else => word("else"),
+            Token::St => word("st"),
+            Token::When => word("when"),
+            Token::Pub => word("pub"),
+            Token::View => word("view"),
+            Token::Init => word("@init"),
+            Token::Version => word("version"),
+            Token::Author => word("author"),
+            Token::Arr => word("->"),
+            Token::Col => word(":"),
+            Token::SemiCol => word(";"),
+            Token::At => word("@"),
+            Token::Pipe => word(":>"),
+            Token::MatchOr => word("|"),
+            Token::Dot => word("."),
+            Token::DoubleDot => word(".."),
         }
     }
 }
