@@ -7,7 +7,7 @@ fn simple_int() {
     let mut tokens = Lexer::new(input, &mut errors);
     assert_eq!(
         tokens.next(),
-        Some((0, Token::Number("123".to_string()), 3))
+        Some((0, Token::Number("123"), 3))
     )
 }
 
@@ -28,6 +28,6 @@ fn simple_mixed_numbers() {
     assert_eq!(tokens.next(), Some((0, Token::Float(1.23), 4)));
     assert_eq!(
         tokens.next(),
-        Some((5, Token::Number("456".to_string()), 8))
+        Some((5, Token::Number("456"), 8))
     )
 }

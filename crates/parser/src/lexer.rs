@@ -37,16 +37,20 @@ pub type Spanned<Tok, Loc> = (Loc, Tok, Loc);
 #[derive(Logos, Debug, PartialEq, Clone)]
 #[logos(skip r"[ \t\n\f]+")] // Ignore this regex pattern between tokens
 #[logos(error = LogosError)]
-pub enum Token {
+pub enum Token<'input> {
     // Type values
     #[regex("[0-9]+", |lex| lex.slice().parse().ok(), priority = 2)]
-    Number(String),
+    Number(&'input str),
     #[regex("([0-9]*[.])?[0-9]+", |lex| lex.slice().parse().ok(), priority = 1)]
     Float(f64),
     #[regex("\'[a-zA-Z]\'", |lex| lex.slice().parse().ok())]
     Char(char),
     #[regex("\"[a-zA-Z]+\"", |lex| lex.slice().parse().ok())]
-    String(String),
+    String(&'input str),
+    #[regex("hex\"[a-zA-Z]+\"", |lex| lex.slice().parse().ok())]
+    HexString(&'input str),
+    #[regex("[_a-zA-Z][_0-9a-zA-Z]*", |lex| lex.slice().parse())]
+    Identifier(&'input str),
     #[token("true")]
     True,
     #[token("false")]
@@ -103,6 +107,8 @@ pub enum Token {
     CharType,
     #[token("string")]
     StringType,
+    #[token("hex")]
+    HexType,
     #[token("hash")]
     HashType,
     #[token("address")]
@@ -158,8 +164,7 @@ pub enum Token {
     #[token("let")]
     Let,
     #[token("mut")]
-    Mut, 
-
+    Mut,
 
     // Misc chars
     #[token("->")]
@@ -178,20 +183,18 @@ pub enum Token {
     Dot,
     #[token("..")]
     DoubleDot,
-    #[token("\"")]
-    DoubleQuote,
 }
 
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut word = |s: &str| -> fmt::Result {
-            write!(f, "{s}")
-        };
+        let mut word = |s: &str| -> fmt::Result { write!(f, "{s}") };
         match self {
             Token::Number(n) => write!(f, "{n}"),
             Token::Float(n) => write!(f, "{n}"),
             Token::Char(c) => write!(f, "\'{c}'"),
             Token::String(s) => write!(f, "\"{s}\""),
+            Token::HexString(s) => write!(f, "hex\"{s}\""),
+            Token::Identifier(i) => write!(f, "{i}"),
             Token::True => word("true"),
             Token::False => word("false"),
             Token::LParen => word("("),
@@ -215,6 +218,7 @@ impl fmt::Display for Token {
             Token::FloatType => word("float"),
             Token::CharType => word("char"),
             Token::StringType => word("string"),
+            Token::HexType => word("hex"),
             Token::HashType => word("hash"),
             Token::AddressType => word("address"),
             Token::BoolType => word("bool"),
@@ -250,7 +254,6 @@ impl fmt::Display for Token {
             Token::MatchOr => word("|"),
             Token::Dot => word("."),
             Token::DoubleDot => word(".."),
-            Token::DoubleQuote => word("\"")
         }
     }
 }

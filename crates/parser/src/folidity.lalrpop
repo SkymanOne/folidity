@@ -1,4 +1,5 @@
 use std::str::FromStr;
+use crate::lexer::{Tokens, LexicalError}
 
 grammar;
 
@@ -8,3 +9,75 @@ pub Term: i32 = {
 };
 
 Num: i32 = <s:r"[0-9]+"> => i32::from_str(s).unwrap();
+
+extern {
+    type Location = usize;
+    type Error = LexicalError;
+
+    enum Token {
+        number => Token::Number(<&'input str>),
+        float => Token::Float(<f64>),
+        char_token => Token::Char(<char>),
+        string => Token::String(<&'input str>),
+        hex_string => Token::String(<&'input str>),
+        ident => Token::Identifier(<&'input str>),
+        "true" => Token::True,
+        "false" => Token::False,
+        "(" => Token::LParen,
+        ")" => Token::RParen,
+        "{" => Token::LCurly,
+        "}" => Token::RCurly,
+        "<" => Token::LAngle,
+        ">" => Token::RAngle,
+        "=" => Token::Assign,
+        "+" => Token::Plus,
+        "-" => Token::Minus,
+        "*" => Token::Mul,
+        "/" => Token::Div,
+        "==" => Token::Eq,
+        "/=" => Token::Neq,
+        "<=" => Token::Leq,
+        ">=" => Token::Meq,
+        "in" => Token::In,
+        "int" => Token::IntType,
+        "uint" => Token::UIntType,
+        "float" => Token::FloatType,
+        "char" => Token::CharType,
+        "string" => Token::StringType,
+        "hex" => Token::HexType,
+        "hash" => Token::HashType,
+        "address" => Token::AddressType,
+        "bool" => Token::BoolType,
+        "()" => Token::UnitType,
+        "Mapping" => Token::Mapping,
+        "Set" => Token::Set,
+        "List" => Token::List,
+        "struct" => Token::Struct,
+        "enum" => Token::Enum,
+        "state" => Token::State,
+        "fn" => Token::Func,
+        "from" => Token::From,
+        "return" => Token::Return,
+        "range" => Token::Range,
+        "for" => Token::For,
+        "to" => Token::To,
+        "if" => Token::If,
+        "else" => Token::Else,
+        "st" => Token::St,
+        "when" => Token::When,
+        "pub" => Token::Pub,
+        "view" => Token::View,
+        "@init" => Token::Init,
+        "version" => Token::Version,
+        "author" => Token::Author,
+        "let" => Token::Let,
+        "mut" => Token::Mut,
+        "->" => Token::Arrow,
+        ";" => Token::SemiCol,
+        ":" => Token::Col,
+        "@" => Token::At,
+        ":>" => Token::Pipe,
+        "|" => Token::MatchOr,
+        ".." => Token::DoubleDot,
+    }
+}
