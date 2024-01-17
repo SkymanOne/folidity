@@ -1,20 +1,64 @@
-use std::str::FromStr;
-use crate::lexer::{Tokens, LexicalError}
+use crate::lexer::{Token, LexicalError};
+use crate::ast;
+use lalrpop_util::ErrorRecovery;
 
-grammar;
+grammar<'input, 'err>(errors: &'err mut Vec<ErrorRecovery<usize, Token<'input>, LexicalError>>);
 
-pub Term: i32 = {
-    <n:Num> => n,
-    "(" <t:Term> ")" => t,
-};
+// pub Root: ast::Source = {
+//     Expression* => ast::Source { expressions: <> }
+// }
 
-Num: i32 = <s:r"[0-9]+"> => i32::from_str(s).unwrap();
+pub Expression: Box<ast::Expression> = {
+    #[precedence(level="0")]
+    Term,
+
+    #[precedence(level="1")] #[assoc(side="left")]
+    <start:@L> <lhs:Expression> "*" <rhs:Expression> <end:@R> => {
+        Box::new(
+            ast::Expression::Multiply(
+                ast::BinaryExpression::new(start, end, lhs, rhs)
+            )
+        )
+    },
+    <start:@L> <lhs:Expression> "/" <rhs:Expression> <end:@R> => {
+        Box::new(
+            ast::Expression::Divide(
+                ast::BinaryExpression::new(start, end, lhs, rhs)
+            )
+        )
+    },
+
+    #[precedence(level="2")] #[assoc(side="left")]
+    <start:@L> <lhs:Expression> "+" <rhs:Expression> <end:@R> => {
+        Box::new(
+            ast::Expression::Add(
+                ast::BinaryExpression::new(start, end, lhs, rhs)
+            )
+        )
+    },
+    <start:@L> <lhs:Expression> "-" <rhs:Expression> <end:@R> => {
+        Box::new(
+            ast::Expression::Subtract(
+                ast::BinaryExpression::new(start, end, lhs, rhs)
+            )
+        )
+    },
+}
+
+Term: Box<ast::Expression> = {
+    <start:@L> <val:number> <end:@R> => {
+        Box::new(ast::Expression::Number(
+            ast::UnaryExpression::new(start, end, val.to_string())
+        ))
+    },
+    "(" <Expression> ")" => <> 
+}
 
 extern {
     type Location = usize;
     type Error = LexicalError;
 
-    enum Token {
+    enum Token<'input> {
         number => Token::Number(<&'input str>),
         float => Token::Float(<f64>),
         char_token => Token::Char(<char>),
@@ -72,7 +116,7 @@ extern {
         "author" => Token::Author,
         "let" => Token::Let,
         "mut" => Token::Mut,
-        "->" => Token::Arrow,
+        "->" => Token::Arr,
         ";" => Token::SemiCol,
         ":" => Token::Col,
         "@" => Token::At,

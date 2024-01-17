@@ -1,8 +1,7 @@
+use super::Span;
 use logos::{Logos, SpannedIter};
-use std::{fmt, num::ParseIntError, ops::Range};
+use std::{fmt, num::ParseIntError};
 use thiserror::Error;
-
-type Span = Range<usize>;
 
 #[derive(Default, Clone, Debug, PartialEq)]
 pub enum LogosError {
@@ -35,21 +34,21 @@ impl From<ParseIntError> for LogosError {
 pub type Spanned<Tok, Loc> = (Loc, Tok, Loc);
 
 #[derive(Logos, Debug, PartialEq, Clone)]
-#[logos(skip r"[ \t\n\f]+")] // Ignore this regex pattern between tokens
+#[logos(skip r"[\t\n\f]+")] // Ignore this regex pattern between tokens
 #[logos(error = LogosError)]
 pub enum Token<'input> {
     // Type values
-    #[regex("[0-9]+", |lex| lex.slice().parse().ok(), priority = 2)]
+    #[regex("[0-9]+", |lex| lex.slice(), priority = 2)]
     Number(&'input str),
     #[regex("([0-9]*[.])?[0-9]+", |lex| lex.slice().parse().ok(), priority = 1)]
     Float(f64),
     #[regex("\'[a-zA-Z]\'", |lex| lex.slice().parse().ok())]
     Char(char),
-    #[regex("\"[a-zA-Z]+\"", |lex| lex.slice().parse().ok())]
+    #[regex("\"[a-zA-Z]+\"", |lex| lex.slice())]
     String(&'input str),
-    #[regex("hex\"[a-zA-Z]+\"", |lex| lex.slice().parse().ok())]
+    #[regex("hex\"[a-zA-Z]+\"", |lex| lex.slice())]
     HexString(&'input str),
-    #[regex("[_a-zA-Z][_0-9a-zA-Z]*", |lex| lex.slice().parse())]
+    #[regex("[_a-zA-Z][_0-9a-zA-Z]+", |lex| lex.slice())]
     Identifier(&'input str),
     #[token("true")]
     True,
@@ -183,9 +182,13 @@ pub enum Token<'input> {
     Dot,
     #[token("..")]
     DoubleDot,
+
+    //comment
+    #[regex(r"#[^\n]*", |lex| lex.slice())]
+    Comment(&'input str),
 }
 
-impl fmt::Display for Token {
+impl<'input> fmt::Display for Token<'input> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut word = |s: &str| -> fmt::Result { write!(f, "{s}") };
         match self {
@@ -254,13 +257,14 @@ impl fmt::Display for Token {
             Token::MatchOr => word("|"),
             Token::Dot => word("."),
             Token::DoubleDot => word(".."),
+            Token::Comment(c) => write!(f, "{c}"),
         }
     }
 }
 
 pub struct Lexer<'input> {
     /// Input stream of lexed tokens.
-    token_stream: SpannedIter<'input, Token>,
+    token_stream: SpannedIter<'input, Token<'input>>,
     /// List of recovered errors.
     errors: &'input mut Vec<LexicalError>,
 }
@@ -276,12 +280,15 @@ impl<'input> Lexer<'input> {
 }
 
 impl<'input> Iterator for Lexer<'input> {
-    type Item = Spanned<Token, usize>;
+    type Item = Spanned<Token<'input>, usize>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some((tok_res, span)) = self.token_stream.next() {
             match tok_res {
-                Ok(tok) => Some((span.start, tok, span.end)),
+                Ok(tok) => match tok {
+                    Token::Comment(_) => self.next(),
+                    _ => Some((span.start, tok, span.end)),
+                },
                 Err(err) => {
                     self.errors
                         .push(logos_to_lexical_error(&err, &span, &self.token_stream));
@@ -294,10 +301,10 @@ impl<'input> Iterator for Lexer<'input> {
     }
 }
 
-fn logos_to_lexical_error(
+fn logos_to_lexical_error<'input>(
     error: &LogosError,
     span: &Span,
-    tokens: &SpannedIter<'_, Token>,
+    tokens: &SpannedIter<'input, Token<'input>>,
 ) -> LexicalError {
     match error {
         LogosError::InvalidToken => {

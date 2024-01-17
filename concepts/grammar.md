@@ -74,9 +74,10 @@ Based on holistic approach
 <period>       := `.`
 <float>        := <number> <period> <number>?
 
+<func_pipe>    := <expr> (`:>` <func_call>)+
+<member_acc>   := <expr> (`.` <ident>)+
 <func_call>    := <ident> `(` <args>? `)`
 <args>         := <expr> | (<args> `,`)*
-<func_pipe>    := <expr> (`:>` <func_call>)+
 
 
 <plus>         := `+`
@@ -85,7 +86,7 @@ Based on holistic approach
 <mul>          := `*`
 <expr>         := <term> ( (<plus> | <minus>) <term> )*
 <term>         := <factor> ( (<mul> | <div>) <factor> )*
-<factor>       := <ident> | <constant> | <func_call> | <func_pipe> | `(` <expr> `)`
+<factor>       := <ident> | <constant> | <func_call> | <func_pipe> | <member_acc> | `(` <expr> `)`
 <constant>     := <number> | <float> | <bool> | <string>
 <ident>        := <char>+
 <arr>          := `->`
