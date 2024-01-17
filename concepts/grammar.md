@@ -84,7 +84,8 @@ Based on holistic approach
 <minus>        := `-`
 <div>          := `/`
 <mul>          := `*`
-<expr>         := <term> ( (<plus> | <minus>) <term> )*
+<not>          := `!`
+<expr>         := <term> ( (<plus> | <minus> | <not>) <term> )*
 <term>         := <factor> ( (<mul> | <div>) <factor> )*
 <factor>       := <ident> | <constant> | <func_call> | <func_pipe> | <member_acc> | `(` <expr> `)`
 <constant>     := <number> | <float> | <bool> | <string>

@@ -83,6 +83,9 @@ pub enum Token<'input> {
     #[token("/")]
     Div,
 
+    #[token("!")]
+    Not,
+
     // Bool relations
     #[token("==")]
     Eq,
@@ -211,6 +214,7 @@ impl<'input> fmt::Display for Token<'input> {
             Token::Minus => word("-"),
             Token::Mul => word("*"),
             Token::Div => word("/"),
+            Token::Not => word("!"),
             Token::Eq => word("=="),
             Token::Neq => word("/="),
             Token::Leq => word("<="),

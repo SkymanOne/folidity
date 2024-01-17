@@ -4,23 +4,27 @@ use lalrpop_util::ErrorRecovery;
 
 grammar<'input, 'err>(errors: &'err mut Vec<ErrorRecovery<usize, Token<'input>, LexicalError>>);
 
-// pub Root: ast::Source = {
-//     Expression* => ast::Source { expressions: <> }
-// }
+pub FolidityTree: ast::Source = {
+    Expression* => ast::Source { expressions: <> }
+}
 
-pub Expression: Box<ast::Expression> = {
+Expression: ast::Expression = {
+    <e:ExpressionNested> => *e,
+}
+
+ExpressionNested: Box<ast::Expression> = {
     #[precedence(level="0")]
     Term,
 
     #[precedence(level="1")] #[assoc(side="left")]
-    <start:@L> <lhs:Expression> "*" <rhs:Expression> <end:@R> => {
+    <start:@L> <lhs:ExpressionNested> "*" <rhs:ExpressionNested> <end:@R> => {
         Box::new(
             ast::Expression::Multiply(
                 ast::BinaryExpression::new(start, end, lhs, rhs)
             )
         )
     },
-    <start:@L> <lhs:Expression> "/" <rhs:Expression> <end:@R> => {
+    <start:@L> <lhs:ExpressionNested> "/" <rhs:ExpressionNested> <end:@R> => {
         Box::new(
             ast::Expression::Divide(
                 ast::BinaryExpression::new(start, end, lhs, rhs)
@@ -29,14 +33,14 @@ pub Expression: Box<ast::Expression> = {
     },
 
     #[precedence(level="2")] #[assoc(side="left")]
-    <start:@L> <lhs:Expression> "+" <rhs:Expression> <end:@R> => {
+    <start:@L> <lhs:ExpressionNested> "+" <rhs:ExpressionNested> <end:@R> => {
         Box::new(
             ast::Expression::Add(
                 ast::BinaryExpression::new(start, end, lhs, rhs)
             )
         )
     },
-    <start:@L> <lhs:Expression> "-" <rhs:Expression> <end:@R> => {
+    <start:@L> <lhs:ExpressionNested> "-" <rhs:ExpressionNested> <end:@R> => {
         Box::new(
             ast::Expression::Subtract(
                 ast::BinaryExpression::new(start, end, lhs, rhs)
@@ -51,7 +55,7 @@ Term: Box<ast::Expression> = {
             ast::UnaryExpression::new(start, end, val.to_string())
         ))
     },
-    "(" <Expression> ")" => <> 
+    "(" <ExpressionNested> ")" => <> 
 }
 
 extern {
