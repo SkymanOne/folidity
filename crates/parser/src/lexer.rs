@@ -155,6 +155,10 @@ pub enum Token {
     Version,
     #[token("author")]
     Author,
+    #[token("let")]
+    Let,
+    #[token("mut")]
+    Mut, 
 
 
     // Misc chars
@@ -236,6 +240,8 @@ impl fmt::Display for Token {
             Token::Init => word("@init"),
             Token::Version => word("version"),
             Token::Author => word("author"),
+            Token::Let => word("let"),
+            Token::Mut => word("mut"),
             Token::Arr => word("->"),
             Token::Col => word(":"),
             Token::SemiCol => word(";"),
