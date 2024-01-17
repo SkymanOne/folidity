@@ -156,6 +156,7 @@ pub enum Token {
     #[token("author")]
     Author,
 
+
     // Misc chars
     #[token("->")]
     Arr,
@@ -173,11 +174,15 @@ pub enum Token {
     Dot,
     #[token("..")]
     DoubleDot,
+    #[token("\"")]
+    DoubleQuote,
 }
 
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut word = |s: &str| -> fmt::Result { write!(f, "{s}") };
+        let mut word = |s: &str| -> fmt::Result {
+            write!(f, "{s}")
+        };
         match self {
             Token::Number(n) => write!(f, "{n}"),
             Token::Float(n) => write!(f, "{n}"),
@@ -239,6 +244,7 @@ impl fmt::Display for Token {
             Token::MatchOr => word("|"),
             Token::Dot => word("."),
             Token::DoubleDot => word(".."),
+            Token::DoubleQuote => word("\"")
         }
     }
 }

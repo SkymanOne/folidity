@@ -8,8 +8,8 @@ Based on holistic approach
 ```xml
 <program>      := <metadata> <decl>+
 <metadata>     := (<version> <author>) | (<author> <version>)
-<version>      := `version:` `"` <int> `.` <int> `.` <int>
-<author>       := `author:` `"` <string> `<` <string> `>`
+<version>      := `version` `:` `"` <int> `.` <int> `.` <int>
+<author>       := `author` `:` `"` <string> `<` <string> `>`
 
 <decl>         := <func_decl> | <model_decl> | <state_decl> | <enum_decl> | <struct_decl>
 
