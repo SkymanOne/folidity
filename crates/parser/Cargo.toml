@@ -12,7 +12,7 @@ repository = { workspace = true }
 
 [dependencies]
 logos = "0.13"
-lalrpop-util = { version = "0.20", features = ["lexer", "unicode"] }
+lalrpop-util = "0.20"
 thiserror = "1.0"
 
 [build-dependencies] # <-- We added this and everything after!
