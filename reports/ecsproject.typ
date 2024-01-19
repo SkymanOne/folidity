@@ -47,31 +47,31 @@
   )
   set align(center)
 
-  v(9em)
+  v(10em)
   par()[
-      #text(14pt, "Electronics and Computer Science") \
-      #text(14pt, "Faculty of Engineering and Physical Sciences") \
-      #text(14pt, "University of Southampton")
+      #text(15pt, "Electronics and Computer Science") \
+      #text(15pt, "Faculty of Engineering and Physical Sciences") \
+      #text(15pt, "University of Southampton")
   ]
 
-  v(6.5em)
+  v(6.8em)
 
   let author_content = author_linked(name: author.at("name"), email: author.at("email"))
 
-  box(width: 240pt, height: 89pt)[
+  box(width: 250pt, height: 89pt)[
     #grid(
       columns: 1,
-      gutter: 2em,
+      gutter: 2.5em,
       text(author_content),
       text(date),
-      box(text(14pt, weight: "bold", title))
+      box(text(15pt, weight: "bold", title))
     )
   ]
 
   let supervisor_content = author_linked(name: supervisor.at("name"), email: supervisor.at("email"))
   let examiner_content = author_linked(name: examiner.at("name"), email: examiner.at("email"))
 
-  v(15.5em)
+  v(17.5em)
   par()[
     #text("Project supervisor: ") #{ supervisor_content }\
     #text("Second examiner: " ) #{ examiner_content }
@@ -84,10 +84,10 @@
     "A project report submitted for the award of" 
    }
 
-  v(3.3em)
+  v(4.3em)
   par()[
-    #text(14pt, award_text) \
-    #text(14pt, program)
+    #text(15pt, award_text) \
+    #text(15pt, program)
   ]
   
 
