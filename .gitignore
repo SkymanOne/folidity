@@ -306,3 +306,5 @@ TSWLatexianTemp*
 **/*.rs.bk
 Cargo.lock
 .DS_Store
+
+reports/ecsproject.pdf

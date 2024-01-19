@@ -79,7 +79,7 @@
     let heading_present = false;
     if after_elems != () {
       let h_counter = counter(page).at(after_elems.first().location()).at(0)
-      if current_page == h_counter {
+      if current_page >= h_counter {
         heading_present = true
       }
     }
@@ -87,7 +87,12 @@
       if before_elems != () {
         let h_counter = counter(heading.where(level: 1)).display()
         let last_header = before_elems.last().body
-        emph(h_counter + last_header) + h(1fr) + counter(page).display(page_numbering)
+        if last_header == text("Statement of Originality") {
+          emph(last_header) + h(1fr) + counter(page).display(page_numbering)
+        } else {
+          emph(h_counter + " " + last_header) + h(1fr) + counter(page).display(page_numbering)
+        }
+        
         v(-1em)
         line(stroke: 0.5pt, length: 100%)
       }
@@ -369,7 +374,7 @@
   date: "December 22, 2023",
   program: "BSc Computer Science",
   is_progress_report: false,
-  originality_statement: (
+  originality_statements: (
     acknowledged: "I have acknowledged all sources, and identified any content taken from elsewhere.",
     resources: "I have not used any resources produced by anyone else.",
     foreign: "I did all the work myself, or with my allocated group, and have not helped anyone else",
@@ -401,6 +406,15 @@
     content: abstract_text
   )
 
+  originality_statement(
+    acknowledged: originality_statements.at("acknowledged"),
+    resources: originality_statements.at("resources"),
+    foreign: originality_statements.at("foreign"),
+    material: originality_statements.at("material"),
+    reuse: originality_statements.at("reuse"),
+    participants: originality_statements.at("participants")
+  )
+
   acknowledgments(text: acknowledgments_text)
 
   table_of_contents()
@@ -410,6 +424,8 @@
     title_numbering: title_numbering,
   doc
   )
+
+  counter(page).update(1)
 
   doc
 }
