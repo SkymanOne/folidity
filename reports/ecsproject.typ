@@ -10,10 +10,24 @@
   }
 }
 
-#let page_style(body: none) = {
-    set page(
-    numbering: "1",
-    margin: (inside: 1.5in, outside: 1.0in, top: 0.6in, bottom: 0.8in),
+#let margins = (inside: 1.5in, outside: 1.0in, top: 1.0in, bottom: 1.0in)
+
+#let page_style(
+  page_numbering: "1",
+  title_numbering: "1.",
+  doc
+) = {
+
+  set page(
+    numbering: page_numbering,
+    margin: margins,
+  )
+  let body-font = "New Computer Modern"
+  let sans-font = "New Computer Modern Sans"
+  set text(
+    font: body-font, 
+    size: 12pt, 
+    lang: "en",
   )
   set align(left)
   show par: it => [
@@ -21,14 +35,87 @@
     #pad(top: 0.3em, bottom: 0.3em, it)
   ]
 
-  show heading.where(level: 1): it => [
-    #set text(size: 24pt, weight: "semibold")
-    #pagebreak()
-    #pad(top: 5em, bottom: 2em, it.body)
-  ]
+  set heading(numbering: title_numbering)
+  show heading.where(level: 1): it => {
+    set text(size: 26pt, weight: "semibold")
+    let counter_display = if it.numbering != none {
+      counter(heading).display(it.numbering)
+    }
+    pad(top: 1.4em, bottom: 1.4em, [
+      #counter_display #it.body
+    ])
+  }
 
+  show heading.where(level: 2): it => {
+    set text(size: 18pt, weight: "semibold")
+    let counter_display = if it.numbering != none {
+      counter(heading).display(it.numbering)
+    }
+    pad(top: 0.5em, bottom: 0.5em, [
+      #counter_display #it.body
+    ])
+  }
 
-  [ #body ]
+  show heading.where(level: 3): it => {
+    set text(size: 14pt, weight: "semibold")
+    let counter_display = if it.numbering != none {
+      counter(heading).display(it.numbering)
+    }
+    pad(top: 0.5em, bottom: 0.5em, [
+      #counter_display #it.body
+    ])
+  }
+
+  set page(header: locate(loc => {
+    let current_page = counter(page).at(loc).at(0)
+    let before_elems = query(
+      heading.where(level: 1).before(loc),
+      loc,
+    )
+    let after_elems = query(
+      heading.where(level: 1).after(loc),
+      loc,
+    )
+    let heading_present = false;
+    if after_elems != () {
+      let h_counter = counter(page).at(after_elems.first().location()).at(0)
+      if current_page == h_counter {
+        heading_present = true
+      }
+    }
+    if not heading_present  {
+      if before_elems != () {
+        let h_counter = counter(heading.where(level: 1)).display()
+        let last_header = before_elems.last().body
+        emph(h_counter + last_header) + h(1fr) + counter(page).display(page_numbering)
+        v(-1em)
+        line(stroke: 0.5pt, length: 100%)
+      }
+    }
+  }), footer: locate(loc => {
+    let current_page = counter(page).at(loc).at(0)
+    let before_elems = query(
+      heading.where(level: 1).before(loc),
+      loc,
+    )
+    let after_elems = query(
+      heading.where(level: 1).after(loc),
+      loc,
+    )
+    let heading_present = false;
+    if before_elems != () {
+      let h_counter = counter(page).at(before_elems.last().location()).at(0)
+      if current_page == h_counter {
+        heading_present = true
+      }
+    }
+    if heading_present {
+      let p_counter = counter(page).display(page_numbering)
+      align(center, p_counter)
+    }
+  }))
+
+  doc
 }
 
 #let cover(
@@ -55,7 +142,7 @@
   set document(title: title, author: author.at("name"))
   set page(
     numbering: none,
-    margin: (inside: 1.5in, outside: 1.0in, top: 0.6in, bottom: 0.8in),
+    margin: margins,
   )
   counter(page).update(0)
 
@@ -66,7 +153,7 @@
   )
   set align(center)
 
-  v(9em) 
+  v(7em) 
   par()[
       #text(14pt, "Electronics and Computer Science") \
       #text(14pt, "Faculty of Engineering and Physical Sciences") \
@@ -123,21 +210,20 @@
 ) = {
   set page(
     numbering: none,
-    margin: (inside: 1.5in, outside: 1.0in, top: 0.6in, bottom: 0.8in),
+    margin: margins,
   )
-  counter(page).update(1)
-
+  counter(page).update(0)
+  
+  set align(center)
   let body-font = "New Computer Modern"
   let sans-font = "New Computer Modern Sans"
   set text(
-    font: body-font, 
-    size: 12pt, 
-    lang: "en",
+      font: body-font, 
+      size: 12pt, 
+      lang: "en",
   )
-  
-  set align(center)
 
-  v(9.5em)
+  v(8.5em)
   text("UNIVESITY OF SOUTHAMPTON")
 
   v(0.5em)
@@ -176,22 +262,13 @@
   participants: "My work did not involve human participants, their cells or data, or animals."
 ) = {
   let box(info: none) = block(stroke: 0.5pt + black, width: 100%, pad(4pt, text(weight: "bold", info)))
-  page_style(body: [ 
-    #let body-font = "New Computer Modern"
-    #let sans-font = "New Computer Modern Sans"
-    #set text(
-      font: body-font, 
-      size: 12pt, 
-      lang: "en",
-    )
+  page_style(
+    page_numbering: "i",
+    [ 
 
-    #set page(
-      numbering: "i",
-      margin: (inside: 1.5in, outside: 1.0in, top: 0.6in, bottom: 1.5in),
-    )
-    = Statement of Originality
+    #heading(level: 1, numbering: none, "Statement of Originality")
 
-    #set list(tight: false, spacing: 10pt)
+    #set list(tight: false, spacing: 10pt, indent: 1.5em)
 
     - I have read and understood the #link("http://ecs.gg/ai")[ECS Academic Integrity information] and the University’s #link("https://www.southampton.ac.uk/quality/assessment/academic_integrity.page")[Academic Integrity Guidance for Students].
     - I am aware that failure to act in accordance with the #link("http://www.calendar.soton.ac.uk/sectionIV/academic-integrity-regs.html")[Regulations Governing Academic Integrity] may lead to the imposition of penalties which, for the most serious cases, may include termination of programme.
@@ -244,4 +321,95 @@
 
     #box(info: participants)
   ])
+}
+
+#let table_of_contents() = {
+  page_style(
+    page_numbering: "i",
+    {
+      set page(header: [])
+      heading(level: 1, "Contents", numbering: none)
+      
+      show outline.entry.where(level: 1): it => {
+          v(1.2em, weak: true)
+          strong(it)
+      }
+      outline(title: none, indent: 2em, fill: line(length: 100%, stroke: (thickness: 1pt, dash: "loosely-dotted")))
+    }
+  )
+}
+
+#let acknowledgments(text: lorem(100)) = {
+    page_style(
+    page_numbering: "i",
+    {
+      set page(header: [])
+      heading(level: 1, "Acknowledgments", numbering: none)
+      
+      text
+    }
+  ) 
+}
+
+
+#let use_project(
+  title: "My project",
+  author: (
+    name: "Author name",
+    email: none
+  ),
+  supervisor: (
+    name: "Supervisor name",
+    email: none
+  ),
+  examiner: (
+    name: "Supervisor name",
+    email: none
+  ),
+  date: "December 22, 2023",
+  program: "BSc Computer Science",
+  is_progress_report: false,
+  originality_statement: (
+    acknowledged: "I have acknowledged all sources, and identified any content taken from elsewhere.",
+    resources: "I have not used any resources produced by anyone else.",
+    foreign: "I did all the work myself, or with my allocated group, and have not helped anyone else",
+    material: "The material in the report is genuine, and I have included all my data/code/designs.",
+    reuse: "I have not submitted any part of this work for another assessment.",
+    participants: "My work did not involve human participants, their cells or data, or animals."
+  ),
+  abstract_text: lorem(50),
+  acknowledgments_text: lorem(50),
+  page_numbering: "1",
+  title_numbering: "1.",
+
+  doc
+) = {
+  cover(
+    title: title,
+    supervisor: supervisor,
+    examiner: examiner,
+    author: author,
+    date: date,
+    program: program,
+    is_progress_report: is_progress_report
+  )
+
+  abstract(
+    author: author,
+    program: program,
+    is_progress_report: is_progress_report,
+    content: abstract_text
+  )
+
+  acknowledgments(text: acknowledgments_text)
+
+  table_of_contents()
+
+  show: doc => page_style(
+    page_numbering: page_numbering,
+    title_numbering: title_numbering,
+  doc
+  )
+
+  doc
 }
