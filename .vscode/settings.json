@@ -144,5 +144,6 @@
     "rust-analyzer.linkedProjects": [
         "./crates/parser/Cargo.toml",
         "./crates/parser/Cargo.toml"
-    ]
+    ],
+    "typst-lsp.experimentalFormatterMode": "on",
 }
