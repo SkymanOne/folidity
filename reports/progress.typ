@@ -270,7 +270,7 @@ We propose _Folidity_, a safe smart contract language. Folidity will offer the m
 while featuring the functional-first programming style. The language intends to offer a safe and secure-by-design approach to the programming, 
 ensuring the developer is aware of any state transitions during execution.
 
-The list of feature requirements has been comprised based on the vulnerabilities described in @Table:classification.
+The list of feature requirements has been comprised based on the vulnerabilities described in @fig:Table:classification.
 
 
 / *1. Provide abstraction over timestamp* <Requirement:1>: in response to #ref_scv(1). We are interested in the limited use of timestamps in SCs in favour of block number or another safe primitive.
@@ -400,7 +400,7 @@ Finally, Algorand offers opt-in functionality and local wallet storage, allowing
 This provides additional support in the role-based access control in Folidity.
 
 As a target compilation language, Tealish #footnote[https://tealish.tinyman.org] has been chosen.
-Although, Algorand offers Teal #[https://developer.algorand.org/docs/get-details/dapps/avm/teal/] –
+Although, Algorand offers Teal #footnote[https://developer.algorand.org/docs/get-details/dapps/avm/teal/] –
 a low-level, stack-based programming language. Due to time limitations of the project, it is more realistic to use Tealish.
 It operates on the same level as Teal while offering useful abstractions speeding up the development of Folidity.
 
@@ -413,11 +413,14 @@ Additionally, optimisation of the execution is not considered relevant at this s
 Finally, Algorand offers smart signatures, a program that is delegated a signing authority #footnote[https://developer.algorand.org/docs/get-details/dapps/smart-contracts/smartsigs].
 As they operate in a different way from SCs, they are also outside the scope of this project.
 
+#v(-2em)
+
 = Project Planning
 
-A significant groundwork in research of current solutions and their limitations has been done as illustrated by Gannt chart in \aref{Appendix:Gannt}.
+A significant groundwork in research of current solutions and their limitations has been done as illustrated by Gannt chart in @Appendix:Gannt[Appendix].
 Since the requirements have been collected, some progress has been made in the design of BNF grammar that will later pave the way for the development
-of the parser. It is still possible to research more formal verification methods during the grammar design. \
+of the parser. It is still possible to research more formal verification methods during the grammar design. 
+
 From the beginning of January, the first iteration of grammar should be completed, and the active development of the type checker and formal verifier should begin.
 
 
@@ -426,8 +429,8 @@ From the beginning of January, the first iteration of grammar should be complete
 #counter(heading).update(0)
 #set heading(numbering: "A.")
 
-= Gannt Chart
+= Gannt Chart <Appendix:Gannt>
 
 #pagebreak()
 
-#bibliography("ECS.bib", full: true)
+#bibliography("ECS.bib", style: "institute-of-electrical-and-electronics-engineers")
