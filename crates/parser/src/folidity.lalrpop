@@ -1,0 +1,131 @@
+use crate::lexer::{Token, LexicalError};
+use crate::ast;
+use lalrpop_util::ErrorRecovery;
+
+grammar<'input, 'err>(errors: &'err mut Vec<ErrorRecovery<usize, Token<'input>, LexicalError>>);
+
+pub FolidityTree: ast::Source = {
+    Expression* => ast::Source { expressions: <> }
+}
+
+Expression: ast::Expression = {
+    <e:ExpressionNested> => *e,
+}
+
+ExpressionNested: Box<ast::Expression> = {
+    #[precedence(level="0")]
+    Term,
+
+    #[precedence(level="1")] #[assoc(side="left")]
+    <start:@L> <lhs:ExpressionNested> "*" <rhs:ExpressionNested> <end:@R> => {
+        Box::new(
+            ast::Expression::Multiply(
+                ast::BinaryExpression::new(start, end, lhs, rhs)
+            )
+        )
+    },
+    <start:@L> <lhs:ExpressionNested> "/" <rhs:ExpressionNested> <end:@R> => {
+        Box::new(
+            ast::Expression::Divide(
+                ast::BinaryExpression::new(start, end, lhs, rhs)
+            )
+        )
+    },
+
+    #[precedence(level="2")] #[assoc(side="left")]
+    <start:@L> <lhs:ExpressionNested> "+" <rhs:ExpressionNested> <end:@R> => {
+        Box::new(
+            ast::Expression::Add(
+                ast::BinaryExpression::new(start, end, lhs, rhs)
+            )
+        )
+    },
+    <start:@L> <lhs:ExpressionNested> "-" <rhs:ExpressionNested> <end:@R> => {
+        Box::new(
+            ast::Expression::Subtract(
+                ast::BinaryExpression::new(start, end, lhs, rhs)
+            )
+        )
+    },
+}
+
+Term: Box<ast::Expression> = {
+    <start:@L> <val:number> <end:@R> => {
+        Box::new(ast::Expression::Number(
+            ast::UnaryExpression::new(start, end, val.to_string())
+        ))
+    },
+    "(" <ExpressionNested> ")" => <> 
+}
+
+extern {
+    type Location = usize;
+    type Error = LexicalError;
+
+    enum Token<'input> {
+        number => Token::Number(<&'input str>),
+        float => Token::Float(<f64>),
+        char_token => Token::Char(<char>),
+        string => Token::String(<&'input str>),
+        hex_string => Token::String(<&'input str>),
+        ident => Token::Identifier(<&'input str>),
+        "true" => Token::True,
+        "false" => Token::False,
+        "(" => Token::LParen,
+        ")" => Token::RParen,
+        "{" => Token::LCurly,
+        "}" => Token::RCurly,
+        "<" => Token::LAngle,
+        ">" => Token::RAngle,
+        "=" => Token::Assign,
+        "+" => Token::Plus,
+        "-" => Token::Minus,
+        "*" => Token::Mul,
+        "/" => Token::Div,
+        "==" => Token::Eq,
+        "/=" => Token::Neq,
+        "<=" => Token::Leq,
+        ">=" => Token::Meq,
+        "in" => Token::In,
+        "int" => Token::IntType,
+        "uint" => Token::UIntType,
+        "float" => Token::FloatType,
+        "char" => Token::CharType,
+        "string" => Token::StringType,
+        "hex" => Token::HexType,
+        "hash" => Token::HashType,
+        "address" => Token::AddressType,
+        "bool" => Token::BoolType,
+        "()" => Token::UnitType,
+        "Mapping" => Token::Mapping,
+        "Set" => Token::Set,
+        "List" => Token::List,
+        "struct" => Token::Struct,
+        "enum" => Token::Enum,
+        "state" => Token::State,
+        "fn" => Token::Func,
+        "from" => Token::From,
+        "return" => Token::Return,
+        "range" => Token::Range,
+        "for" => Token::For,
+        "to" => Token::To,
+        "if" => Token::If,
+        "else" => Token::Else,
+        "st" => Token::St,
+        "when" => Token::When,
+        "pub" => Token::Pub,
+        "view" => Token::View,
+        "@init" => Token::Init,
+        "version" => Token::Version,
+        "author" => Token::Author,
+        "let" => Token::Let,
+        "mut" => Token::Mut,
+        "->" => Token::Arr,
+        ";" => Token::SemiCol,
+        ":" => Token::Col,
+        "@" => Token::At,
+        ":>" => Token::Pipe,
+        "|" => Token::MatchOr,
+        ".." => Token::DoubleDot,
+    }
+}

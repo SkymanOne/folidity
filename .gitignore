@@ -302,3 +302,9 @@ TSWLatexianTemp*
 # Uncomment the next line to have this generated file ignored.
 #*Notes.bib
 
+/target
+**/*.rs.bk
+Cargo.lock
+.DS_Store
+
+reports/ecsproject.pdf

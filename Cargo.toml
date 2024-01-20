@@ -1,0 +1,19 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/folidity",
+    "crates/parser"
+]
+
+[workspace.package]
+authors = ["Gherman Nicolisin <german.nikolishin@gmail.com"]
+categories = ["languages", "compiler"]
+edition = "2021"
+homepage = "https://nikolish.in"
+keywords = ["parser", "compiler", "smart-contracts", "blockchain", "formal-verification"]
+license = "Apache-2.0"
+repository = "https://github.com/SkymanOne/folidity"
+version = "1.0.0"
+
+[workspace.dependencies]
+folidity-parser = { path = "crates/parser"}
