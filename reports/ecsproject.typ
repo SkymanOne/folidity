@@ -10,6 +10,15 @@
   }
 }
 
+// Rotate content, presetcing width
+#let rotatex(angle, body)= style(styles => layout(size => {
+  let size = measure(block(width: size.width, body), styles)
+  box(inset:(x: -size.width/2+(size.width*calc.abs(calc.cos(angle))+size.height*calc.abs(calc.sin(angle)))/2,
+             y: -size.height/2+(size.height*calc.abs(calc.cos(angle))+size.width*calc.abs(calc.sin(angle)))/2),
+             rotate(body,angle))
+}))
+
+
 #let margins = (inside: 1.4in, outside: 1.0in, top: 1.0in, bottom: 1.0in)
 
 #let page_style(

@@ -433,10 +433,12 @@ From the beginning of January, the first iteration of grammar should be complete
 
 = Gannt Chart <Appendix:Gannt>
 
-#page(flipped: true, [
+#pagebreak()
+#rotatex(90deg, [
 #let grad = gradient.linear(red, gray, angle: 0deg)
 #let task-line-style = (stroke: (paint: gray, thickness: 6pt))
 #let milestone-line-style = (stroke: (paint: black, dash: "dashed"))
+#block(width: 160%)[
 #timeline(
   show-grid: true,
   spacing: 3pt,
@@ -491,6 +493,7 @@ From the beginning of January, the first iteration of grammar should be complete
     )
   }
 )
+]
 ])
 
 #pagebreak()
