@@ -1,6 +1,7 @@
 #import "ecsproject.typ": *
 #import "@preview/tablex:0.0.8": tablex, rowspanx, colspanx, gridx, hlinex
 #import "@preview/i-figured:0.2.3"
+#import "@preview/timeliney:0.0.1": *
 
 
 #let abstract = "This paper addresses the long-lasting problem involving the exploits of Smart Contract vulnerabilities. There are tools, such as in the formal verificatio field and alternative Smart Contract languages, that attempt to address these issues. However, neither approach has managed to combine the static formal verification and the generation of runtime assertions. Furthermore, this work believes that implicit hidden state transition is the root cause of securit compromises. In light of the above, we introduce Folidity, a safe functional Smart Contract language with a unique approach to reasoning about the modelling and development of Smart Contract systems. Folidity features explicit state transition checks, a model-first approach, and built-in formal verification tooling."
@@ -34,7 +35,7 @@
     name: "Dr. Indu Bodala",
     email: "i.p.bodala@soton.ac.uk"
   ),
-  date: "December 12, 2023",
+  date: "December 11, 2023",
   program: "BSc Computer Science",
   is_progress_report: true,
   abstract_text: abstract,
@@ -426,10 +427,71 @@ From the beginning of January, the first iteration of grammar should be complete
 
 #pagebreak()
 
+#counter(heading.where(level: 1)).update(0)
 #counter(heading).update(0)
 #set heading(numbering: "A.")
 
 = Gannt Chart <Appendix:Gannt>
+
+#page(flipped: true, [
+#let grad = gradient.linear(red, gray, angle: 0deg)
+#let task-line-style = (stroke: (paint: gray, thickness: 6pt))
+#let milestone-line-style = (stroke: (paint: black, dash: "dashed"))
+#timeline(
+  show-grid: true,
+  spacing: 3pt,
+  line-style: (stroke: (paint: black, thickness: 4pt, cap: "round")),
+  {
+    headerline(group(([*Month*], 30)))
+    headerline(
+      group(([October], 4)),
+      group(([November], 4)),
+      group(([December], 4)),
+      group(([January], 4)),
+      group(([February], 4)),
+      group(([March], 4)),
+      group(([April], 4)),
+      group(([May], 2)),
+    )
+    taskgroup(title: [*Overview of SC vulnerabilities*], {
+      task("Common smart contract exploits", (1, 7), style: task-line-style)
+      task("Suvery of SC languages", (3, 8), style: task-line-style)
+      task("Formal verification analysis", (5, 9), style: task-line-style)
+      task("Evaluation of current solutions and issues", (6, 8), style: task-line-style)
+    })
+    taskgroup(title: [*The design of the proposed solution*], {
+      task("Requirements", (6, 8), style: task-line-style)
+      task("BNF Grammar", (6, 9), style: task-line-style)
+      task("Sample programs", (8, 12), style: task-line-style)
+      task("Brief evaluation of the BNF grammar", (11, 14), style: task-line-style)
+    })
+    taskgroup(title: [*Implementation*], {
+      task("Syntax", (11, 14), style: task-line-style)
+      task("Type Checker", (14, 18), style: task-line-style)
+      task("Evaluator", (17, 24), style: task-line-style)
+      task("Model Checker", (17, 21), style: task-line-style)
+      task("Functional Correctness Checker", (19, 23), style: task-line-style)
+    })
+    taskgroup(title: [*Evaluation*], {
+      task("Testing", (22, 26), style: task-line-style)
+      task("Safety evaluation", (26, 27), style: task-line-style)
+      task("Overview of sample solutions", (26, 27), style: task-line-style)
+      task("Future work", (27, 28), style: task-line-style)
+    })
+
+    milestone(
+      at: 9,
+      style: milestone-line-style,
+      align(center, [_Progress Report \ submission deadline_ \ *December, 12*])
+    )
+    milestone(
+      at: 28,
+      style: milestone-line-style,
+      align(center, [_Final Report \ submission deadline_ \ *April, 30*])
+    )
+  }
+)
+])
 
 #pagebreak()
 
