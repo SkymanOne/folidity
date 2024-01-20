@@ -10,7 +10,7 @@
   }
 }
 
-#let margins = (inside: 1.5in, outside: 1.0in, top: 1.0in, bottom: 1.0in)
+#let margins = (inside: 1.4in, outside: 1.0in, top: 1.0in, bottom: 1.0in)
 
 #let page_style(
   page_numbering: "1",
@@ -30,9 +30,11 @@
     lang: "en",
   )
   set align(left)
+  set par(leading: 0.6em)
+  set footnote.entry(gap: 0.2em)
   show par: it => [
     #set par(justify: true)
-    #pad(top: 0.3em, bottom: 0.3em, it)
+    #pad(top: 0.1em, bottom: 0.1em, it)
   ]
 
   set heading(numbering: title_numbering)
@@ -41,8 +43,13 @@
     let counter_display = if it.numbering != none {
       counter(heading).display(it.numbering)
     }
-    pad(top: 1.4em, bottom: 1.4em, [
-      #counter_display #it.body
+    pad(top: 1.2em, bottom: 1.0em, left: 0.2em, [
+        #table(
+          columns: 2,
+          stroke: none,
+          align: left,
+          [#counter_display], [#it.body]
+        )
     ])
   }
 
@@ -87,6 +94,7 @@
       if before_elems != () {
         let h_counter = counter(heading.where(level: 1)).display()
         let last_header = before_elems.last().body
+        v(4em)
         if last_header == text("Statement of Originality") {
           emph(last_header) + h(1fr) + counter(page).display(page_numbering)
         } else {
@@ -118,7 +126,9 @@
       let p_counter = counter(page).display(page_numbering)
       align(center, p_counter)
     }
-  }))
+  }),
+  header-ascent: 20%,
+  footer-descent: 10%)
 
   doc
 }
@@ -254,8 +264,9 @@
   text("By " + author_content)
 
   v(2em)
+  set align(left)
   set par(linebreaks: "optimized", justify: true)
-  text(content)
+  par(text(content))
 }
 
 #let originality_statement(
@@ -273,10 +284,12 @@
 
     #heading(level: 1, numbering: none, "Statement of Originality")
 
-    #set list(tight: false, spacing: 10pt, indent: 1.5em)
+    #set list(tight: false, spacing: 1.5em, indent: 1.5em)
 
     - I have read and understood the #link("http://ecs.gg/ai")[ECS Academic Integrity information] and the University’s #link("https://www.southampton.ac.uk/quality/assessment/academic_integrity.page")[Academic Integrity Guidance for Students].
+
     - I am aware that failure to act in accordance with the #link("http://www.calendar.soton.ac.uk/sectionIV/academic-integrity-regs.html")[Regulations Governing Academic Integrity] may lead to the imposition of penalties which, for the most serious cases, may include termination of programme.
+
     - I consent to the University copying and distributing any or all of my work in any form and using third parties (who may be based outside the EU/EEA) to verify whether my work contains plagiarised material, and for quality assurance purposes.
 
     #v(1em)
@@ -345,15 +358,17 @@
 }
 
 #let acknowledgments(text: lorem(100)) = {
-    page_style(
-    page_numbering: "i",
-    {
-      set page(header: [])
-      heading(level: 1, "Acknowledgments", numbering: none)
-      
-      text
-    }
-  ) 
+  if text != none {
+      page_style(
+      page_numbering: "i",
+      {
+        set page(header: [])
+        heading(level: 1, "Acknowledgments", numbering: none)
+        
+        text
+      }
+    ) 
+  }
 }
 
 
