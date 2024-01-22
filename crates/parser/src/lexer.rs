@@ -82,6 +82,8 @@ pub enum Token<'input> {
     Mul,
     #[token("/")]
     Div,
+    #[token("%")]
+    Modulo,
 
     #[token("!")]
     Not,
@@ -98,6 +100,12 @@ pub enum Token<'input> {
     #[token("in")]
     In,
 
+    //Bool operations
+    #[token("||")]
+    Or,
+    #[token("&&")]
+    And,
+
     //Types
     #[token("int")]
     IntType,
@@ -111,8 +119,6 @@ pub enum Token<'input> {
     StringType,
     #[token("hex")]
     HexType,
-    #[token("hash")]
-    HashType,
     #[token("address")]
     AddressType,
     #[token("bool")]
@@ -214,19 +220,21 @@ impl<'input> fmt::Display for Token<'input> {
             Token::Minus => word("-"),
             Token::Mul => word("*"),
             Token::Div => word("/"),
+            Token::Modulo => word("%"),
             Token::Not => word("!"),
             Token::Eq => word("=="),
             Token::Neq => word("/="),
             Token::Leq => word("<="),
             Token::Meq => word(">="),
             Token::In => word("in"),
+            Token::Or => word("||"),
+            Token::And => word("&&"),
             Token::IntType => word("int"),
             Token::UIntType => word("unit"),
             Token::FloatType => word("float"),
             Token::CharType => word("char"),
             Token::StringType => word("string"),
             Token::HexType => word("hex"),
-            Token::HashType => word("hash"),
             Token::AddressType => word("address"),
             Token::BoolType => word("bool"),
             Token::UnitType => word("()"),

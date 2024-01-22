@@ -117,11 +117,30 @@ pub enum Statement {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expression {
     Number(UnaryExpression<String>),
+    String(UnaryExpression<String>),
+    Hex(UnaryExpression<String>),
+    Address(UnaryExpression<String>),
 
+    // Maths operations.
     Multiply(BinaryExpression),
     Divide(BinaryExpression),
+    Modulo(BinaryExpression),
     Add(BinaryExpression),
     Subtract(BinaryExpression),
+
+    // Boolean relations.
+    Equal(BinaryExpression),
+    NotEqual(BinaryExpression),
+    Greater(BinaryExpression),
+    Less(BinaryExpression),
+    GreaterEq(BinaryExpression),
+    LessEq(BinaryExpression),
+    In(BinaryExpression),
+    Not(UnaryExpression<Box<Expression>>),
+
+    // Boolean operations.
+    Or(BinaryExpression),
+    And(BinaryExpression)
 }
 
 /// Represents binary-style expression.

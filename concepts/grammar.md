@@ -26,21 +26,20 @@ Based on holistic approach
 <state_param>  := (<ident> <ident>?) | `()`
 
 <st_block>     := `st` <st_body>
-<st_body>      := <cond> | `{` <st_list> `}`
-<st_list>      := <cond> | (<st_list> `,`)*
+<st_body>      := <expr> | `{` <st_list> `}`
+<st_list>      := <expr> | (<st_list> `,`)*
 
 <statement>    := <var> | <assign> | <if> | <for> | <foreach> | <return> | <func_call> | <state_t>
 <var>          := let `mut`? <var_ident> (`=` <expr>)?
 <var_ident>    := (<ident> | <decon>)
 <decon>        := `{` <decon_list> `}`
-<decon_list>   := <ident> | (<decond_list> `,` )*
+<decon_list>   := <ident> | (<decon_list> `,` )*
 
 <assign>       := <ident> `=` <expr>
-<if>           := `if` `(` <cond> `)` `{` <statement> `}` (`else` `{` <statement> `}`)?
+<if>           := `if` `(` <expr> `)` `{` <statement> `}` (`else` `{` <statement> `}`)?
 <foreach>      := `for` `(` `var_ident` `in` (<ident> | <range>) `)` `{` <statement> `}`
-<for>          := `for` `(` <var> `;` <cond> `;` <expr> `)` `{` <statement> `}`
+<for>          := `for` `(` <var> `;` <expr> `;` <expr> `)` `{` <statement> `}`
 <range>        := `range` `(` <number> `to` <number> `)` 
-<cond>         := <expr> <rel> <expr>
 <return>       := `return` <expr>
 <state_t>      := <ident> `{` <struct_args> `}`
 <struct_args>  := <expr> | (<struct_args> `,`)* | <arg_obj>
@@ -54,7 +53,7 @@ Based on holistic approach
 <enum_decl>    := `enum` `{` <ident>+ `}`
 <struct_decl>  := `struct` `{` params `}`
 
-<type>         := `int` | `uint` | `float` | `char` | `string` | `hex` | `hash` 
+<type>         := `int` | `uint` | `float` | `char` | `string` | `hex` 
              | `address` | `()` | `bool` | <set_type> | <list_type> | <mapping_type>
 
 
@@ -71,6 +70,7 @@ Based on holistic approach
 
 <bool>         := `true` | `false`
 <rel>          := `==` | `!=` | `<` | `>` | `<=` | `>=` | `in` 
+<bool_op>      := `||` | '&&'
 
 <period>       := `.`
 <float>        := <number> <period> <number>?
@@ -86,8 +86,11 @@ Based on holistic approach
 <div>          := `/`
 <mul>          := `*`
 <not>          := `!`
-<expr>         := <term> ( (<plus> | <minus> | <not>) <term> )*
-<term>         := <factor> ( (<mul> | <div>) <factor> )*
+<modulo>       := `%`
+<expr>         := <expr> <bool_op> <expr>
+<cond>         := <expr> <rel> <expr> 
+<math_expr>    := <term> ( (<plus> | <minus> | <not>) <term> )*
+<term>         := <factor> ( (<mul> | <div> | <modulo>) <factor> )*
 <factor>       := <ident> | <constant> | <func_call> | <func_pipe> | <member_acc> | `(` <expr> `)`
 <constant>     := <number> | <float> | <bool> | <string>
 <ident>        := <char>+
