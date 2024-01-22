@@ -20,9 +20,10 @@ Based on holistic approach
 <attr_ident>   := <ident> | ( <attr_ident> `|` )*
 <params>       := <param> | (params `,`)*
 <param>        := <ident> `:` <type>
-<vis>          := `pub` | `view` `(` <ident> <ident> `)`
-<state_bound>  := `when` <ident> <ident> <arr> <ident> <ident>?
+<vis>          := `pub` | `view` `(` <state_param> `)`
+<state_bound>  := `when` <state_param> <arr> <state_param>
 <func_body>    := (<statement>)*
+<state_param>  := (<ident> <ident>?) | `()`
 
 <st_block>     := `st` <st_body>
 <st_body>      := <cond> | `{` <st_list> `}`

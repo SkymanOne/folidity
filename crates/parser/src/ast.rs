@@ -14,6 +14,107 @@ pub struct Identifier {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub enum Declaration {
+    FuncDeclaration(Box<FunctionDeclaration>)
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Type {
+    Int,
+    Uint,
+    Float,
+    Char,
+    String,
+    Hex,
+    Hash,
+    Address,
+    Unit,
+    Bool,
+    //todo: list types
+}
+
+/// Parameter declaration of the state.
+/// `<ident> <ident>?`
+#[derive(Clone, Debug, PartialEq)]
+pub struct StateParam {
+    pub loc: Span,
+    /// State type identifier.
+    pub ty: Identifier,
+    /// Variable name identifier.
+    pub name: Option<Identifier>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Param {
+    pub loc: Span,
+    /// Type identifier.
+    pub ty: Type,
+    /// Variable name identifier.
+    pub name: Identifier,
+}
+
+/// View state modifier.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ViewState {
+    pub loc: Span,
+    pub param: StateParam,
+}
+
+#[derive(Clone, Debug, PartialEq, Default)]
+pub enum FunctionVisibility {
+    Pub,
+    View(ViewState),
+    #[default]
+    Priv,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum FuncReturnType {
+    Type(Type),
+    ParamType(Param)
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct StateBound {
+    pub loc: Span,
+    /// Original state
+    pub from: StateParam,
+    /// Final state
+    pub to: StateParam
+}
+/// Type alias for a list of function parameters.
+pub type ParameterList = Vec<(Span, Option<Param>)>;
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct FunctionDeclaration {
+    /// Location span of the function.
+    pub loc: Span,
+    /// Visibility of the function.
+    pub vis: FunctionVisibility,
+    /// Function return type declaration.
+    pub return_ty: FuncReturnType,
+    /// List of parameters.
+    pub params: ParameterList,
+    /// Bounds for the state transition.
+    pub state_bound: StateBound,
+    /// Function logical bounds
+    pub st_block: StBlock,
+    pub body: Statement
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct StBlock {
+    pub loc: Span,
+    /// List of logic expressions
+    pub exprs: Vec<Expression>
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum Statement {
+
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub enum Expression {
     Number(UnaryExpression<String>),
 
