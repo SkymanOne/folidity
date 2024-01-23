@@ -49,7 +49,7 @@ pub enum Token<'input> {
     #[regex("hex\"[a-zA-Z]+\"", |lex| lex.slice())]
     Hex(&'input str),
     #[regex("a\"[a-zA-Z]+\"", |lex| lex.slice())]
-    Address(&'input str), 
+    Address(&'input str),
     #[regex("[_a-zA-Z][_0-9a-zA-Z]+", |lex| lex.slice())]
     Identifier(&'input str),
     #[token("true")]
@@ -193,6 +193,8 @@ pub enum Token<'input> {
     Dot,
     #[token("..")]
     DoubleDot,
+    #[token(",")]
+    Coma,
 
     //comment
     #[regex(r"#[^\n]*", |lex| lex.slice())]
@@ -272,6 +274,7 @@ impl<'input> fmt::Display for Token<'input> {
             Token::MatchOr => word("|"),
             Token::Dot => word("."),
             Token::DoubleDot => word(".."),
+            Token::Coma => word(","),
             Token::Comment(c) => write!(f, "{c}"),
         }
     }

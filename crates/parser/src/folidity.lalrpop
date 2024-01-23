@@ -5,20 +5,87 @@ use lalrpop_util::ErrorRecovery;
 grammar<'input, 'err>(errors: &'err mut Vec<ErrorRecovery<usize, Token<'input>, LexicalError>>);
 
 pub FolidityTree: ast::Source = {
-    Expression* => ast::Source { expressions: <> }
+    Declaration* => ast::Source { declarations: <> }
+}
+
+Declaration: ast::Declaration = {
+
 }
 
 
+AccessAttr: ast::AccessAttribute = {
+    <start:@L> "@" "(" <memebers:(<Expression> "|")+> ")" <end:@R> => {
+        ast::AccessAttribute::new(start, end, memebers)
+    }
+}
 
+FunctionVis: ast::FunctionVisibility = {
+    "pub" => ast::FunctionVisibility::Pub,
+
+    <start:@L> "view" "(" <param:StateParam> ")" <end:@R> => {
+        ast::FunctionVisibility::View(
+            ast::ViewState::new(start, end, param)
+        )
+    }
+}
+
+StateParam: ast::StateParam = {
+    <start:@L> <ty:Identifier> <name_op:Identifier?> <end:@R> => {
+        let n = match name_op {
+            Some(i) => Some(i),
+            None => None,
+        };
+        ast::StateParam::new(start, end, ty, n)
+    } 
+}
+
+FuncReturnType: ast::FuncReturnType = {
+    "(" <pt:Param> ")" => ast::FuncReturnType::ParamType(pt),
+
+    <t:Type> => ast::FuncReturnType::Type(t),
+}
+
+Param: ast::Param = {
+    <start:@L> <i:Identifier> ":" <t:Type> <end:@R> => {
+        ast::Param::new(start, end, t, i)
+    } 
+}
+
+StateBound: ast::StateBound = {
+    "when" <start:@L> <from:StateParam> "->" <to:StateParam> <end:@R> => {
+        ast::StateBound::new(start, end, from, to)
+    }
+}
+
+StBlock: ast::StBlock = {
+    "{" <start:@L> <exprs:(<Expression> ",")+> <end:@R> "}" => {
+        ast::StBlock::new(start, end, exprs)
+    },
+
+    <start:@L> <e:Expression> <end:@R> => {
+        ast::StBlock::new(start, end, vec![e])
+    }
+}
+
+StatementBlock: ast::StatementBlock = {
+    <start:@L> "{" <statements:Statement*> "}" <end:@L> => {
+        ast::StatementBlock::new(start, end, statements)
+    }
+}
+
+
+Statement: ast::Statement = {
+    <block:StatementBlock> => ast::Statement::Block(block) 
+}
 
 Expression: ast::Expression = {
     #[precedence(level="0")]
     Term,
 
     #[precedence(level="1")] #[assoc(side="left")]
-    <start:@L> <e:Expression> "." <start2:@L>  <i:ident> <end:@R> => {
+    <start:@L> <e:Expression> "." <i:Identifier> <end:@R> => {
         ast::Expression::MemberAccess(
-            ast::MemberAccess::new(start, end, Box::new(e), ast::Identifier::new(start2, end, i.to_string()))
+            ast::MemberAccess::new(start, end, Box::new(e), i)
         )
     },
 
@@ -71,10 +138,8 @@ Expression: ast::Expression = {
 }
 
 Term: ast::Expression = {
-    <start:@L> <val:ident> <end:@R> => {
-        ast::Expression::Variable(
-            ast::Identifier::new(start, end, val.to_string())
-        )
+    <i:Identifier> => {
+        ast::Expression::Variable(i)
     },
 
     <start:@L> <val:number> <end:@R> => {
@@ -110,6 +175,22 @@ Term: ast::Expression = {
 
 
     "(" <Expression> ")" => <> 
+}
+
+Type: ast::Type = {
+    <start:@L> "int" <end:@R> => ast::Type::new(start, end, ast::TypeVariant::Int),
+    <start:@L> "uint" <end:@R> => ast::Type::new(start, end, ast::TypeVariant::Uint),
+    <start:@L> "float" <end:@R> => ast::Type::new(start, end, ast::TypeVariant::Float),
+    <start:@L> "char" <end:@R> => ast::Type::new(start, end, ast::TypeVariant::Char),
+    <start:@L> "string" <end:@R> => ast::Type::new(start, end, ast::TypeVariant::String),
+    <start:@L> "hex" <end:@R> => ast::Type::new(start, end, ast::TypeVariant::Hex),
+    <start:@L> "address" <end:@R> => ast::Type::new(start, end, ast::TypeVariant::Address),
+    <start:@L> "()" <end:@R> => ast::Type::new(start, end, ast::TypeVariant::Unit),
+    <start:@L> "bool" <end:@R> => ast::Type::new(start, end, ast::TypeVariant::Bool),
+}
+
+Identifier: ast::Identifier = {
+    <start:@L> <i:ident> <end:@L> => ast::Identifier::new(start, end, i.to_string())
 }
 
 extern {
@@ -186,5 +267,6 @@ extern {
         "|" => Token::MatchOr,
         "." => Token::Dot,
         ".." => Token::DoubleDot,
+        "," => Token::Coma,
     }
 }

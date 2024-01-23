@@ -2,7 +2,6 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::spanned::Spanned;
 
-
 synstructure::decl_derive!(
     [Node] => node_derive
 );
@@ -70,6 +69,7 @@ fn node_derive_struct(s: synstructure::Structure) -> syn::Result<TokenStream2> {
 
     Ok(quote! {
         impl #ident {
+            #[allow(clippy::too_many_arguments)]
             pub fn new(#loc_param #(#params)*) -> Self {
                 Self {
                     #loc_arg

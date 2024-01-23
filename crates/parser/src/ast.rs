@@ -3,7 +3,7 @@ use derive_node::Node;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Source {
-    pub expressions: Vec<Expression>,
+    pub declarations: Vec<Declaration>,
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]
@@ -16,11 +16,17 @@ pub struct Identifier {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Declaration {
-    FuncDeclaration(Box<FunctionDeclaration>)
+    FuncDeclaration(Box<FunctionDeclaration>),
+}
+
+#[derive(Clone, Debug, PartialEq, Node)]
+pub struct Type {
+    pub loc: Span,
+    pub tt: TypeVariant,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum Type {
+pub enum TypeVariant {
     Int,
     Uint,
     Float,
@@ -60,7 +66,6 @@ pub struct ViewState {
     pub param: StateParam,
 }
 
-
 #[derive(Clone, Debug, PartialEq, Default)]
 pub enum FunctionVisibility {
     Pub,
@@ -72,7 +77,7 @@ pub enum FunctionVisibility {
 #[derive(Clone, Debug, PartialEq)]
 pub enum FuncReturnType {
     Type(Type),
-    ParamType(Param)
+    ParamType(Param),
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]
@@ -81,16 +86,28 @@ pub struct StateBound {
     /// Original state
     pub from: StateParam,
     /// Final state
-    pub to: StateParam
+    pub to: StateParam,
+}
+
+#[derive(Clone, Debug, PartialEq, Node)]
+pub struct AccessAttribute {
+    pub loc: Span,
+    /// Members delimited by `|`
+    pub members: Vec<Expression>,
 }
 
 /// Type alias for a list of function parameters.
 pub type ParameterList = Vec<(Span, Option<Param>)>;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Node)]
 pub struct FunctionDeclaration {
     /// Location span of the function.
     pub loc: Span,
+    /// Is it an initializer?
+    /// Marked with `@init`
+    pub is_init: bool,
+    /// Access attribute `@(a | b | c)`
+    pub access_attributes: Vec<AccessAttribute>,
     /// Visibility of the function.
     pub vis: FunctionVisibility,
     /// Function return type declaration.
@@ -101,28 +118,27 @@ pub struct FunctionDeclaration {
     pub state_bound: StateBound,
     /// Function logical bounds
     pub st_block: StBlock,
-    pub body: Statement
+    pub body: Statement,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Node)]
 pub struct StBlock {
     pub loc: Span,
     /// List of logic expressions
-    pub exprs: Vec<Expression>
+    pub exprs: Vec<Expression>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
-   Block(StatementBlock),
-   Return(Expression),
-   IfElse(IfElse),
-
+    Block(StatementBlock),
+    Return(Expression),
+    IfElse(IfElse),
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]
 pub struct StatementBlock {
     pub loc: Span,
-    pub statements: Vec<Statement>
+    pub statements: Vec<Statement>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -130,7 +146,7 @@ pub struct IfElse {
     pub loc: Span,
     pub condition: Expression,
     pub body: Box<Statement>,
-    pub else_part: Option<Box<Statement>>
+    pub else_part: Option<Box<Statement>>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -167,7 +183,7 @@ pub enum Expression {
 
     FunctionCall(FunctionCall),
     MemberAccess(MemberAccess),
-    Pipe(BinaryExpression)
+    Pipe(BinaryExpression),
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]
@@ -177,7 +193,7 @@ pub struct FunctionCall {
     /// Name of the function.
     pub name: Identifier,
     /// List of arguments.
-    pub args: Vec<Expression>
+    pub args: Vec<Expression>,
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]
@@ -187,7 +203,7 @@ pub struct MemberAccess {
     /// Expression to access the member from
     pub expr: Box<Expression>,
     /// List of arguments.
-    pub member: Identifier
+    pub member: Identifier,
 }
 
 /// Represents binary-style expression.
