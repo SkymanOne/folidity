@@ -14,6 +14,7 @@ repository = { workspace = true }
 logos = "0.13"
 lalrpop-util = "0.20"
 thiserror = "1.0"
+derive-node = { workspace = true }
 
 [build-dependencies] # <-- We added this and everything after!
 lalrpop = "0.20"

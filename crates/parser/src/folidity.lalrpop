@@ -8,54 +8,108 @@ pub FolidityTree: ast::Source = {
     Expression* => ast::Source { expressions: <> }
 }
 
-Expression: ast::Expression = {
-    <e:ExpressionNested> => *e,
-}
 
-ExpressionNested: Box<ast::Expression> = {
+
+
+Expression: ast::Expression = {
     #[precedence(level="0")]
     Term,
 
     #[precedence(level="1")] #[assoc(side="left")]
-    <start:@L> <lhs:ExpressionNested> "*" <rhs:ExpressionNested> <end:@R> => {
-        Box::new(
-            ast::Expression::Multiply(
-                ast::BinaryExpression::new(start, end, lhs, rhs)
-            )
-        )
-    },
-    <start:@L> <lhs:ExpressionNested> "/" <rhs:ExpressionNested> <end:@R> => {
-        Box::new(
-            ast::Expression::Divide(
-                ast::BinaryExpression::new(start, end, lhs, rhs)
-            )
+    <start:@L> <e:Expression> "." <start2:@L>  <i:ident> <end:@R> => {
+        ast::Expression::MemberAccess(
+            ast::MemberAccess::new(start, end, Box::new(e), ast::Identifier::new(start2, end, i.to_string()))
         )
     },
 
     #[precedence(level="2")] #[assoc(side="left")]
-    <start:@L> <lhs:ExpressionNested> "+" <rhs:ExpressionNested> <end:@R> => {
-        Box::new(
-            ast::Expression::Add(
-                ast::BinaryExpression::new(start, end, lhs, rhs)
-            )
+    <start:@L> <lhs:Expression> "*" <rhs:Expression> <end:@R> => {
+        ast::Expression::Multiply(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
         )
     },
-    <start:@L> <lhs:ExpressionNested> "-" <rhs:ExpressionNested> <end:@R> => {
-        Box::new(
-            ast::Expression::Subtract(
-                ast::BinaryExpression::new(start, end, lhs, rhs)
-            )
+
+    <start:@L> <lhs:Expression> "/" <rhs:Expression> <end:@R> => {
+        ast::Expression::Divide(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
         )
     },
+    <start:@L> <lhs:Expression> "%" <rhs:Expression> <end:@R> => {
+        ast::Expression::Divide(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
+        )
+    },
+
+    #[precedence(level="3")] #[assoc(side="left")]
+    <start:@L> <lhs:Expression> "+" <rhs:Expression> <end:@R> => {
+        ast::Expression::Add(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
+        )
+    },
+    <start:@L> <lhs:Expression> "-" <rhs:Expression> <end:@R> => {
+        ast::Expression::Subtract(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
+        )
+    },
+
+
+    #[precedence(level="4")] #[assoc(side="left")]
+    <start:@L> <lhs:Expression> ":>" <rhs:Expression> <end:@R> => {
+        ast::Expression::Pipe(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
+        )
+    },
+    
+
+    #[precedence(level="5")]
+    <start:@L> "!" <val:Expression> <end:@R> => {
+        ast::Expression::Not(
+            ast::UnaryExpression::new(start, end, Box::new(val))
+        )
+    },
+
 }
 
-Term: Box<ast::Expression> = {
-    <start:@L> <val:number> <end:@R> => {
-        Box::new(ast::Expression::Number(
-            ast::UnaryExpression::new(start, end, val.to_string())
-        ))
+Term: ast::Expression = {
+    <start:@L> <val:ident> <end:@R> => {
+        ast::Expression::Variable(
+            ast::Identifier::new(start, end, val.to_string())
+        )
     },
-    "(" <ExpressionNested> ")" => <> 
+
+    <start:@L> <val:number> <end:@R> => {
+        ast::Expression::Number(
+            ast::UnaryExpression::new(start, end, val.to_string())
+        )
+    },
+    <start:@L> <val:float> <end:@R> => {
+        ast::Expression::Float(
+            ast::UnaryExpression::new(start, end, val.to_string())
+        )
+    },
+    <start:@L> <val:string> <end:@R> => {
+        ast::Expression::String(
+            ast::UnaryExpression::new(start, end, val.to_string())
+        )
+    },
+    <start:@L> <val:char_token> <end:@R> => {
+        ast::Expression::Char(
+            ast::UnaryExpression::new(start, end, val)
+        )
+    },
+    <start:@L> <val:hex> <end:@R> => {
+        ast::Expression::Hex(
+            ast::UnaryExpression::new(start, end, val.to_string())
+        )
+    },
+    <start:@L> <val:address> <end:@R> => {
+        ast::Expression::Address(
+            ast::UnaryExpression::new(start, end, val.to_string())
+        )
+    },
+
+
+    "(" <Expression> ")" => <> 
 }
 
 extern {
@@ -64,10 +118,11 @@ extern {
 
     enum Token<'input> {
         number => Token::Number(<&'input str>),
-        float => Token::Float(<f64>),
+        float => Token::Float(<&'input str>),
         char_token => Token::Char(<char>),
         string => Token::String(<&'input str>),
-        hex_string => Token::String(<&'input str>),
+        address => Token::Address(<&'input str>),
+        hex => Token::String(<&'input str>),
         ident => Token::Identifier(<&'input str>),
         "true" => Token::True,
         "false" => Token::False,
@@ -83,6 +138,7 @@ extern {
         "*" => Token::Mul,
         "/" => Token::Div,
         "%" => Token::Modulo,
+        "!" => Token::Not,
         "==" => Token::Eq,
         "/=" => Token::Neq,
         "<=" => Token::Leq,
@@ -128,6 +184,7 @@ extern {
         "@" => Token::At,
         ":>" => Token::Pipe,
         "|" => Token::MatchOr,
+        "." => Token::Dot,
         ".." => Token::DoubleDot,
     }
 }

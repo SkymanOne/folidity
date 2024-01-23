@@ -40,14 +40,16 @@ pub enum Token<'input> {
     // Type values
     #[regex("[0-9]+", |lex| lex.slice(), priority = 2)]
     Number(&'input str),
-    #[regex("([0-9]*[.])?[0-9]+", |lex| lex.slice().parse().ok(), priority = 1)]
-    Float(f64),
+    #[regex("([0-9]*[.])?[0-9]+", |lex| lex.slice(), priority = 1)]
+    Float(&'input str),
     #[regex("\'[a-zA-Z]\'", |lex| lex.slice().parse().ok())]
     Char(char),
     #[regex("\"[a-zA-Z]+\"", |lex| lex.slice())]
     String(&'input str),
     #[regex("hex\"[a-zA-Z]+\"", |lex| lex.slice())]
-    HexString(&'input str),
+    Hex(&'input str),
+    #[regex("a\"[a-zA-Z]+\"", |lex| lex.slice())]
+    Address(&'input str), 
     #[regex("[_a-zA-Z][_0-9a-zA-Z]+", |lex| lex.slice())]
     Identifier(&'input str),
     #[token("true")]
@@ -205,7 +207,8 @@ impl<'input> fmt::Display for Token<'input> {
             Token::Float(n) => write!(f, "{n}"),
             Token::Char(c) => write!(f, "\'{c}'"),
             Token::String(s) => write!(f, "\"{s}\""),
-            Token::HexString(s) => write!(f, "hex\"{s}\""),
+            Token::Hex(s) => write!(f, "hex\"{s}\""),
+            Token::Address(s) => write!(f, "hex\"{s}\""),
             Token::Identifier(i) => write!(f, "{i}"),
             Token::True => word("true"),
             Token::False => word("false"),

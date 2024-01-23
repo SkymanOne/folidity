@@ -1,11 +1,12 @@
 use super::Span;
+use derive_node::Node;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Source {
     pub expressions: Vec<Expression>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Node)]
 pub struct Identifier {
     /// Location of the identifier.
     pub loc: Span,
@@ -26,7 +27,6 @@ pub enum Type {
     Char,
     String,
     Hex,
-    Hash,
     Address,
     Unit,
     Bool,
@@ -35,7 +35,7 @@ pub enum Type {
 
 /// Parameter declaration of the state.
 /// `<ident> <ident>?`
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Node)]
 pub struct StateParam {
     pub loc: Span,
     /// State type identifier.
@@ -44,7 +44,7 @@ pub struct StateParam {
     pub name: Option<Identifier>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Node)]
 pub struct Param {
     pub loc: Span,
     /// Type identifier.
@@ -54,11 +54,12 @@ pub struct Param {
 }
 
 /// View state modifier.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Node)]
 pub struct ViewState {
     pub loc: Span,
     pub param: StateParam,
 }
+
 
 #[derive(Clone, Debug, PartialEq, Default)]
 pub enum FunctionVisibility {
@@ -74,7 +75,7 @@ pub enum FuncReturnType {
     ParamType(Param)
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Node)]
 pub struct StateBound {
     pub loc: Span,
     /// Original state
@@ -82,6 +83,7 @@ pub struct StateBound {
     /// Final state
     pub to: StateParam
 }
+
 /// Type alias for a list of function parameters.
 pub type ParameterList = Vec<(Span, Option<Param>)>;
 
@@ -109,15 +111,36 @@ pub struct StBlock {
     pub exprs: Vec<Expression>
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
+   Block(StatementBlock),
+   Return(Expression),
+   IfElse(IfElse),
 
+}
+
+#[derive(Clone, Debug, PartialEq, Node)]
+pub struct StatementBlock {
+    pub loc: Span,
+    pub statements: Vec<Statement>
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct IfElse {
+    pub loc: Span,
+    pub condition: Expression,
+    pub body: Box<Statement>,
+    pub else_part: Option<Box<Statement>>
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expression {
+    Variable(Identifier),
+
     Number(UnaryExpression<String>),
+    Float(UnaryExpression<String>),
     String(UnaryExpression<String>),
+    Char(UnaryExpression<char>),
     Hex(UnaryExpression<String>),
     Address(UnaryExpression<String>),
 
@@ -140,14 +163,38 @@ pub enum Expression {
 
     // Boolean operations.
     Or(BinaryExpression),
-    And(BinaryExpression)
+    And(BinaryExpression),
+
+    FunctionCall(FunctionCall),
+    MemberAccess(MemberAccess),
+    Pipe(BinaryExpression)
+}
+
+#[derive(Clone, Debug, PartialEq, Node)]
+pub struct FunctionCall {
+    /// Location of the parent expression.
+    pub loc: Span,
+    /// Name of the function.
+    pub name: Identifier,
+    /// List of arguments.
+    pub args: Vec<Expression>
+}
+
+#[derive(Clone, Debug, PartialEq, Node)]
+pub struct MemberAccess {
+    /// Location of the parent expression.
+    pub loc: Span,
+    /// Expression to access the member from
+    pub expr: Box<Expression>,
+    /// List of arguments.
+    pub member: Identifier
 }
 
 /// Represents binary-style expression.
 ///
 /// # Example
 /// `10 + 2`
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Node)]
 pub struct BinaryExpression {
     /// Location of the parent expression.
     pub loc: Span,
@@ -155,16 +202,6 @@ pub struct BinaryExpression {
     pub left: Box<Expression>,
     /// Right expression
     pub right: Box<Expression>,
-}
-
-impl BinaryExpression {
-    pub fn new(start: usize, end: usize, left: Box<Expression>, right: Box<Expression>) -> Self {
-        Self {
-            loc: Span { start, end },
-            left,
-            right,
-        }
-    }
 }
 
 /// Represents unary style expression.
