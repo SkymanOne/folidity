@@ -1,8 +1,9 @@
 [workspace]
 resolver = "2"
-members = [
+members = [ 
+    "crates/derive_node",
     "crates/folidity",
-    "crates/parser"
+    "crates/parser",
 ]
 
 [workspace.package]
@@ -17,3 +18,4 @@ version = "1.0.0"
 
 [workspace.dependencies]
 folidity-parser = { path = "crates/parser"}
+derive-node = { path = "crates/derive_node"}

@@ -30,7 +30,7 @@ Based on holistic approach
 <st_list>      := <expr> | (<st_list> `,`)*
 
 <statement>    := <var> | <assign> | <if> | <for> | <foreach> | <return> | <func_call> | <state_t>
-<var>          := let `mut`? <var_ident> (`=` <expr>)?
+<var>          := let `mut`? <var_ident> (`:` <type>)? (`=` <expr>)?
 <var_ident>    := (<ident> | <decon>)
 <decon>        := `{` <decon_list> `}`
 <decon_list>   := <ident> | (<decon_list> `,` )*
@@ -62,8 +62,9 @@ Based on holistic approach
 <mapping_type> := `Mapping` `<` <type> <mapping_rel> <type> `>`
 <mapping_rel>  := (`>`)? `-` (`/`)? (`>`)? `>`
 
-<char>         := ? UTF-8 char ?
-<string>       := `"` <char>* `"`
+<char>         := ? '` <char>* `'`
+<hex>          := `hex` `"` <char>* `"`
+<address>      := `a` `"` <char>* `"`
 
 <digit>        := [0-9]
 <number>       := <digit>+
@@ -87,12 +88,13 @@ Based on holistic approach
 <mul>          := `*`
 <not>          := `!`
 <modulo>       := `%`
-<expr>         := <expr> <bool_op> <expr>
+<expr>         := <not>? <expr_nested>
+<expr_nested>  := <expr> <bool_op> <expr>
 <cond>         := <expr> <rel> <expr> 
-<math_expr>    := <term> ( (<plus> | <minus> | <not>) <term> )*
+<math_expr>    := <term> ( (<plus> | <minus>) <term> )*
 <term>         := <factor> ( (<mul> | <div> | <modulo>) <factor> )*
 <factor>       := <ident> | <constant> | <func_call> | <func_pipe> | <member_acc> | `(` <expr> `)`
-<constant>     := <number> | <float> | <bool> | <string>
+<constant>     := <number> | <float> | <bool> | <string> | <hex> | <address>
 <ident>        := <char>+
 <arr>          := `->`
 

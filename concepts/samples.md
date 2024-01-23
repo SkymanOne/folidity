@@ -160,12 +160,12 @@ pub fn () commit(h: Hash) when VotingState s -> VotingState {
     let caller = caller();
     let { commits, params } = s;
 
-    commits.set(caller, h);
+    commits :> set(caller, h);
 
     // symbolic execution will highlight
     // that model is violated since you are trying to add the caller twice
     // if (caller.balance > 2000) {
-    //     commits.set(caller, 0); 
+    //     commits :> set(caller, 0); 
     // }
 
     VotingState {
@@ -180,7 +180,7 @@ pub fn () start_reveal() when VotingState -> RevealState {
         -> RevealState {
             end_block = endblock + 10,
             proposal: proposal,
-            commits: commits.map(|c| (c.value, Choice::None))
+            commits: commits :> map(|c| (c.value, Choice::None))
             yays: 0,
             nays: 0,
         }
@@ -199,7 +199,7 @@ st s1.commits.size == s2.commits.size
     // it looks-up a keys or a value and updates
     // otherwise errors out
     // `.add()` add a new entry instead
-    commits.set(calc_hash, vote)
+    commits :> set(calc_hash, vote)
 
     if s1.current_block > s1.end_block {
         execute()
@@ -214,7 +214,7 @@ st s1.commits.size == s2.commits.size
 @(any)
 pub fn () execute() when RevealState s -> ExecuteState {
     let votes = s.commits.values;
-    let yay = votes.filter(|v| v == Choice::Yay).sum();
+    let yay = votes :> filter(|v| v == Choice::Yay).sum();
     let mut passed = false;
     if (votes.size / yay) > 0.5 {
         log(f"Proposal {s.proposal} passed");
