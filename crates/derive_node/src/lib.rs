@@ -55,17 +55,9 @@ fn node_derive_struct(s: synstructure::Structure) -> syn::Result<TokenStream2> {
         quote! { #i, }
     });
 
-    let loc_param = if contains_loc {
-        quote! { start: usize, end: usize, }
-    } else {
-        quote! {}
-    };
+    let loc_param = contains_loc.then(|| quote! { start: usize, end: usize, });
 
-    let loc_arg = if contains_loc {
-        quote! { loc: Span { start, end }, }
-    } else {
-        quote! {}
-    };
+    let loc_arg = contains_loc.then(|| quote! { loc: Span { start, end }, });
 
     Ok(quote! {
         impl #ident {
