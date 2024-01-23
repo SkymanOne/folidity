@@ -1,6 +1,8 @@
 use crate::lexer::{Token, LexicalError};
 use crate::ast;
+use crate::Span;
 use lalrpop_util::ErrorRecovery;
+use lalrpop_util::ParseError;
 
 grammar<'input, 'err>(errors: &'err mut Vec<ErrorRecovery<usize, Token<'input>, LexicalError>>);
 
@@ -9,15 +11,37 @@ pub FolidityTree: ast::Source = {
 }
 
 Declaration: ast::Declaration = {
-
+    <FunDeclaration> => ast::Declaration::FunDeclaration(Box::new(<>))
 }
 
-
-AccessAttr: ast::AccessAttribute = {
-    <start:@L> "@" "(" <memebers:(<Expression> "|")+> ")" <end:@R> => {
-        ast::AccessAttribute::new(start, end, memebers)
+FunDeclaration: ast::FunctionDeclaration = {
+    <start:@L> <init:"@init"?> <attrs:AccessAttr+> <vis:FunctionVis> "fn" <ty:FuncReturnType> <i:Identifier> 
+    "(" <params:FunParams> ")" <sb:StateBound?> <st:StBlock?> "{" <body:StatementBlock> "}" <end:@R> =>  {
+        ast::FunctionDeclaration::new(
+            start, 
+            end,
+            init.is_some(),
+            attrs,
+            vis,
+            ty,
+            i, 
+            params,
+            sb,
+            st,
+            body
+        )
     }
 }
+
+AccessAttr: ast::AccessAttribute = {
+    <start:@L> "@" "(" <first:Expression?> <mut memebers:("|" <Expression>)*> ")" <end:@R> => {
+        let mut all = if first.is_some() { vec![first.unwrap()] } else { vec![] };
+        all.append(&mut memebers);
+        ast::AccessAttribute::new(start, end, all)
+    }
+}
+
+
 
 FunctionVis: ast::FunctionVisibility = {
     "pub" => ast::FunctionVisibility::Pub,
@@ -35,7 +59,10 @@ StateParam: ast::StateParam = {
             Some(i) => Some(i),
             None => None,
         };
-        ast::StateParam::new(start, end, ty, n)
+        ast::StateParam::new(start, end, Some(ty), n)
+    },
+    <start:@L> "()" <end:@R> => {
+        ast::StateParam::new(start, end, None, None)
     } 
 }
 
@@ -51,6 +78,14 @@ Param: ast::Param = {
     } 
 }
 
+FunParams: Vec<ast::Param> = {
+    <first:Param?> <mut members:("," <Param>)*> => {
+        let mut all = if first.is_some() { vec![first.unwrap()] } else { vec![] };
+        all.append(&mut members);
+        all
+    }
+}
+
 StateBound: ast::StateBound = {
     "when" <start:@L> <from:StateParam> "->" <to:StateParam> <end:@R> => {
         ast::StateBound::new(start, end, from, to)
@@ -58,24 +93,108 @@ StateBound: ast::StateBound = {
 }
 
 StBlock: ast::StBlock = {
-    "{" <start:@L> <exprs:(<Expression> ",")+> <end:@R> "}" => {
+    "st" "{" <start:@L> <exprs:(<Expression> ",")+> <end:@R> "}" => {
         ast::StBlock::new(start, end, exprs)
     },
 
-    <start:@L> <e:Expression> <end:@R> => {
+    <start:@L> "st" <e:Expression> <end:@R> => {
         ast::StBlock::new(start, end, vec![e])
     }
 }
 
 StatementBlock: ast::StatementBlock = {
-    <start:@L> "{" <statements:Statement*> "}" <end:@L> => {
+    <start:@L> <statements:Statement*> <end:@L> => {
         ast::StatementBlock::new(start, end, statements)
     }
 }
 
+Variable: ast::Variable = {
+    <start:@L> "let" <mt:"mut"?> <i:Identifier> <ty:(":" <Type>)?> <val:("=" <Expression>)?> ";" <end:@R> => {
+        ast::Variable::new(start, end, vec![i], mt.is_some(), ty, val)
+    },
+
+    <start:@L> "let" <mt:"mut"?> "{" <is:Identifier+> "}" <ty:(":" <Type>)?> <val:("=" <Expression>)?> ";" <end:@R> => {
+        ast::Variable::new(start, end, is, mt.is_some(), ty, val)
+    }, 
+}
+
+Assign: ast::Assign = {
+    <start:@L> <i:Identifier> "=" <val:Expression> ";" <end:@R> => {
+        ast::Assign::new(start, end, i, val)
+    }
+}
+
+IfElse: ast::IfElse = {
+    #[precedence(level = "0")]
+    <start:@L> "if" <cond:Expression> "{" <body:Statement> "}" <end:@R> => {
+        ast::IfElse::new(start, end, cond, Box::new(body), None)
+    },
+
+    #[precedence(level = "1")]
+    <start:@L> "if" <cond:Expression> "{" <body:Statement> "}" <mid:@R> "else" <else_part:Statement> <end:@R> => {
+        match else_part {
+            ast::Statement::Block(_) | ast::Statement::IfElse(_) => {},
+            _ => {
+                let error = ErrorRecovery {
+                    error: ParseError::User {
+                        error: LexicalError::InvalidElseBlock(Span { start: mid, end })
+                    },
+                    dropped_tokens: Vec::new(),
+                };
+                errors.push(error);
+            }
+        };
+        ast::IfElse::new(start, end, cond, Box::new(body), Some(Box::new(else_part)))
+    }
+}
+
+ForLoop: ast::ForLoop = {
+    <start:@L> "for" "(" <var:Variable> ";" <cond:Expression> ";" <incr:Expression> ")" <body:Statement>  <end:@R> => {
+        ast::ForLoop::new(start, end, var, cond, incr, Box::new(body))
+    }
+}
+
+Iterator: ast::Iterator = {
+    <start:@L> "for" "(" <i:Identifier> "in" <list:Expression> ")" <body:Statement> <end:@R> => {
+        ast::Iterator::new(start, end, vec![i], list, Box::new(body))
+    },
+
+    <start:@L> "for" "(" "{" <is:Identifier+> "}" "in" <list:Expression> ")" <body:Statement> <end:@R> => {
+        ast::Iterator::new(start, end, is, list, Box::new(body))
+    }
+}
+
+FunCall: ast::FunctionCall = {
+    <start:@L> <i:Identifier> "(" <args:Args> ")" <end:@R> => {
+        ast::FunctionCall::new(start, end, i, args)
+    }
+}
+
+StructInit: ast::StructInit = {
+    <start:@L> <i:Identifier> "{" <args:Args> <auto_obj:(".." <Identifier>)?> "}" <end:@R> => {
+        ast::StructInit::new(start, end, i, args, auto_obj)
+    }
+}
+
+Args: Vec<ast::Expression> = {
+    <first:Expression?> <mut args:("," <Expression>)*> => {
+        let mut all = if first.is_some() { vec![first.unwrap()] } else { vec![] };
+        all.append(&mut args);
+        all 
+    }
+}
 
 Statement: ast::Statement = {
-    <block:StatementBlock> => ast::Statement::Block(block) 
+    <Variable> => ast::Statement::Variable(<>),
+    <Assign> => ast::Statement::Assign(<>),
+    <IfElse> => ast::Statement::IfElse(<>),
+    <ForLoop> => ast::Statement::ForLoop(<>),
+    <Iterator> => ast::Statement::Iterator(<>),
+    "return" <Expression> ";" => ast::Statement::Return(<>),
+    <FunCall> ";" => ast::Statement::FunCall(<>),
+    <StructInit> => ast::Statement::StateTransition(<>),
+
+    "{" <block:StatementBlock> "}" => ast::Statement::Block(block),
 }
 
 Expression: ast::Expression = {
@@ -119,22 +238,20 @@ Expression: ast::Expression = {
         )
     },
 
-
-    #[precedence(level="4")] #[assoc(side="left")]
-    <start:@L> <lhs:Expression> ":>" <rhs:Expression> <end:@R> => {
-        ast::Expression::Pipe(
-            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
-        )
-    },
-    
-
-    #[precedence(level="5")]
+    #[precedence(level="4")]
     <start:@L> "!" <val:Expression> <end:@R> => {
         ast::Expression::Not(
             ast::UnaryExpression::new(start, end, Box::new(val))
         )
     },
 
+    #[precedence(level="5")] #[assoc(side="left")]
+    <start:@L> <lhs:Expression> ":>" <rhs:Expression> <end:@R> => {
+        ast::Expression::Pipe(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
+        )
+    },
+    
 }
 
 Term: ast::Expression = {
@@ -187,6 +304,7 @@ Type: ast::Type = {
     <start:@L> "address" <end:@R> => ast::Type::new(start, end, ast::TypeVariant::Address),
     <start:@L> "()" <end:@R> => ast::Type::new(start, end, ast::TypeVariant::Unit),
     <start:@L> "bool" <end:@R> => ast::Type::new(start, end, ast::TypeVariant::Bool),
+    <i:Identifier> => ast::Type::new(i.loc.start, i.loc.end, ast::TypeVariant::Custom(i))
 }
 
 Identifier: ast::Identifier = {

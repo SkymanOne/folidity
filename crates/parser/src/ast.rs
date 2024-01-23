@@ -16,13 +16,13 @@ pub struct Identifier {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Declaration {
-    FuncDeclaration(Box<FunctionDeclaration>),
+    FunDeclaration(Box<FunctionDeclaration>),
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]
 pub struct Type {
     pub loc: Span,
-    pub tt: TypeVariant,
+    pub ty: TypeVariant,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -36,7 +36,7 @@ pub enum TypeVariant {
     Address,
     Unit,
     Bool,
-    //todo: list types
+    Custom(Identifier), //todo: list types
 }
 
 /// Parameter declaration of the state.
@@ -45,7 +45,7 @@ pub enum TypeVariant {
 pub struct StateParam {
     pub loc: Span,
     /// State type identifier.
-    pub ty: Identifier,
+    pub ty: Option<Identifier>,
     /// Variable name identifier.
     pub name: Option<Identifier>,
 }
@@ -96,9 +96,6 @@ pub struct AccessAttribute {
     pub members: Vec<Expression>,
 }
 
-/// Type alias for a list of function parameters.
-pub type ParameterList = Vec<(Span, Option<Param>)>;
-
 #[derive(Clone, Debug, PartialEq, Node)]
 pub struct FunctionDeclaration {
     /// Location span of the function.
@@ -112,13 +109,16 @@ pub struct FunctionDeclaration {
     pub vis: FunctionVisibility,
     /// Function return type declaration.
     pub return_ty: FuncReturnType,
+    /// Function name.
+    pub name: Identifier,
     /// List of parameters.
-    pub params: ParameterList,
+    pub params: Vec<Param>,
     /// Bounds for the state transition.
-    pub state_bound: StateBound,
+    pub state_bound: Option<StateBound>,
     /// Function logical bounds
-    pub st_block: StBlock,
-    pub body: Statement,
+    pub st_block: Option<StBlock>,
+    /// The body of the function.
+    pub body: StatementBlock,
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]
@@ -130,9 +130,16 @@ pub struct StBlock {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
-    Block(StatementBlock),
-    Return(Expression),
+    Variable(Variable),
+    Assign(Assign),
     IfElse(IfElse),
+    ForLoop(ForLoop),
+    Iterator(Iterator),
+    Return(Expression),
+    FunCall(FunctionCall),
+    StateTransition(StructInit),
+
+    Block(StatementBlock),
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]
@@ -141,12 +148,55 @@ pub struct StatementBlock {
     pub statements: Vec<Statement>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Node)]
+pub struct Variable {
+    pub loc: Span,
+    pub names: Vec<Identifier>,
+    pub mutable: bool,
+    pub ty: Option<Type>,
+    pub value: Option<Expression>,
+}
+
+#[derive(Clone, Debug, PartialEq, Node)]
+pub struct Assign {
+    pub loc: Span,
+    pub name: Identifier,
+    pub value: Expression,
+}
+
+#[derive(Clone, Debug, PartialEq, Node)]
 pub struct IfElse {
     pub loc: Span,
     pub condition: Expression,
     pub body: Box<Statement>,
     pub else_part: Option<Box<Statement>>,
+}
+
+#[derive(Clone, Debug, PartialEq, Node)]
+pub struct ForLoop {
+    pub loc: Span,
+    pub var: Variable,
+    pub condition: Expression,
+    pub incrementer: Expression,
+    pub body: Box<Statement>,
+}
+
+#[derive(Clone, Debug, PartialEq, Node)]
+pub struct Iterator {
+    pub loc: Span,
+    pub names: Vec<Identifier>,
+    pub list: Expression,
+    pub body: Box<Statement>,
+}
+
+#[derive(Clone, Debug, PartialEq, Node)]
+pub struct StructInit {
+    pub loc: Span,
+    pub name: Identifier,
+    pub args: Vec<Expression>,
+    /// Autofill fields from partial object
+    /// using `..ident` notation.
+    pub auto_object: Option<Identifier>,
 }
 
 #[derive(Clone, Debug, PartialEq)]

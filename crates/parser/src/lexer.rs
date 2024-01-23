@@ -18,6 +18,9 @@ pub enum LexicalError {
     #[error("Invalid integer value")]
     InvalidInteger(Span),
 
+    #[error("Invalid else block. Expected block or `if`")]
+    InvalidElseBlock(Span),
+
     #[default]
     #[error("Unknown error occurred")]
     UnknownError,

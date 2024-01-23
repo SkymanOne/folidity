@@ -139,7 +139,8 @@
     ],
     "cSpell.words": [
         "entrancy",
-        "Folidity"
+        "Folidity",
+        "incrementer"
     ],
     "rust-analyzer.linkedProjects": [
         "./crates/parser/Cargo.toml",

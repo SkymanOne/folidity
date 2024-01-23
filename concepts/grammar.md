@@ -29,15 +29,15 @@ Based on holistic approach
 <st_body>      := <expr> | `{` <st_list> `}`
 <st_list>      := <expr> | (<st_list> `,`)*
 
-<statement>    := <var> | <assign> | <if> | <for> | <foreach> | <return> | <func_call> | <state_t>
+<statement>    := <var> | <assign> | <if> | <for> | <foreach> | <return> | <func_call> | <state_t> `;`
 <var>          := let `mut`? <var_ident> (`:` <type>)? (`=` <expr>)?
 <var_ident>    := (<ident> | <decon>)
 <decon>        := `{` <decon_list> `}`
 <decon_list>   := <ident> | (<decon_list> `,` )*
 
 <assign>       := <ident> `=` <expr>
-<if>           := `if` `(` <expr> `)` `{` <statement> `}` (`else` `{` <statement> `}`)?
-<foreach>      := `for` `(` `var_ident` `in` (<ident> | <range>) `)` `{` <statement> `}`
+<if>           := `if` <expr> ` `{` <statement> `}` (`else` <if>? )*
+<foreach>      := `for` `(` <var_ident> `in` (<ident> | <range>) `)` `{` <statement> `}`
 <for>          := `for` `(` <var> `;` <expr> `;` <expr> `)` `{` <statement> `}`
 <range>        := `range` `(` <number> `to` <number> `)` 
 <return>       := `return` <expr>
