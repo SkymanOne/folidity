@@ -16,6 +16,10 @@ Declaration: ast::Declaration = {
     <EnumDeclaration> => ast::Declaration::EnumDeclaration(Box::new(<>)),
     <ModelDeclaration> => ast::Declaration::ModelDeclaration(Box::new(<>)),
     <StateDeclaration> => ast::Declaration::StateDeclaration(Box::new(<>)),
+    <start:@L> <error:!> <end:@R> => {
+        errors.push(error);
+        ast::Declaration::Error(Span { start, end })
+    }
 }
 
 
@@ -132,13 +136,17 @@ MutParams: Vec<ast::Param> = {
         let mut all = if first.is_some() { vec![first.unwrap()] } else { vec![] };
         all.append(&mut members);
         all
+    },
+    <error:!> => {
+        errors.push(error);
+        Vec::new()
     }
 }
 
 Param: ast::Param = {
     <start:@L> <i:Identifier> ":" <t:Type> <end:@R> => {
         ast::Param::new(start, end, t, i, true)
-    } 
+    }
 }
 
 Params: Vec<ast::Param> = {
@@ -146,6 +154,10 @@ Params: Vec<ast::Param> = {
         let mut all = if first.is_some() { vec![first.unwrap()] } else { vec![] };
         all.append(&mut members);
         all
+    },
+    <error:!> => {
+        errors.push(error);
+        Vec::new()
     }
 }
 
@@ -189,6 +201,11 @@ Variable: ast::Variable = {
 
     <start:@L> "let" <mt:"mut"?> "{" <is:Identifier+> "}" <ty:(":" <Type>)?> <val:("=" <Expression>)?> ";" <end:@R> => {
         ast::Variable::new(start, end, is, mt.is_some(), ty, val)
+    }, 
+
+     <start:@L> "let" <mt:"mut"?> "{" <is:Identifier+> "}" <ty:(":" <Type>)?> <error:!> ";" <end:@R> => {
+        errors.push(error);
+        ast::Variable::new(start, end, is, mt.is_some(), ty, None)
     }, 
 }
 
@@ -269,6 +286,12 @@ Statement: ast::Statement = {
     "move" <StructInit> ";" => ast::Statement::StateTransition(<>),
 
     <block:StatementBlock> => ast::Statement::Block(block),
+
+    <start:@L> <error:!> <end:@R> => {
+        errors.push(error);
+        ast::Statement::Error(Span { start, end })
+
+    }
 }
 
 Expression: ast::Expression = {

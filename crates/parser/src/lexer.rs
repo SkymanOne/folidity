@@ -12,8 +12,8 @@ pub enum LogosError {
 
 #[derive(Default, Clone, Debug, PartialEq, Error)]
 pub enum LexicalError {
-    #[error("Invalid token found, '{1}'")]
-    InvalidToken(Span, String),
+    #[error("Invalid token found")]
+    InvalidToken(Span),
 
     #[error("Invalid integer value")]
     InvalidInteger(Span),
@@ -318,8 +318,7 @@ impl<'input> Iterator for Lexer<'input> {
                     _ => Some((span.start, tok, span.end)),
                 },
                 Err(err) => {
-                    self.errors
-                        .push(logos_to_lexical_error(&err, &span, &self.token_stream));
+                    self.errors.push(logos_to_lexical_error(&err, &span));
                     self.next()
                 }
             }
@@ -329,15 +328,9 @@ impl<'input> Iterator for Lexer<'input> {
     }
 }
 
-fn logos_to_lexical_error<'input>(
-    error: &LogosError,
-    span: &Span,
-    tokens: &SpannedIter<'input, Token<'input>>,
-) -> LexicalError {
+fn logos_to_lexical_error(error: &LogosError, span: &Span) -> LexicalError {
     match error {
-        LogosError::InvalidToken => {
-            LexicalError::InvalidToken(span.clone(), tokens.slice().to_string())
-        }
+        LogosError::InvalidToken => LexicalError::InvalidToken(span.clone()),
         LogosError::InvalidInteger => LexicalError::InvalidInteger(span.clone()),
     }
 }

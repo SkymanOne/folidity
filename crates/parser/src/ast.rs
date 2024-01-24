@@ -21,6 +21,7 @@ pub enum Declaration {
     StructDeclaration(Box<StructDeclaration>),
     ModelDeclaration(Box<ModelDeclaration>),
     StateDeclaration(Box<StateDeclaration>),
+    Error(Span),
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]
@@ -235,6 +236,7 @@ pub enum Statement {
     StateTransition(StructInit),
 
     Block(StatementBlock),
+    Error(Span),
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]
