@@ -45,12 +45,12 @@ fn () init(proposal: string,
         end_block: int) 
 when () -> BeginState
 {
-    BeginState {
+    move BeginState {
         proposal,
         start_block,
         end_block,
         max_size
-    }
+    };
 }
 "#;
 
