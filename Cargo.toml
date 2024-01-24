@@ -19,3 +19,11 @@ version = "1.0.0"
 [workspace.dependencies]
 folidity-parser = { path = "crates/parser"}
 derive-node = { path = "crates/derive_node"}
+logos = "0.13"
+lalrpop-util = "0.20"
+lalrpop = "0.20"
+thiserror = "1.0"
+syn = "2.0"
+synstructure = "0.13"
+proc-macro2 = "1.0"
+quote = "1.0"
