@@ -36,7 +36,41 @@ pub enum TypeVariant {
     Address,
     Unit,
     Bool,
-    Custom(Identifier), //todo: list types
+    Set(Set),
+    List(List),
+    Mapping(Mapping),
+    Custom(Identifier),
+}
+
+#[derive(Clone, Debug, PartialEq, Node)]
+pub struct Set {
+    pub ty: Box<Type>,
+}
+
+#[derive(Clone, Debug, PartialEq, Node)]
+pub struct List {
+    pub ty: Box<Type>,
+}
+
+#[derive(Clone, Debug, PartialEq, Node)]
+pub struct MappingRelation {
+    pub loc: Span,
+    pub injective: bool,
+    pub partial: bool,
+    pub surjective: bool,
+}
+
+impl MappingRelation {
+    pub fn is_bijective(&self) -> bool {
+        self.injective && self.surjective
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Node)]
+pub struct Mapping {
+    pub from_ty: Box<Type>,
+    pub relation: MappingRelation,
+    pub to_ty: Box<Type>,
 }
 
 /// Parameter declaration of the state.

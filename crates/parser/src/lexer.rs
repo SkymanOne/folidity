@@ -132,11 +132,11 @@ pub enum Token<'input> {
     UnitType,
 
     //Keywords
-    #[token("Mapping")]
+    #[token("mapping")]
     Mapping,
-    #[token("Set")]
+    #[token("set")]
     Set,
-    #[token("List")]
+    #[token("list")]
     List,
     #[token("struct")]
     Struct,
@@ -246,9 +246,9 @@ impl<'input> fmt::Display for Token<'input> {
             Token::AddressType => word("address"),
             Token::BoolType => word("bool"),
             Token::UnitType => word("()"),
-            Token::Mapping => word("Mapping"),
-            Token::Set => word("Set"),
-            Token::List => word("List"),
+            Token::Mapping => word("mapping"),
+            Token::Set => word("set"),
+            Token::List => word("list"),
             Token::Struct => word("struct"),
             Token::Enum => word("enum"),
             Token::State => word("state"),

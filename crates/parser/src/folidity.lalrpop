@@ -304,7 +304,22 @@ Type: ast::Type = {
     <start:@L> "address" <end:@R> => ast::Type::new(start, end, ast::TypeVariant::Address),
     <start:@L> "()" <end:@R> => ast::Type::new(start, end, ast::TypeVariant::Unit),
     <start:@L> "bool" <end:@R> => ast::Type::new(start, end, ast::TypeVariant::Bool),
+    <start:@L> "set" "<" <ty:Type> ">" <end:@R> => ast::Type::new(start, end, ast::TypeVariant::Set(ast::Set::new(Box::new(ty)))),
+    <start:@L> "list" "<" <ty:Type> ">" <end:@R> => ast::Type::new(start, end, ast::TypeVariant::List(ast::List::new(Box::new(ty)))),
+    <start:@L> <m:Mapping> <end:@R> => ast::Type::new(start, end, ast::TypeVariant::Mapping(m)),
     <i:Identifier> => ast::Type::new(i.loc.start, i.loc.end, ast::TypeVariant::Custom(i))
+}
+
+MappingRelation: ast::MappingRelation = {
+    <start:@L> <inj:">"?> "-" <partial:"/"?> ">" <surj:">"?> <end:@R> => {
+        ast::MappingRelation::new(start, end, inj.is_some(), partial.is_some(), surj.is_some())
+    }
+}
+
+Mapping: ast::Mapping = {
+    "mapping" "<" <from:Type> <rel:MappingRelation> <to:Type> ">" => {
+        ast::Mapping::new(Box::new(from), rel, Box::new(to))
+    }
 }
 
 Identifier: ast::Identifier = {
@@ -354,9 +369,9 @@ extern {
         "address" => Token::AddressType,
         "bool" => Token::BoolType,
         "()" => Token::UnitType,
-        "Mapping" => Token::Mapping,
-        "Set" => Token::Set,
-        "List" => Token::List,
+        "mapping" => Token::Mapping,
+        "set" => Token::Set,
+        "list" => Token::List,
         "struct" => Token::Struct,
         "enum" => Token::Enum,
         "state" => Token::State,
