@@ -81,7 +81,7 @@ state VotingState(VotingModel);
 // Reveal state has explicit constraints that it must be transition from `VotingState`
 state RevealState(RevealModel) from VotingState st {
     // we specify that we can transition into this state only when
-    current_block > VotingState.end_block
+    current_block > st.end_block
 };
 
 state ExecuteState(ExecuteModel) from RevealState st {
@@ -249,21 +249,24 @@ view(BeginState s) fn List<Address> get_voters() {
 version: "1.0.0"
 author: Gherman Nicolisin <gn2g21@soton.ac.uk>
 
-// We have empty state, no data stored
-state NoState;
+# We have empty state, no data stored
+# state NoState;
 
-// `out: int` creates binding for the return value to check the post-condition
-// Note that we don't have state transition spec as we don't mutate the storage.
+# `out: int` creates binding for the return value to check the post-condition
+# Note that we don't have state transition spec as we don't mutate the storage.
 fn (out: int) calculate(value: int)
-st value > 0,
+st {
+    value > 0,
    out < 10000
+}
 {
-    match value {
-        case 1 -> SimpleState (return value),
-        case other -> return calculate(
-                        // `.or(int)` specify what happens when operation fails
-                        value * (value - 1).or(1)
-                        )
+    if value == 1 {
+        SimpleState (return value)
+    } else {
+        return calculate(
+                // `.or(int)` specify what happens when operation fails
+                    value * (value - 1).or(1)
+                        );
     }
 }
 

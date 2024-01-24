@@ -142,6 +142,8 @@ pub enum Token<'input> {
     Struct,
     #[token("enum")]
     Enum,
+    #[token("model")]
+    Model,
     #[token("state")]
     State,
     #[token("fn")]
@@ -199,6 +201,9 @@ pub enum Token<'input> {
     #[token(",")]
     Coma,
 
+    #[token("move")]
+    Move,
+
     //comment
     #[regex(r"#[^\n]*", |lex| lex.slice())]
     Comment(&'input str),
@@ -251,6 +256,7 @@ impl<'input> fmt::Display for Token<'input> {
             Token::List => word("list"),
             Token::Struct => word("struct"),
             Token::Enum => word("enum"),
+            Token::Model => word("model"),
             Token::State => word("state"),
             Token::Func => word("fn"),
             Token::From => word("from"),
@@ -278,6 +284,7 @@ impl<'input> fmt::Display for Token<'input> {
             Token::Dot => word("."),
             Token::DoubleDot => word(".."),
             Token::Coma => word(","),
+            Token::Move => word("move"),
             Token::Comment(c) => write!(f, "{c}"),
         }
     }

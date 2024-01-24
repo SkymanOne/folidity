@@ -17,6 +17,10 @@ pub struct Identifier {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Declaration {
     FunDeclaration(Box<FunctionDeclaration>),
+    EnumDeclaration(Box<EnumDeclaration>),
+    StructDeclaration(Box<StructDeclaration>),
+    ModelDeclaration(Box<ModelDeclaration>),
+    StateDeclaration(Box<StateDeclaration>),
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]
@@ -91,6 +95,8 @@ pub struct Param {
     pub ty: Type,
     /// Variable name identifier.
     pub name: Identifier,
+    /// Is param mutable.
+    pub is_mut: bool,
 }
 
 /// View state modifier.
@@ -156,6 +162,61 @@ pub struct FunctionDeclaration {
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]
+pub struct EnumDeclaration {
+    /// Location span of the enum.
+    pub loc: Span,
+    /// Name of the enum.
+    pub name: Identifier,
+    /// Variants of the enum.
+    pub variants: Vec<Identifier>,
+}
+
+#[derive(Clone, Debug, PartialEq, Node)]
+pub struct StructDeclaration {
+    /// Location span of the struct.
+    pub loc: Span,
+    /// Name of the struct.
+    pub name: Identifier,
+    /// Fields of the struct.
+    pub fields: Vec<Param>,
+}
+
+#[derive(Clone, Debug, PartialEq, Node)]
+pub struct ModelDeclaration {
+    /// Location span of the model.
+    pub loc: Span,
+    /// Model name.
+    pub name: Identifier,
+    /// Fields of the model.
+    pub fields: Vec<Param>,
+    /// Model logical bounds.
+    pub st_block: Option<StBlock>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum StateBody {
+    /// Fields are specified manually.
+    Raw(Vec<Param>),
+    /// Fields are derived from model.
+    Model(Identifier),
+}
+
+#[derive(Clone, Debug, PartialEq, Node)]
+pub struct StateDeclaration {
+    /// Location span of the model.
+    pub loc: Span,
+    /// Model name.
+    pub name: Identifier,
+    /// Body of the state. Its fields.
+    pub body: Option<StateBody>,
+    /// From which state we can transition.
+    /// e.g `StateA st`
+    pub from: Option<(Identifier, Option<Identifier>)>,
+    /// Model logical bounds.
+    pub st_block: Option<StBlock>,
+}
+
+#[derive(Clone, Debug, PartialEq, Node)]
 pub struct StBlock {
     pub loc: Span,
     /// List of logic expressions
@@ -202,7 +263,7 @@ pub struct Assign {
 pub struct IfElse {
     pub loc: Span,
     pub condition: Expression,
-    pub body: Box<Statement>,
+    pub body: Box<StatementBlock>,
     pub else_part: Option<Box<Statement>>,
 }
 
@@ -212,7 +273,7 @@ pub struct ForLoop {
     pub var: Variable,
     pub condition: Expression,
     pub incrementer: Expression,
-    pub body: Box<Statement>,
+    pub body: Box<StatementBlock>,
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]
@@ -220,7 +281,7 @@ pub struct Iterator {
     pub loc: Span,
     pub names: Vec<Identifier>,
     pub list: Expression,
-    pub body: Box<Statement>,
+    pub body: Box<StatementBlock>,
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]

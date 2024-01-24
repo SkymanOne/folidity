@@ -11,12 +11,63 @@ pub FolidityTree: ast::Source = {
 }
 
 Declaration: ast::Declaration = {
-    <FunDeclaration> => ast::Declaration::FunDeclaration(Box::new(<>))
+    <FunDeclaration> => ast::Declaration::FunDeclaration(Box::new(<>)),
+    <StructDeclaration> => ast::Declaration::StructDeclaration(Box::new(<>)),
+    <EnumDeclaration> => ast::Declaration::EnumDeclaration(Box::new(<>)),
+    <ModelDeclaration> => ast::Declaration::ModelDeclaration(Box::new(<>)),
+    <StateDeclaration> => ast::Declaration::StateDeclaration(Box::new(<>)),
+}
+
+
+StructDeclaration: ast::StructDeclaration = {
+    <start:@L> "struct" <i:Identifier> "{" <params:Params> "}" <end:@R> => {
+        ast::StructDeclaration::new(start, end, i, params)
+    }
+}
+
+EnumDeclaration: ast::EnumDeclaration = {
+    <start:@L> "enum" <i:Identifier> "{" <vars:Variants> "}" <end:@R> => {
+        ast::EnumDeclaration::new(start, end, i, vars)
+    }
+}
+
+ModelDeclaration: ast::ModelDeclaration = {
+    <start:@L> "model" <i:Identifier> "{" <params:Params> "}" <st:StBlock?> <end:@R> => {
+        ast::ModelDeclaration::new(start, end, i, params, st)
+    }
+}
+
+FromState: (ast::Identifier, Option<ast::Identifier>) = {
+    "from" <s:Identifier> <si:Identifier?> => {
+        (s, si)
+    } 
+}
+
+StateDeclaration: ast::StateDeclaration = {
+    <start:@L> "state" <i:Identifier> "(" <m:Identifier> ")" 
+    <from:FromState?> <st:StBlock?> <end:@R> => {
+        ast::StateDeclaration::new(start, end, i, Some(ast::StateBody::Model(m)), from, st)
+    },
+
+    <start:@L> "state" <i:Identifier> "{" <params:Params> "}" 
+    <from:FromState?> <st:StBlock?> <end:@R> => {
+       ast::StateDeclaration::new(start, end, i, Some(ast::StateBody::Raw(params)), from, st) 
+    },
+
+    <start:@L> "state" <i:Identifier> ";"<end:@R> => {
+       ast::StateDeclaration::new(start, end, i, None, None, None) 
+    },   
 }
 
 FunDeclaration: ast::FunctionDeclaration = {
-    <start:@L> <init:"@init"?> <attrs:AccessAttr+> <vis:FunctionVis> "fn" <ty:FuncReturnType> <i:Identifier> 
-    "(" <params:FunParams> ")" <sb:StateBound?> <st:StBlock?> "{" <body:StatementBlock> "}" <end:@R> =>  {
+    <start:@L> <init:"@init"?> <attrs:AccessAttr*> <view:View?> "fn" <ty:FuncReturnType> <i:Identifier> 
+    "(" <params:MutParams> ")" <sb:StateBound?> <st:StBlock?> <body:StatementBlock> <end:@R> =>  {
+        let is_pub = attrs.len() > 0;
+        let vis = match view {
+            Some(v) => v,
+            _ if is_pub => ast::FunctionVisibility::Pub,
+            _ => ast::FunctionVisibility::Priv
+        };
         ast::FunctionDeclaration::new(
             start, 
             end,
@@ -43,9 +94,7 @@ AccessAttr: ast::AccessAttribute = {
 
 
 
-FunctionVis: ast::FunctionVisibility = {
-    "pub" => ast::FunctionVisibility::Pub,
-
+View: ast::FunctionVisibility = {
     <start:@L> "view" "(" <param:StateParam> ")" <end:@R> => {
         ast::FunctionVisibility::View(
             ast::ViewState::new(start, end, param)
@@ -72,19 +121,42 @@ FuncReturnType: ast::FuncReturnType = {
     <t:Type> => ast::FuncReturnType::Type(t),
 }
 
-Param: ast::Param = {
-    <start:@L> <i:Identifier> ":" <t:Type> <end:@R> => {
-        ast::Param::new(start, end, t, i)
+MutParam: ast::Param = {
+    <start:@L> <m:"mut"?> <i:Identifier> ":" <t:Type> <end:@R> => {
+        ast::Param::new(start, end, t, i, m.is_some())
     } 
 }
 
-FunParams: Vec<ast::Param> = {
+MutParams: Vec<ast::Param> = {
     <first:Param?> <mut members:("," <Param>)*> => {
         let mut all = if first.is_some() { vec![first.unwrap()] } else { vec![] };
         all.append(&mut members);
         all
     }
 }
+
+Param: ast::Param = {
+    <start:@L> <i:Identifier> ":" <t:Type> <end:@R> => {
+        ast::Param::new(start, end, t, i, true)
+    } 
+}
+
+Params: Vec<ast::Param> = {
+    <first:Param?> <mut members:("," <Param>)*> => {
+        let mut all = if first.is_some() { vec![first.unwrap()] } else { vec![] };
+        all.append(&mut members);
+        all
+    }
+}
+
+Variants: Vec<ast::Identifier> = {
+    <first:Identifier?> <mut members:("," <Identifier>)*> => {
+        let mut all = if first.is_some() { vec![first.unwrap()] } else { vec![] };
+        all.append(&mut members);
+        all
+    }
+}
+
 
 StateBound: ast::StateBound = {
     "when" <start:@L> <from:StateParam> "->" <to:StateParam> <end:@R> => {
@@ -93,8 +165,10 @@ StateBound: ast::StateBound = {
 }
 
 StBlock: ast::StBlock = {
-    "st" "{" <start:@L> <exprs:(<Expression> ",")+> <end:@R> "}" => {
-        ast::StBlock::new(start, end, exprs)
+    "st" "{" <start:@L> <e:Expression?> <mut exprs:("," <Expression>)+> <end:@R> "}" => {
+        let mut all = if e.is_some() { vec![e.unwrap()] } else { vec![] };
+        all.append(&mut exprs);
+        ast::StBlock::new(start, end, all)
     },
 
     <start:@L> "st" <e:Expression> <end:@R> => {
@@ -103,7 +177,7 @@ StBlock: ast::StBlock = {
 }
 
 StatementBlock: ast::StatementBlock = {
-    <start:@L> <statements:Statement*> <end:@L> => {
+    <start:@L> "{" <statements:Statement*> "}" <end:@L> => {
         ast::StatementBlock::new(start, end, statements)
     }
 }
@@ -126,12 +200,12 @@ Assign: ast::Assign = {
 
 IfElse: ast::IfElse = {
     #[precedence(level = "0")]
-    <start:@L> "if" <cond:Expression> "{" <body:Statement> "}" <end:@R> => {
+    <start:@L> "if" <cond:Expression> <body:StatementBlock> <end:@R> => {
         ast::IfElse::new(start, end, cond, Box::new(body), None)
     },
 
-    #[precedence(level = "1")]
-    <start:@L> "if" <cond:Expression> "{" <body:Statement> "}" <mid:@R> "else" <else_part:Statement> <end:@R> => {
+    #[precedence(level = "1")] #[assoc(side="left")]
+    <start:@L> "if" <cond:Expression> <body:StatementBlock> <mid:@R> "else" <else_part:Statement> <end:@R> => {
         match else_part {
             ast::Statement::Block(_) | ast::Statement::IfElse(_) => {},
             _ => {
@@ -145,21 +219,21 @@ IfElse: ast::IfElse = {
             }
         };
         ast::IfElse::new(start, end, cond, Box::new(body), Some(Box::new(else_part)))
-    }
+    },
 }
 
 ForLoop: ast::ForLoop = {
-    <start:@L> "for" "(" <var:Variable> ";" <cond:Expression> ";" <incr:Expression> ")" <body:Statement>  <end:@R> => {
+    <start:@L> "for" "(" <var:Variable> ";" <cond:Expression> ";" <incr:Expression> ")" <body:StatementBlock>  <end:@R> => {
         ast::ForLoop::new(start, end, var, cond, incr, Box::new(body))
     }
 }
 
 Iterator: ast::Iterator = {
-    <start:@L> "for" "(" <i:Identifier> "in" <list:Expression> ")" <body:Statement> <end:@R> => {
+    <start:@L> "for" "(" <i:Identifier> "in" <list:Expression> ")" <body:StatementBlock> <end:@R> => {
         ast::Iterator::new(start, end, vec![i], list, Box::new(body))
     },
 
-    <start:@L> "for" "(" "{" <is:Identifier+> "}" "in" <list:Expression> ")" <body:Statement> <end:@R> => {
+    <start:@L> "for" "(" "{" <is:Identifier+> "}" "in" <list:Expression> ")" <body:StatementBlock> <end:@R> => {
         ast::Iterator::new(start, end, is, list, Box::new(body))
     }
 }
@@ -185,16 +259,16 @@ Args: Vec<ast::Expression> = {
 }
 
 Statement: ast::Statement = {
-    <Variable> => ast::Statement::Variable(<>),
-    <Assign> => ast::Statement::Assign(<>),
+    <Variable> ";" => ast::Statement::Variable(<>),
+    <Assign> ";" => ast::Statement::Assign(<>),
     <IfElse> => ast::Statement::IfElse(<>),
     <ForLoop> => ast::Statement::ForLoop(<>),
     <Iterator> => ast::Statement::Iterator(<>),
     "return" <Expression> ";" => ast::Statement::Return(<>),
     <FunCall> ";" => ast::Statement::FunCall(<>),
-    <StructInit> => ast::Statement::StateTransition(<>),
+    "move" <StructInit> ";" => ast::Statement::StateTransition(<>),
 
-    "{" <block:StatementBlock> "}" => ast::Statement::Block(block),
+    <block:StatementBlock> => ast::Statement::Block(block),
 }
 
 Expression: ast::Expression = {
@@ -251,6 +325,55 @@ Expression: ast::Expression = {
             ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
         )
     },
+
+   #[precedence(level="6")] #[assoc(side="left")]
+    <start:@L> <lhs:Expression> "==" <rhs:Expression> <end:@R> => {
+        ast::Expression::Equal(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
+        )
+    }, 
+    <start:@L> <lhs:Expression> "!=" <rhs:Expression> <end:@R> => {
+        ast::Expression::NotEqual(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
+        )
+    }, 
+    <start:@L> <lhs:Expression> ">" <rhs:Expression> <end:@R> => {
+        ast::Expression::Greater(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
+        )
+    }, 
+    <start:@L> <lhs:Expression> "<" <rhs:Expression> <end:@R> => {
+        ast::Expression::Less(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
+        )
+    }, 
+    <start:@L> <lhs:Expression> ">=" <rhs:Expression> <end:@R> => {
+        ast::Expression::GreaterEq(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
+        )
+    }, 
+    <start:@L> <lhs:Expression> "<=" <rhs:Expression> <end:@R> => {
+        ast::Expression::LessEq(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
+        )
+    }, 
+    <start:@L> <lhs:Expression> "in" <rhs:Expression> <end:@R> => {
+        ast::Expression::In(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
+        )
+    }, 
+
+    #[precedence(level="7")] #[assoc(side="left")]
+    <start:@L> <lhs:Expression> "||" <rhs:Expression> <end:@R> => {
+        ast::Expression::Or(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
+        )
+    },  
+    <start:@L> <lhs:Expression> "&&" <rhs:Expression> <end:@R> => {
+        ast::Expression::And(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
+        )
+    },  
     
 }
 
@@ -258,6 +381,7 @@ Term: ast::Expression = {
     <i:Identifier> => {
         ast::Expression::Variable(i)
     },
+    <FunCall> => ast::Expression::FunctionCall(<>),
 
     <start:@L> <val:number> <end:@R> => {
         ast::Expression::Number(
@@ -354,7 +478,7 @@ extern {
         "%" => Token::Modulo,
         "!" => Token::Not,
         "==" => Token::Eq,
-        "/=" => Token::Neq,
+        "!=" => Token::Neq,
         "<=" => Token::Leq,
         ">=" => Token::Meq,
         "in" => Token::In,
@@ -374,6 +498,7 @@ extern {
         "list" => Token::List,
         "struct" => Token::Struct,
         "enum" => Token::Enum,
+        "model" => Token::Model,
         "state" => Token::State,
         "fn" => Token::Func,
         "from" => Token::From,
@@ -401,5 +526,6 @@ extern {
         "." => Token::Dot,
         ".." => Token::DoubleDot,
         "," => Token::Coma,
+        "move" => Token::Move,
     }
 }

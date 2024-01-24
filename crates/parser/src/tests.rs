@@ -39,7 +39,7 @@ fn comment_token() {
 const SRC: &str = r#"
 @init
 @(any)
-pub fn () init(proposal: string, 
+fn () init(proposal: string, 
         start_block: int, 
         max_size: int, 
         end_block: int) 
@@ -66,18 +66,66 @@ fn test_simple_func() {
     let func = &tree.declarations[0];
     assert!(matches!(func, &Declaration::FunDeclaration(_)));
 
-    let Declaration::FunDeclaration(func_decl) = func;
-    assert!(func_decl.is_init);
-    assert_eq!(func_decl.access_attributes[0].members.len(), 1);
-    assert_eq!(func_decl.params.len(), 4);
-    assert_eq!(func_decl.name.name, String::from("init"));
-    assert!(matches!(func_decl.return_ty, FuncReturnType::Type(_)));
+    if let Declaration::FunDeclaration(func_decl) = func {
+        assert!(func_decl.is_init);
+        assert_eq!(func_decl.access_attributes[0].members.len(), 1);
+        assert_eq!(func_decl.params.len(), 4);
+        assert_eq!(func_decl.name.name, String::from("init"));
+        assert!(matches!(func_decl.return_ty, FuncReturnType::Type(_)));
 
-    if let FuncReturnType::Type(ty) = &func_decl.return_ty {
-        assert!(matches!(&ty.ty, TypeVariant::Unit))
+        if let FuncReturnType::Type(ty) = &func_decl.return_ty {
+            assert!(matches!(&ty.ty, TypeVariant::Unit))
+        }
+
+        assert_eq!(func_decl.body.statements.len(), 1);
+        let statement = &func_decl.body.statements[0];
+        assert!(matches!(statement, Statement::StateTransition(_)))
     }
+}
 
-    assert_eq!(func_decl.body.statements.len(), 1);
-    let statement = &func_decl.body.statements[0];
-    assert!(matches!(statement, Statement::StateTransition(_)))
+const FACTORIAL_SRC: &str = r#"
+state NoState;
+fn (out: int) calculate(value: int)
+st {
+    value > 0,
+    out < 10000
+}
+{
+    if value == 1 {
+        move SimpleState{};
+        return value;
+    } else {
+        return calculate(
+                # `:> or(int)` specify what happens when operation fails
+                    value * (value - 1) :> or(1)
+                );
+    }
+}
+
+@(any)
+fn int get_factorial(value: int)
+st value < 100
+{
+    return calculate(value);
+}
+"#;
+
+#[test]
+fn test_factorial() {
+    let mut lexer_errors = Vec::new();
+    let tokens = Lexer::new(FACTORIAL_SRC, &mut lexer_errors);
+    let mut parser_errors = Vec::new();
+    let tree = folidity::FolidityTreeParser::new()
+        .parse(&mut parser_errors, tokens)
+        .unwrap();
+    assert!(tree.declarations.len() == 3);
+
+    let first_decl = &tree.declarations[0];
+    assert!(matches!(first_decl, Declaration::StateDeclaration(_)));
+    if let Declaration::StateDeclaration(state) = first_decl {
+        assert_eq!(state.name.name, "NoState");
+        assert_eq!(state.body, None);
+        assert_eq!(state.from, None);
+        assert_eq!(state.st_block, None);
+    }
 }
