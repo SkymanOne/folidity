@@ -159,7 +159,7 @@ pub struct FunctionDeclaration {
     /// Function logical bounds
     pub st_block: Option<StBlock>,
     /// The body of the function.
-    pub body: StatementBlock,
+    pub body: Statement,
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]

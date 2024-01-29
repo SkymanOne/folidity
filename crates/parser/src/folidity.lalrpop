@@ -44,28 +44,28 @@ ModelDeclaration: ast::ModelDeclaration = {
 FromState: (ast::Identifier, Option<ast::Identifier>) = {
     "from" <s:Identifier> <si:Identifier?> => {
         (s, si)
-    } 
+    }
 }
 
 StateDeclaration: ast::StateDeclaration = {
-    <start:@L> "state" <i:Identifier> "(" <m:Identifier> ")" 
+    <start:@L> "state" <i:Identifier> "(" <m:Identifier> ")"
     <from:FromState?> <st:StBlock?> <end:@R> => {
         ast::StateDeclaration::new(start, end, i, Some(ast::StateBody::Model(m)), from, st)
     },
 
-    <start:@L> "state" <i:Identifier> "{" <params:Params> "}" 
+    <start:@L> "state" <i:Identifier> "{" <params:Params> "}"
     <from:FromState?> <st:StBlock?> <end:@R> => {
-       ast::StateDeclaration::new(start, end, i, Some(ast::StateBody::Raw(params)), from, st) 
+       ast::StateDeclaration::new(start, end, i, Some(ast::StateBody::Raw(params)), from, st)
     },
 
     <start:@L> "state" <i:Identifier> ";"<end:@R> => {
-       ast::StateDeclaration::new(start, end, i, None, None, None) 
-    },   
+       ast::StateDeclaration::new(start, end, i, None, None, None)
+    },
 }
 
 FunDeclaration: ast::FunctionDeclaration = {
-    <start:@L> <init:"@init"?> <attrs:AccessAttr*> <view:View?> "fn" <ty:FuncReturnType> <i:Identifier> 
-    "(" <params:MutParams> ")" <sb:StateBound?> <st:StBlock?> <body:StatementBlock> <end:@R> =>  {
+    <start:@L> <init:"@init"?> <attrs:AccessAttr*> <view:View?> "fn" <ty:FuncReturnType> <i:Identifier>
+    "(" <params:MutParams> ")" <sb:StateBound?> <st:StBlock?> <body:FunBody> <end:@R> =>  {
         let is_pub = attrs.len() > 0;
         let vis = match view {
             Some(v) => v,
@@ -73,19 +73,24 @@ FunDeclaration: ast::FunctionDeclaration = {
             _ => ast::FunctionVisibility::Priv
         };
         ast::FunctionDeclaration::new(
-            start, 
+            start,
             end,
             init.is_some(),
             attrs,
             vis,
             ty,
-            i, 
+            i,
             params,
             sb,
             st,
             body
         )
     }
+}
+
+FunBody: ast::Statement = {
+    <block:StatementBlock> => ast::Statement::Block(block),
+    "=" <Statement> => <>
 }
 
 AccessAttr: ast::AccessAttribute = {
@@ -107,16 +112,15 @@ View: ast::FunctionVisibility = {
 }
 
 StateParam: ast::StateParam = {
-    <start:@L> <ty:Identifier> <name_op:Identifier?> <end:@R> => {
-        let n = match name_op {
-            Some(i) => Some(i),
-            None => None,
-        };
-        ast::StateParam::new(start, end, Some(ty), n)
+    <start:@L> <ty:Identifier> <end:@R> => {
+        ast::StateParam::new(start, end, Some(ty), None)
+    },
+    <start:@L> "(" <ty:Identifier> <name_op:Identifier> ")" <end:@R> => {
+        ast::StateParam::new(start, end, Some(ty), Some(name_op))
     },
     <start:@L> "()" <end:@R> => {
         ast::StateParam::new(start, end, None, None)
-    } 
+    }
 }
 
 FuncReturnType: ast::FuncReturnType = {
@@ -128,7 +132,7 @@ FuncReturnType: ast::FuncReturnType = {
 MutParam: ast::Param = {
     <start:@L> <m:"mut"?> <i:Identifier> ":" <t:Type> <end:@R> => {
         ast::Param::new(start, end, t, i, m.is_some())
-    } 
+    }
 }
 
 MutParams: Vec<ast::Param> = {
@@ -177,7 +181,7 @@ StateBound: ast::StateBound = {
 }
 
 StBlock: ast::StBlock = {
-    "st" "{" <start:@L> <e:Expression?> <mut exprs:("," <Expression>)+> <end:@R> "}" => {
+"st" "[" <start:@L> <e:Expression?> <mut exprs:("," <Expression>)+> <end:@R> "]" => {
         let mut all = if e.is_some() { vec![e.unwrap()] } else { vec![] };
         all.append(&mut exprs);
         ast::StBlock::new(start, end, all)
@@ -201,12 +205,12 @@ Variable: ast::Variable = {
 
     <start:@L> "let" <mt:"mut"?> "{" <is:Identifier+> "}" <ty:(":" <Type>)?> <val:("=" <Expression>)?> ";" <end:@R> => {
         ast::Variable::new(start, end, is, mt.is_some(), ty, val)
-    }, 
+    },
 
      <start:@L> "let" <mt:"mut"?> "{" <is:Identifier+> "}" <ty:(":" <Type>)?> <error:!> ";" <end:@R> => {
         errors.push(error);
         ast::Variable::new(start, end, is, mt.is_some(), ty, None)
-    }, 
+    },
 }
 
 Assign: ast::Assign = {
@@ -271,7 +275,7 @@ Args: Vec<ast::Expression> = {
     <first:Expression?> <mut args:("," <Expression>)*> => {
         let mut all = if first.is_some() { vec![first.unwrap()] } else { vec![] };
         all.append(&mut args);
-        all 
+        all
     }
 }
 
@@ -354,50 +358,50 @@ Expression: ast::Expression = {
         ast::Expression::Equal(
             ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
         )
-    }, 
+    },
     <start:@L> <lhs:Expression> "!=" <rhs:Expression> <end:@R> => {
         ast::Expression::NotEqual(
             ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
         )
-    }, 
+    },
     <start:@L> <lhs:Expression> ">" <rhs:Expression> <end:@R> => {
         ast::Expression::Greater(
             ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
         )
-    }, 
+    },
     <start:@L> <lhs:Expression> "<" <rhs:Expression> <end:@R> => {
         ast::Expression::Less(
             ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
         )
-    }, 
+    },
     <start:@L> <lhs:Expression> ">=" <rhs:Expression> <end:@R> => {
         ast::Expression::GreaterEq(
             ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
         )
-    }, 
+    },
     <start:@L> <lhs:Expression> "<=" <rhs:Expression> <end:@R> => {
         ast::Expression::LessEq(
             ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
         )
-    }, 
+    },
     <start:@L> <lhs:Expression> "in" <rhs:Expression> <end:@R> => {
         ast::Expression::In(
             ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
         )
-    }, 
+    },
 
     #[precedence(level="7")] #[assoc(side="left")]
     <start:@L> <lhs:Expression> "||" <rhs:Expression> <end:@R> => {
         ast::Expression::Or(
             ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
         )
-    },  
+    },
     <start:@L> <lhs:Expression> "&&" <rhs:Expression> <end:@R> => {
         ast::Expression::And(
             ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
         )
-    },  
-    
+    },
+
 }
 
 Term: ast::Expression = {
@@ -438,7 +442,7 @@ Term: ast::Expression = {
     },
 
 
-    "(" <Expression> ")" => <> 
+    "(" <Expression> ")" => <>
 }
 
 Type: ast::Type = {
@@ -490,6 +494,8 @@ extern {
         "(" => Token::LParen,
         ")" => Token::RParen,
         "{" => Token::LCurly,
+        "[" => Token::LSquare,
+        "]" => Token::RSquare,
         "}" => Token::RCurly,
         "<" => Token::LAngle,
         ">" => Token::RAngle,

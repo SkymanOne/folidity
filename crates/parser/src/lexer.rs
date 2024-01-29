@@ -75,6 +75,11 @@ pub enum Token<'input> {
     #[token(">")]
     RAngle,
 
+    #[token("[")]
+    LSquare,
+    #[token("]")]
+    RSquare,
+
     #[token("=")]
     Assign,
 
@@ -226,6 +231,8 @@ impl<'input> fmt::Display for Token<'input> {
             Token::RParen => word(")"),
             Token::LCurly => word("{"),
             Token::RCurly => word("}"),
+            Token::LSquare => word("["),
+            Token::RSquare => word("]"),
             Token::LAngle => word("<"),
             Token::RAngle => word(">"),
             Token::Assign => word("="),

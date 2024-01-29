@@ -39,19 +39,17 @@ fn comment_token() {
 const SRC: &str = r#"
 @init
 @(any)
-fn () init(proposal: string, 
-        start_block: int, 
-        max_size: int, 
-        end_block: int) 
+fn () init(proposal: string,
+        start_block: int,
+        max_size: int,
+        end_block: int)
 when () -> BeginState
-{
-    move BeginState {
-        proposal,
-        start_block,
-        end_block,
-        max_size
-    };
-}
+= move BeginState {
+    proposal,
+    start_block,
+    end_block,
+    max_size
+};
 "#;
 
 #[test]
@@ -77,22 +75,25 @@ fn test_simple_func() {
             assert!(matches!(&ty.ty, TypeVariant::Unit))
         }
 
-        assert_eq!(func_decl.body.statements.len(), 1);
-        let statement = &func_decl.body.statements[0];
-        assert!(matches!(statement, Statement::StateTransition(_)))
+        let statement = &func_decl.body;
+        assert!(
+            matches!(statement, Statement::StateTransition(_)),
+            "Got {:?}",
+            statement
+        )
     }
 }
 
 const FACTORIAL_SRC: &str = r#"
-state NoState;
+state EmptyState;
 fn (out: int) calculate(value: int)
-st {
+st [
     value > 0,
     out < 10000
-}
+]
 {
     if value == 1 {
-        move SimpleState{};
+        move EmptyState{};
         return value;
     } else {
         return calculate(
@@ -123,7 +124,7 @@ fn test_factorial() {
     let first_decl = &tree.declarations[0];
     assert!(matches!(first_decl, Declaration::StateDeclaration(_)));
     if let Declaration::StateDeclaration(state) = first_decl {
-        assert_eq!(state.name.name, "NoState");
+        assert_eq!(state.name.name, "EmptyState");
         assert_eq!(state.body, None);
         assert_eq!(state.from, None);
         assert_eq!(state.st_block, None);

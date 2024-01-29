@@ -1,0 +1,8 @@
+   Compiling folidity-parser v1.0.0 (/Users/skymanone/Projects/folidity/crates/parser)
+   Compiling folidity v1.0.0 (/Users/skymanone/Projects/folidity/crates/folidity)
+    Finished test [unoptimized + debuginfo] target(s) in 0.51s
+     Running unittests src/lib.rs (target/debug/deps/derive_node-00a8a454367af414)
+     Running unittests src/main.rs (target/debug/deps/folidity-394d4be1e2852a7e)
+     Running unittests src/lib.rs (target/debug/deps/folidity_parser-5e57cdcdcf157d2e)
+   Doc-tests derive-node
+   Doc-tests folidity-parser
