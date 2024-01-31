@@ -12,16 +12,12 @@ fn node_derive(mut s: synstructure::Structure) -> TokenStream2 {
         .add_bounds(synstructure::AddBounds::Fields)
         .underscore_const(true);
     match &s.ast().data {
-        syn::Data::Struct(_) => {
-            node_derive_struct(s).unwrap_or_else(|err| err.to_compile_error())
-        }
-        _ => {
-            syn::Error::new(
-                s.ast().span(),
-                "can only derive `Node` for Rust `struct` items",
-            )
-            .to_compile_error()
-        }
+        syn::Data::Struct(_) => node_derive_struct(s).unwrap_or_else(|err| err.to_compile_error()),
+        _ => syn::Error::new(
+            s.ast().span(),
+            "can only derive `Node` for Rust `struct` items",
+        )
+        .to_compile_error(),
     }
 }
 

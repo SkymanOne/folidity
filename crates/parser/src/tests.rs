@@ -1,36 +1,12 @@
 use crate::{
     ast::{
-        self,
-        AccessAttribute,
-        BinaryExpression,
-        Declaration,
-        Expression,
-        FuncReturnType,
-        FunctionCall,
-        FunctionDeclaration,
-        FunctionVisibility,
-        Identifier,
-        IfElse,
-        List,
-        Mapping,
-        MappingRelation,
-        Param,
-        Set,
-        Source,
-        StBlock,
-        StateDeclaration,
-        Statement,
-        StatementBlock,
-        StructInit,
-        TypeVariant,
-        UnaryExpression,
-        Variable,
+        self, AccessAttribute, BinaryExpression, Declaration, Expression, FuncReturnType,
+        FunctionCall, FunctionDeclaration, FunctionVisibility, Identifier, IfElse, List, Mapping,
+        MappingRelation, Param, Set, Source, StBlock, StateDeclaration, Statement, StatementBlock,
+        StructInit, TypeVariant, UnaryExpression, Variable,
     },
     folidity,
-    lexer::{
-        Lexer,
-        Token,
-    },
+    lexer::{Lexer, Token},
 };
 
 #[test]
@@ -279,8 +255,8 @@ fn test_factorial_tree() {
                         }),
                         else_part: Some(Box::new(Statement::Block(StatementBlock {
                             loc: 175..349,
-                            statements: vec![Statement::Return(
-                                Expression::FunctionCall(FunctionCall {
+                            statements: vec![Statement::Return(Expression::FunctionCall(
+                                FunctionCall {
                                     loc: 192..342,
                                     name: Identifier {
                                         loc: 192..201,
@@ -288,58 +264,44 @@ fn test_factorial_tree() {
                                     },
                                     args: vec![Expression::Pipe(BinaryExpression {
                                         loc: 296..324,
-                                        left: Box::new(Expression::Multiply(
-                                            BinaryExpression {
-                                                loc: 296..315,
-                                                left: Box::new(Expression::Variable(
-                                                    Identifier {
-                                                        loc: 296..301,
-                                                        name: "value".to_string(),
-                                                    },
-                                                )),
-                                                right: Box::new(Expression::Subtract(
-                                                    BinaryExpression {
-                                                        loc: 305..314,
-                                                        left: Box::new(
-                                                            Expression::Variable(
-                                                                Identifier {
-                                                                    loc: 305..310,
-                                                                    name: "value"
-                                                                        .to_string(),
-                                                                },
-                                                            ),
-                                                        ),
-                                                        right: Box::new(
-                                                            Expression::Number(
-                                                                UnaryExpression {
-                                                                    loc: 313..314,
-                                                                    element: "1"
-                                                                        .to_string(),
-                                                                },
-                                                            ),
-                                                        ),
-                                                    },
-                                                )),
-                                            },
-                                        )),
-                                        right: Box::new(Expression::FunctionCall(
-                                            FunctionCall {
-                                                loc: 319..324,
-                                                name: Identifier {
-                                                    loc: 319..321,
-                                                    name: "or".to_string(),
+                                        left: Box::new(Expression::Multiply(BinaryExpression {
+                                            loc: 296..315,
+                                            left: Box::new(Expression::Variable(Identifier {
+                                                loc: 296..301,
+                                                name: "value".to_string(),
+                                            })),
+                                            right: Box::new(Expression::Subtract(
+                                                BinaryExpression {
+                                                    loc: 305..314,
+                                                    left: Box::new(Expression::Variable(
+                                                        Identifier {
+                                                            loc: 305..310,
+                                                            name: "value".to_string(),
+                                                        },
+                                                    )),
+                                                    right: Box::new(Expression::Number(
+                                                        UnaryExpression {
+                                                            loc: 313..314,
+                                                            element: "1".to_string(),
+                                                        },
+                                                    )),
                                                 },
-                                                args: vec![Expression::Number(
-                                                    UnaryExpression {
-                                                        loc: 322..323,
-                                                        element: "1".to_string(),
-                                                    },
-                                                )],
+                                            )),
+                                        })),
+                                        right: Box::new(Expression::FunctionCall(FunctionCall {
+                                            loc: 319..324,
+                                            name: Identifier {
+                                                loc: 319..321,
+                                                name: "or".to_string(),
                                             },
-                                        )),
+                                            args: vec![Expression::Number(UnaryExpression {
+                                                loc: 322..323,
+                                                element: "1".to_string(),
+                                            })],
+                                        })),
                                     })],
-                                }),
-                            )],
+                                },
+                            ))],
                         }))),
                     })],
                 }),
