@@ -221,7 +221,7 @@ pub struct StateDeclaration {
 pub struct StBlock {
     pub loc: Span,
     /// List of logic expressions
-    pub exprs: Vec<Expression>,
+    pub expr: Expression,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -331,6 +331,8 @@ pub enum Expression {
     FunctionCall(FunctionCall),
     MemberAccess(MemberAccess),
     Pipe(BinaryExpression),
+
+    List(UnaryExpression<Vec<Expression>>),
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]

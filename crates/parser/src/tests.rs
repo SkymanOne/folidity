@@ -1,10 +1,37 @@
-use crate::ast::{
-    self, AccessAttribute, BinaryExpression, Declaration, Expression, FuncReturnType, FunctionCall,
-    FunctionDeclaration, FunctionVisibility, Identifier, IfElse, Param, Source, StBlock,
-    StateDeclaration, Statement, StatementBlock, StructInit, TypeVariant, UnaryExpression,
+use crate::{
+    ast::{
+        self,
+        AccessAttribute,
+        BinaryExpression,
+        Declaration,
+        Expression,
+        FuncReturnType,
+        FunctionCall,
+        FunctionDeclaration,
+        FunctionVisibility,
+        Identifier,
+        IfElse,
+        List,
+        Mapping,
+        MappingRelation,
+        Param,
+        Set,
+        Source,
+        StBlock,
+        StateDeclaration,
+        Statement,
+        StatementBlock,
+        StructInit,
+        TypeVariant,
+        UnaryExpression,
+        Variable,
+    },
+    folidity,
+    lexer::{
+        Lexer,
+        Token,
+    },
 };
-use crate::folidity;
-use crate::lexer::{Lexer, Token};
 
 #[test]
 fn simple_int() {
@@ -187,31 +214,35 @@ fn test_factorial_tree() {
                 }],
                 state_bound: None,
                 st_block: Some(StBlock {
-                    loc: 64..90,
-                    exprs: vec![
-                        Expression::Greater(BinaryExpression {
-                            loc: 64..73,
-                            left: Box::new(Expression::Variable(Identifier {
-                                loc: 64..69,
-                                name: "value".to_string(),
-                            })),
-                            right: Box::new(Expression::Number(UnaryExpression {
-                                loc: 72..73,
-                                element: "0".to_string(),
-                            })),
-                        }),
-                        Expression::Less(BinaryExpression {
-                            loc: 79..90,
-                            left: Box::new(Expression::Variable(Identifier {
-                                loc: 79..82,
-                                name: "out".to_string(),
-                            })),
-                            right: Box::new(Expression::Number(UnaryExpression {
-                                loc: 85..90,
-                                element: "10000".to_string(),
-                            })),
-                        }),
-                    ],
+                    loc: 55..92,
+                    expr: Expression::List(UnaryExpression::new(
+                        58,
+                        92,
+                        vec![
+                            Expression::Greater(BinaryExpression {
+                                loc: 64..73,
+                                left: Box::new(Expression::Variable(Identifier {
+                                    loc: 64..69,
+                                    name: "value".to_string(),
+                                })),
+                                right: Box::new(Expression::Number(UnaryExpression {
+                                    loc: 72..73,
+                                    element: "0".to_string(),
+                                })),
+                            }),
+                            Expression::Less(BinaryExpression {
+                                loc: 79..90,
+                                left: Box::new(Expression::Variable(Identifier {
+                                    loc: 79..82,
+                                    name: "out".to_string(),
+                                })),
+                                right: Box::new(Expression::Number(UnaryExpression {
+                                    loc: 85..90,
+                                    element: "10000".to_string(),
+                                })),
+                            }),
+                        ],
+                    )),
                 }),
                 body: Statement::Block(StatementBlock {
                     loc: 93..351,
@@ -248,8 +279,8 @@ fn test_factorial_tree() {
                         }),
                         else_part: Some(Box::new(Statement::Block(StatementBlock {
                             loc: 175..349,
-                            statements: vec![Statement::Return(Expression::FunctionCall(
-                                FunctionCall {
+                            statements: vec![Statement::Return(
+                                Expression::FunctionCall(FunctionCall {
                                     loc: 192..342,
                                     name: Identifier {
                                         loc: 192..201,
@@ -257,44 +288,58 @@ fn test_factorial_tree() {
                                     },
                                     args: vec![Expression::Pipe(BinaryExpression {
                                         loc: 296..324,
-                                        left: Box::new(Expression::Multiply(BinaryExpression {
-                                            loc: 296..315,
-                                            left: Box::new(Expression::Variable(Identifier {
-                                                loc: 296..301,
-                                                name: "value".to_string(),
-                                            })),
-                                            right: Box::new(Expression::Subtract(
-                                                BinaryExpression {
-                                                    loc: 305..314,
-                                                    left: Box::new(Expression::Variable(
-                                                        Identifier {
-                                                            loc: 305..310,
-                                                            name: "value".to_string(),
-                                                        },
-                                                    )),
-                                                    right: Box::new(Expression::Number(
-                                                        UnaryExpression {
-                                                            loc: 313..314,
-                                                            element: "1".to_string(),
-                                                        },
-                                                    )),
-                                                },
-                                            )),
-                                        })),
-                                        right: Box::new(Expression::FunctionCall(FunctionCall {
-                                            loc: 319..324,
-                                            name: Identifier {
-                                                loc: 319..321,
-                                                name: "or".to_string(),
+                                        left: Box::new(Expression::Multiply(
+                                            BinaryExpression {
+                                                loc: 296..315,
+                                                left: Box::new(Expression::Variable(
+                                                    Identifier {
+                                                        loc: 296..301,
+                                                        name: "value".to_string(),
+                                                    },
+                                                )),
+                                                right: Box::new(Expression::Subtract(
+                                                    BinaryExpression {
+                                                        loc: 305..314,
+                                                        left: Box::new(
+                                                            Expression::Variable(
+                                                                Identifier {
+                                                                    loc: 305..310,
+                                                                    name: "value"
+                                                                        .to_string(),
+                                                                },
+                                                            ),
+                                                        ),
+                                                        right: Box::new(
+                                                            Expression::Number(
+                                                                UnaryExpression {
+                                                                    loc: 313..314,
+                                                                    element: "1"
+                                                                        .to_string(),
+                                                                },
+                                                            ),
+                                                        ),
+                                                    },
+                                                )),
                                             },
-                                            args: vec![Expression::Number(UnaryExpression {
-                                                loc: 322..323,
-                                                element: "1".to_string(),
-                                            })],
-                                        })),
+                                        )),
+                                        right: Box::new(Expression::FunctionCall(
+                                            FunctionCall {
+                                                loc: 319..324,
+                                                name: Identifier {
+                                                    loc: 319..321,
+                                                    name: "or".to_string(),
+                                                },
+                                                args: vec![Expression::Number(
+                                                    UnaryExpression {
+                                                        loc: 322..323,
+                                                        element: "1".to_string(),
+                                                    },
+                                                )],
+                                            },
+                                        )),
                                     })],
-                                },
-                            ))],
+                                }),
+                            )],
                         }))),
                     })],
                 }),
@@ -333,7 +378,7 @@ fn test_factorial_tree() {
                 state_bound: None,
                 st_block: Some(StBlock {
                     loc: 393..407,
-                    exprs: vec![Expression::Less(BinaryExpression {
+                    expr: Expression::Less(BinaryExpression {
                         loc: 396..407,
                         left: Box::new(Expression::Variable(Identifier {
                             loc: 396..401,
@@ -343,7 +388,7 @@ fn test_factorial_tree() {
                             loc: 404..407,
                             element: "100".to_string(),
                         })),
-                    })],
+                    }),
                 }),
                 body: Statement::Return(Expression::FunctionCall(FunctionCall {
                     loc: 417..433,
@@ -359,5 +404,158 @@ fn test_factorial_tree() {
             })),
         ],
     };
-    assert_eq!(tree, parsed)
+    assert_eq!(tree, parsed, "Invalid tree: {:#?}", parser_errors)
+}
+
+const LISTS_SRC: &str = r#"
+fn () lists() {
+    let mut ls : list<int> = [1, 2, 3];
+    let mut ss : set<int> = [1, 2, 3];
+    let mut mm : mapping<int -/> string> = init();
+}
+"#;
+
+#[test]
+fn test_lists() {
+    let mut lexer_errors = Vec::new();
+    let tokens = Lexer::new(LISTS_SRC, &mut lexer_errors);
+    let mut parser_errors = Vec::new();
+    let tree = folidity::FolidityTreeParser::new()
+        .parse(&mut parser_errors, tokens)
+        .unwrap();
+
+    assert!(
+        parser_errors.is_empty(),
+        "Parse errors found:\n{:#?}",
+        parser_errors
+    );
+
+    let parsed = Source {
+        declarations: vec![Declaration::FunDeclaration(Box::new(FunctionDeclaration {
+            loc: 1..148,
+            is_init: false,
+            access_attributes: vec![],
+            vis: FunctionVisibility::Priv,
+            return_ty: FuncReturnType::Type(ast::Type {
+                loc: 4..6,
+                ty: TypeVariant::Unit,
+            }),
+            name: Identifier {
+                loc: 7..12,
+                name: "lists".to_string(),
+            },
+            params: vec![],
+            state_bound: None,
+            st_block: None,
+            body: Statement::Block(StatementBlock {
+                loc: 15..148,
+                statements: vec![
+                    Statement::Variable(Variable {
+                        loc: 21..55,
+                        names: vec![Identifier {
+                            loc: 29..31,
+                            name: "ls".to_string(),
+                        }],
+                        mutable: true,
+                        ty: Some(ast::Type {
+                            loc: 34..43,
+                            ty: TypeVariant::List(List {
+                                ty: Box::new(ast::Type {
+                                    loc: 39..42,
+                                    ty: TypeVariant::Int,
+                                }),
+                            }),
+                        }),
+                        value: Some(Expression::List(UnaryExpression {
+                            loc: 46..55,
+                            element: vec![
+                                Expression::Number(UnaryExpression {
+                                    loc: 47..48,
+                                    element: "1".to_string(),
+                                }),
+                                Expression::Number(UnaryExpression {
+                                    loc: 50..51,
+                                    element: "2".to_string(),
+                                }),
+                                Expression::Number(UnaryExpression {
+                                    loc: 53..54,
+                                    element: "3".to_string(),
+                                }),
+                            ],
+                        })),
+                    }),
+                    Statement::Variable(Variable {
+                        loc: 61..94,
+                        names: vec![Identifier {
+                            loc: 69..71,
+                            name: "ss".to_string(),
+                        }],
+                        mutable: true,
+                        ty: Some(ast::Type {
+                            loc: 74..82,
+                            ty: TypeVariant::Set(Set {
+                                ty: Box::new(ast::Type {
+                                    loc: 78..81,
+                                    ty: TypeVariant::Int,
+                                }),
+                            }),
+                        }),
+                        value: Some(Expression::List(UnaryExpression {
+                            loc: 85..94,
+                            element: vec![
+                                Expression::Number(UnaryExpression {
+                                    loc: 86..87,
+                                    element: "1".to_string(),
+                                }),
+                                Expression::Number(UnaryExpression {
+                                    loc: 89..90,
+                                    element: "2".to_string(),
+                                }),
+                                Expression::Number(UnaryExpression {
+                                    loc: 92..93,
+                                    element: "3".to_string(),
+                                }),
+                            ],
+                        })),
+                    }),
+                    Statement::Variable(Variable {
+                        loc: 100..145,
+                        names: vec![Identifier {
+                            loc: 108..110,
+                            name: "mm".to_string(),
+                        }],
+                        mutable: true,
+                        ty: Some(ast::Type {
+                            loc: 113..136,
+                            ty: TypeVariant::Mapping(Mapping {
+                                from_ty: Box::new(ast::Type {
+                                    loc: 121..124,
+                                    ty: TypeVariant::Int,
+                                }),
+                                relation: MappingRelation {
+                                    loc: 125..128,
+                                    injective: false,
+                                    partial: true,
+                                    surjective: false,
+                                },
+                                to_ty: Box::new(ast::Type {
+                                    loc: 129..135,
+                                    ty: TypeVariant::String,
+                                }),
+                            }),
+                        }),
+                        value: Some(Expression::FunctionCall(FunctionCall {
+                            loc: 139..145,
+                            name: Identifier {
+                                loc: 139..143,
+                                name: "init".to_string(),
+                            },
+                            args: vec![],
+                        })),
+                    }),
+                ],
+            }),
+        }))],
+    };
+    assert_eq!(tree, parsed, "Invalid tree: {:#?}", parser_errors)
 }

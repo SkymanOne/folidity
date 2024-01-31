@@ -1,6 +1,12 @@
 use super::Span;
-use logos::{Logos, SpannedIter};
-use std::{fmt, num::ParseIntError};
+use logos::{
+    Logos,
+    SpannedIter,
+};
+use std::{
+    fmt,
+    num::ParseIntError,
+};
 use thiserror::Error;
 
 #[derive(Default, Clone, Debug, PartialEq)]
@@ -110,13 +116,13 @@ pub enum Token<'input> {
     #[token("in")]
     In,
 
-    //Bool operations
+    // Bool operations
     #[token("||")]
     Or,
     #[token("&&")]
     And,
 
-    //Types
+    // Types
     #[token("int")]
     IntType,
     #[token("unit")]
@@ -136,7 +142,7 @@ pub enum Token<'input> {
     #[token("()")]
     UnitType,
 
-    //Keywords
+    // Keywords
     #[token("mapping")]
     Mapping,
     #[token("set")]
@@ -209,7 +215,7 @@ pub enum Token<'input> {
     #[token("move")]
     Move,
 
-    //comment
+    // comment
     #[regex(r"#[^\n]*", |lex| lex.slice())]
     Comment(&'input str),
 }
@@ -320,10 +326,12 @@ impl<'input> Iterator for Lexer<'input> {
     fn next(&mut self) -> Option<Self::Item> {
         if let Some((tok_res, span)) = self.token_stream.next() {
             match tok_res {
-                Ok(tok) => match tok {
-                    Token::Comment(_) => self.next(),
-                    _ => Some((span.start, tok, span.end)),
-                },
+                Ok(tok) => {
+                    match tok {
+                        Token::Comment(_) => self.next(),
+                        _ => Some((span.start, tok, span.end)),
+                    }
+                }
                 Err(err) => {
                     self.errors.push(logos_to_lexical_error(&err, &span));
                     self.next()

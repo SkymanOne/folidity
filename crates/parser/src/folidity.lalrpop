@@ -24,19 +24,19 @@ Declaration: ast::Declaration = {
 
 
 StructDeclaration: ast::StructDeclaration = {
-    <start:@L> "struct" <i:Identifier> "{" <params:Params> "}" <end:@R> => {
+    <start:@L> "struct" <i:Identifier> <params:Params> <end:@R> => {
         ast::StructDeclaration::new(start, end, i, params)
     }
 }
 
 EnumDeclaration: ast::EnumDeclaration = {
-    <start:@L> "enum" <i:Identifier> "{" <vars:Variants> "}" <end:@R> => {
+    <start:@L> "enum" <i:Identifier> <vars:Variants> <end:@R> => {
         ast::EnumDeclaration::new(start, end, i, vars)
     }
 }
 
 ModelDeclaration: ast::ModelDeclaration = {
-    <start:@L> "model" <i:Identifier> "{" <params:Params> "}" <st:StBlock?> <end:@R> => {
+    <start:@L> "model" <i:Identifier> <params:Params> <st:StBlock?> <end:@R> => {
         ast::ModelDeclaration::new(start, end, i, params, st)
     }
 }
@@ -53,7 +53,7 @@ StateDeclaration: ast::StateDeclaration = {
         ast::StateDeclaration::new(start, end, i, Some(ast::StateBody::Model(m)), from, st)
     },
 
-    <start:@L> "state" <i:Identifier> "{" <params:Params> "}"
+    <start:@L> "state" <i:Identifier> <params:Params>
     <from:FromState?> <st:StBlock?> <end:@R> => {
        ast::StateDeclaration::new(start, end, i, Some(ast::StateBody::Raw(params)), from, st)
     },
@@ -65,7 +65,7 @@ StateDeclaration: ast::StateDeclaration = {
 
 FunDeclaration: ast::FunctionDeclaration = {
     <start:@L> <init:"@init"?> <attrs:AccessAttr*> <view:View?> "fn" <ty:FuncReturnType> <i:Identifier>
-    "(" <params:MutParams> ")" <sb:StateBound?> <st:StBlock?> <body:FunBody> <end:@R> =>  {
+    <params:MutParams> <sb:StateBound?> <st:StBlock?> <body:FunBody> <end:@R> =>  {
         let is_pub = attrs.len() > 0;
         let vis = match view {
             Some(v) => v,
@@ -136,12 +136,11 @@ MutParam: ast::Param = {
 }
 
 MutParams: Vec<ast::Param> = {
-    <first:Param?> <mut members:("," <Param>)*> => {
-        let mut all = if first.is_some() { vec![first.unwrap()] } else { vec![] };
-        all.append(&mut members);
-        all
-    },
-    <error:!> => {
+    "(" ")" => Vec::new(),
+    "()" => Vec::new(),
+    "(" <ListComma<Param>> ")" => <>,
+
+    "(" <error:!> ")" => {
         errors.push(error);
         Vec::new()
     }
@@ -154,23 +153,43 @@ Param: ast::Param = {
 }
 
 Params: Vec<ast::Param> = {
-    <first:Param?> <mut members:("," <Param>)*> => {
-        let mut all = if first.is_some() { vec![first.unwrap()] } else { vec![] };
-        all.append(&mut members);
-        all
-    },
-    <error:!> => {
+    "{" "}" => Vec::new(),
+    "{" <ListComma<Param>> "}" => <>,
+
+    "{" <error:!> "}" => {
         errors.push(error);
         Vec::new()
     }
 }
 
 Variants: Vec<ast::Identifier> = {
-    <first:Identifier?> <mut members:("," <Identifier>)*> => {
-        let mut all = if first.is_some() { vec![first.unwrap()] } else { vec![] };
+    "{" "}" => Vec::new(),
+    "{" <ListComma<Identifier>> "}" => <>,
+
+    "{" <error:!> "}" => {
+        errors.push(error);
+        Vec::new()
+    }
+}
+
+
+ListExpr: Vec<ast::Expression> = {
+    "[" "]" => Vec::new(),
+    "[" <ListComma<Expression>> "]" => <>,
+
+    "[" <error:!> "]" => {
+        errors.push(error);
+        Vec::new()
+    }
+}
+
+
+ListComma<T>: Vec<T> = {
+    <first:T> <mut members:("," <T>)*> => {
+        let mut all = vec![first];
         all.append(&mut members);
         all
-    }
+    },
 }
 
 
@@ -181,14 +200,8 @@ StateBound: ast::StateBound = {
 }
 
 StBlock: ast::StBlock = {
-"st" "[" <start:@L> <e:Expression?> <mut exprs:("," <Expression>)+> <end:@R> "]" => {
-        let mut all = if e.is_some() { vec![e.unwrap()] } else { vec![] };
-        all.append(&mut exprs);
-        ast::StBlock::new(start, end, all)
-    },
-
     <start:@L> "st" <e:Expression> <end:@R> => {
-        ast::StBlock::new(start, end, vec![e])
+        ast::StBlock::new(start, end, e)
     }
 }
 
@@ -199,22 +212,22 @@ StatementBlock: ast::StatementBlock = {
 }
 
 Variable: ast::Variable = {
-    <start:@L> "let" <mt:"mut"?> <i:Identifier> <ty:(":" <Type>)?> <val:("=" <Expression>)?> ";" <end:@R> => {
+    <start:@L> "let" <mt:"mut"?> <i:Identifier> <ty:(":" <Type>)?> <val:("=" <Expression>)?> <end:@R> => {
         ast::Variable::new(start, end, vec![i], mt.is_some(), ty, val)
     },
 
-    <start:@L> "let" <mt:"mut"?> "{" <is:Identifier+> "}" <ty:(":" <Type>)?> <val:("=" <Expression>)?> ";" <end:@R> => {
+    <start:@L> "let" <mt:"mut"?> "{" <is:Identifier+> "}" <ty:(":" <Type>)?> <val:("=" <Expression>)?> <end:@R> => {
         ast::Variable::new(start, end, is, mt.is_some(), ty, val)
     },
 
-     <start:@L> "let" <mt:"mut"?> "{" <is:Identifier+> "}" <ty:(":" <Type>)?> <error:!> ";" <end:@R> => {
+     <start:@L> "let" <mt:"mut"?> "{" <is:Identifier+> "}" <ty:(":" <Type>)?> <error:!> <end:@R> => {
         errors.push(error);
         ast::Variable::new(start, end, is, mt.is_some(), ty, None)
     },
 }
 
 Assign: ast::Assign = {
-    <start:@L> <i:Identifier> "=" <val:Expression> ";" <end:@R> => {
+    <start:@L> <i:Identifier> "=" <val:Expression> <end:@R> => {
         ast::Assign::new(start, end, i, val)
     }
 }
@@ -260,22 +273,28 @@ Iterator: ast::Iterator = {
 }
 
 FunCall: ast::FunctionCall = {
-    <start:@L> <i:Identifier> "(" <args:Args> ")" <end:@R> => {
+    <start:@L> <i:Identifier> <args:FunArgs> <end:@R> => {
         ast::FunctionCall::new(start, end, i, args)
     }
 }
 
 StructInit: ast::StructInit = {
-    <start:@L> <i:Identifier> "{" <args:Args> <auto_obj:(".." <Identifier>)?> "}" <end:@R> => {
+    <start:@L> <i:Identifier> "{" <args:ListComma<Expression>> <auto_obj:(".." <Identifier>)?> "}" <end:@R> => {
         ast::StructInit::new(start, end, i, args, auto_obj)
-    }
+    },
+    <start:@L> <i:Identifier> ("{" "}")? <end:@R> => {
+        ast::StructInit::new(start, end, i, vec![], None)
+    },
 }
 
-Args: Vec<ast::Expression> = {
-    <first:Expression?> <mut args:("," <Expression>)*> => {
-        let mut all = if first.is_some() { vec![first.unwrap()] } else { vec![] };
-        all.append(&mut args);
-        all
+FunArgs: Vec<ast::Expression> = {
+    "(" ")" => Vec::new(),
+    "()" => Vec::new(),
+    "(" <ListComma<Expression>> ")" => <>,
+
+    "(" <error:!> ")" => {
+        errors.push(error);
+        Vec::new()
     }
 }
 
@@ -409,6 +428,12 @@ Term: ast::Expression = {
         ast::Expression::Variable(i)
     },
     <FunCall> => ast::Expression::FunctionCall(<>),
+
+    <start:@L> <val:ListExpr> <end:@R> => {
+        ast::Expression::List(
+            ast::UnaryExpression::new(start, end, val)
+        )  
+    },
 
     <start:@L> <val:number> <end:@R> => {
         ast::Expression::Number(
