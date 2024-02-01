@@ -15,6 +15,7 @@ logos = { workspace = true }
 lalrpop-util = { workspace = true }
 thiserror = { workspace = true }
 derive-node = { workspace = true }
+folidity-diagnostics = { workspace = true }
 
 [build-dependencies] # <-- We added this and everything after!
 lalrpop = { workspace = true }

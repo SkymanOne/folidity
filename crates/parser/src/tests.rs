@@ -5,8 +5,8 @@ use crate::{
         MappingRelation, Param, Set, Source, StBlock, StateDeclaration, Statement, StatementBlock,
         StructInit, TypeVariant, UnaryExpression, Variable,
     },
-    folidity,
     lexer::{Lexer, Token},
+    parse,
 };
 
 #[test]
@@ -43,6 +43,15 @@ fn comment_token() {
     assert_eq!(tokens.next(), Some((6, Token::Identifier("ident"), 11)))
 }
 
+fn unwrap_tree(src: &str) -> Result<Source, String> {
+    parse(src).map_err(|errs| {
+        errs.iter()
+            .fold("Errors occurred:".to_string(), |init, count| {
+                format!("{}\n{:?}", init, count)
+            })
+    })
+}
+
 const SRC: &str = r#"
 @init
 @(any)
@@ -60,13 +69,8 @@ when () -> BeginState
 "#;
 
 #[test]
-fn test_simple_func() {
-    let mut lexer_errors = Vec::new();
-    let tokens = Lexer::new(SRC, &mut lexer_errors);
-    let mut parser_errors = Vec::new();
-    let tree = folidity::FolidityTreeParser::new()
-        .parse(&mut parser_errors, tokens)
-        .unwrap();
+fn test_simple_func() -> Result<(), String> {
+    let tree = unwrap_tree(SRC)?;
     assert!(tree.declarations.len() == 1);
     let func = &tree.declarations[0];
     assert!(matches!(func, &Declaration::FunDeclaration(_)));
@@ -89,6 +93,7 @@ fn test_simple_func() {
             statement
         )
     }
+    Ok(())
 }
 
 const FACTORIAL_SRC: &str = r#"
@@ -116,13 +121,8 @@ st value < 100 = return calculate(value);
 "#;
 
 #[test]
-fn test_factorial() {
-    let mut lexer_errors = Vec::new();
-    let tokens = Lexer::new(FACTORIAL_SRC, &mut lexer_errors);
-    let mut parser_errors = Vec::new();
-    let tree = folidity::FolidityTreeParser::new()
-        .parse(&mut parser_errors, tokens)
-        .unwrap();
+fn test_factorial() -> Result<(), String> {
+    let tree = unwrap_tree(FACTORIAL_SRC)?;
     assert!(tree.declarations.len() == 3);
 
     let first_decl = &tree.declarations[0];
@@ -133,16 +133,12 @@ fn test_factorial() {
         assert_eq!(state.from, None);
         assert_eq!(state.st_block, None);
     }
+    Ok(())
 }
 
 #[test]
-fn test_factorial_tree() {
-    let mut lexer_errors = Vec::new();
-    let tokens = Lexer::new(FACTORIAL_SRC, &mut lexer_errors);
-    let mut parser_errors = Vec::new();
-    let tree = folidity::FolidityTreeParser::new()
-        .parse(&mut parser_errors, tokens)
-        .unwrap();
+fn test_factorial_tree() -> Result<(), String> {
+    let tree = unwrap_tree(FACTORIAL_SRC)?;
     let parsed = Source {
         declarations: vec![
             Declaration::StateDeclaration(Box::new(StateDeclaration {
@@ -366,7 +362,8 @@ fn test_factorial_tree() {
             })),
         ],
     };
-    assert_eq!(tree, parsed, "Invalid tree: {:#?}", parser_errors)
+    assert_eq!(tree, parsed, "Invalid tree: {:#?}", parsed);
+    Ok(())
 }
 
 const LISTS_SRC: &str = r#"
@@ -378,20 +375,8 @@ fn () lists() {
 "#;
 
 #[test]
-fn test_lists() {
-    let mut lexer_errors = Vec::new();
-    let tokens = Lexer::new(LISTS_SRC, &mut lexer_errors);
-    let mut parser_errors = Vec::new();
-    let tree = folidity::FolidityTreeParser::new()
-        .parse(&mut parser_errors, tokens)
-        .unwrap();
-
-    assert!(
-        parser_errors.is_empty(),
-        "Parse errors found:\n{:#?}",
-        parser_errors
-    );
-
+fn test_lists() -> Result<(), String> {
+    let tree = unwrap_tree(LISTS_SRC)?;
     let parsed = Source {
         declarations: vec![Declaration::FunDeclaration(Box::new(FunctionDeclaration {
             loc: 1..148,
@@ -519,5 +504,13 @@ fn test_lists() {
             }),
         }))],
     };
-    assert_eq!(tree, parsed, "Invalid tree: {:#?}", parser_errors)
+    assert_eq!(tree, parsed, "Invalid tree: {:#?}", parsed);
+    Ok(())
 }
+
+const STRUCTS_SRC: &str = r#"
+fn () structs() {
+    let obj = MyStruct { 2, 3 };
+    let { one, reset } = MyStruct { ..obj };
+}
+"#;

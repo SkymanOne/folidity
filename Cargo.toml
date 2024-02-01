@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/derive_node",
+    "crates/derive_node", "crates/diagnostics",
     "crates/folidity",
     "crates/parser",
 ]
@@ -17,8 +17,9 @@ repository = "https://github.com/SkymanOne/folidity"
 version = "1.0.0"
 
 [workspace.dependencies]
-folidity-parser = { path = "crates/parser"}
-derive-node = { path = "crates/derive_node"}
+folidity-parser = { path = "crates/parser" }
+folidity-diagnostics = { path = "crates/diagnostics" }
+derive-node = { path = "crates/derive_node" }
 logos = "0.13"
 lalrpop-util = "0.20"
 lalrpop = "0.20"
