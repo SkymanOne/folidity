@@ -143,7 +143,7 @@ fn test_factorial_tree() -> Result<(), String> {
     let parsed = Source {
         declarations: vec![
             Declaration::StateDeclaration(Box::new(StateDeclaration {
-                loc: 1..18,
+                loc: 1..17,
                 name: Identifier {
                     loc: 7..17,
                     name: "EmptyState".to_string(),
