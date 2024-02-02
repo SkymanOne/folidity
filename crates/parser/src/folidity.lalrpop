@@ -136,10 +136,10 @@ MutParam: ast::Param = {
 }
 
 MutParams: Vec<ast::Param> = {
-    "(" ")" => Vec::new(),
-    "()" => Vec::new(),
-    "(" <ListComma<Param>> ")" => <>,
+    "(" <ListComma<MutParam>> ")" => <>,
 
+    "()" => Vec::new(),
+    "(" ")" => Vec::new(),
     "(" <error:!> ")" => {
         errors.push(error);
         Vec::new()
@@ -152,10 +152,11 @@ Param: ast::Param = {
     }
 }
 
+
 Params: Vec<ast::Param> = {
-    "{" "}" => Vec::new(),
     "{" <ListComma<Param>> "}" => <>,
 
+    "{" "}" => Vec::new(),
     "{" <error:!> "}" => {
         errors.push(error);
         Vec::new()
@@ -163,9 +164,9 @@ Params: Vec<ast::Param> = {
 }
 
 Variants: Vec<ast::Identifier> = {
-    "{" "}" => Vec::new(),
     "{" <ListComma<Identifier>> "}" => <>,
 
+    "{" "}" => Vec::new(),
     "{" <error:!> "}" => {
         errors.push(error);
         Vec::new()
@@ -174,9 +175,9 @@ Variants: Vec<ast::Identifier> = {
 
 
 ListExpr: Vec<ast::Expression> = {
-    "[" "]" => Vec::new(),
     "[" <ListComma<Expression>> "]" => <>,
 
+    "[" "]" => Vec::new(),
     "[" <error:!> "]" => {
         errors.push(error);
         Vec::new()
@@ -216,11 +217,11 @@ Variable: ast::Variable = {
         ast::Variable::new(start, end, vec![i], mt.is_some(), ty, val)
     },
 
-    <start:@L> "let" <mt:"mut"?> "{" <is:Identifier+> "}" <ty:(":" <Type>)?> <val:("=" <Expression>)?> <end:@R> => {
+    <start:@L> "let" <mt:"mut"?> <is:Variants> <ty:(":" <Type>)?> <val:("=" <Expression>)?> <end:@R> => {
         ast::Variable::new(start, end, is, mt.is_some(), ty, val)
     },
 
-     <start:@L> "let" <mt:"mut"?> "{" <is:Identifier+> "}" <ty:(":" <Type>)?> <error:!> <end:@R> => {
+     <start:@L> "let" <mt:"mut"?> <is:Variants> <ty:(":" <Type>)?> <error:!> <end:@R> => {
         errors.push(error);
         ast::Variable::new(start, end, is, mt.is_some(), ty, None)
     },
@@ -238,7 +239,7 @@ IfElse: ast::IfElse = {
         ast::IfElse::new(start, end, cond, Box::new(body), None)
     },
 
-    #[precedence(level = "1")] #[assoc(side="left")]
+    #[precedence(level = "1")]
     <start:@L> "if" <cond:Expression> <body:StatementBlock> <mid:@R> "else" <else_part:Statement> <end:@R> => {
         match else_part {
             ast::Statement::Block(_) | ast::Statement::IfElse(_) => {},
@@ -279,10 +280,13 @@ FunCall: ast::FunctionCall = {
 }
 
 StructInit: ast::StructInit = {
-    <start:@L> <i:Identifier> "{" <args:ListComma<Expression>> <auto_obj:(".." <Identifier>)?> "}" <end:@R> => {
+    <start:@L> <i:Identifier> ":" "{" ".." <auto_obj:Identifier> "}" <end:@R> => {
+        ast::StructInit::new(start, end, i, vec![], Some(auto_obj))
+    },
+    <start:@L> <i:Identifier> ":" "{" <args:ListComma<Expression>> <auto_obj:("|" ".." <Identifier>)?> "}" <end:@R> => {
         ast::StructInit::new(start, end, i, args, auto_obj)
     },
-    <start:@L> <i:Identifier> ("{" "}")? <end:@R> => {
+    <start:@L> <i:Identifier> ":" "{" "}" <end:@R> => {
         ast::StructInit::new(start, end, i, vec![], None)
     },
 }
@@ -424,9 +428,17 @@ Expression: ast::Expression = {
 }
 
 Term: ast::Expression = {
+    #[precedence(level="1")]
     <i:Identifier> => {
         ast::Expression::Variable(i)
     },
+
+    <start:@L> <val:StructInit> <end:@R> => {
+        ast::Expression::StructInit(
+            ast::UnaryExpression::new(start, end, val)
+        )
+    },
+
     <FunCall> => ast::Expression::FunctionCall(<>),
 
     <start:@L> <val:ListExpr> <end:@R> => {
@@ -519,9 +531,9 @@ extern {
         "(" => Token::LParen,
         ")" => Token::RParen,
         "{" => Token::LCurly,
+        "}" => Token::RCurly,
         "[" => Token::LSquare,
         "]" => Token::RSquare,
-        "}" => Token::RCurly,
         "<" => Token::LAngle,
         ">" => Token::RAngle,
         "=" => Token::Assign,

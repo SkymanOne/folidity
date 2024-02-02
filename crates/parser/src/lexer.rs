@@ -53,7 +53,7 @@ pub enum Token<'input> {
     Hex(&'input str),
     #[regex("a\"[a-zA-Z]+\"", |lex| lex.slice())]
     Address(&'input str),
-    #[regex("[_a-zA-Z][_0-9a-zA-Z]+", |lex| lex.slice())]
+    #[regex("[_a-zA-Z][_0-9a-zA-Z]*", |lex| lex.slice())]
     Identifier(&'input str),
     #[token("true")]
     True,

@@ -62,7 +62,7 @@ fn parser_error_to_report(error: &ParseError<usize, Token<'_>, LexicalError>) ->
         ParseError::UnrecognizedEof { location, expected } => {
             let tokens = expected
                 .iter()
-                .fold(String::new(), |init, c| format!("{} `{}`", init, c))
+                .fold(String::new(), |init, c| format!("{} {}", init, c))
                 .trim()
                 .to_string();
             let expected = if expected.is_empty() {
@@ -76,7 +76,7 @@ fn parser_error_to_report(error: &ParseError<usize, Token<'_>, LexicalError>) ->
         ParseError::UnrecognizedToken { token, expected } => {
             let tokens = expected
                 .iter()
-                .fold(String::new(), |init, c| format!("{} `{}`", init, c))
+                .fold(String::new(), |init, c| format!("{} {}", init, c))
                 .trim()
                 .to_string();
             let expected = if expected.is_empty() {
@@ -85,13 +85,13 @@ fn parser_error_to_report(error: &ParseError<usize, Token<'_>, LexicalError>) ->
                 format!(" Expected: {}", tokens)
             };
             let message = format!(
-                "Unrecognised token, `{}`, at this location.{}",
+                "Unrecognised token, {}, at this location.{}",
                 token.1, expected
             );
             Report::parser_error(token.0, token.2, message)
         }
         ParseError::ExtraToken { token } => {
-            let message = format!("Unrecognised token, `{}`, at this location", token.1);
+            let message = format!("Unrecognised token, {}, at this location", token.1);
             Report::parser_error(token.0, token.2, message)
         }
         ParseError::User { error } => Report::from(error.clone()),

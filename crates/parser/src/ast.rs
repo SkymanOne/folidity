@@ -331,6 +331,7 @@ pub enum Expression {
     FunctionCall(FunctionCall),
     MemberAccess(MemberAccess),
     Pipe(BinaryExpression),
+    StructInit(UnaryExpression<StructInit>),
 
     List(UnaryExpression<Vec<Expression>>),
 }
