@@ -2,9 +2,9 @@ use crate::{
     ast::{
         self, AccessAttribute, BinaryExpression, Declaration, EnumDeclaration, Expression,
         FuncReturnType, FunctionCall, FunctionDeclaration, FunctionVisibility, Identifier, IfElse,
-        List, Mapping, MappingRelation, MemberAccess, Param, Set, Source, StBlock,
-        StateDeclaration, Statement, StatementBlock, StructDeclaration, StructInit, TypeVariant,
-        UnaryExpression, Variable,
+        List, Mapping, MappingRelation, MemberAccess, ModelDeclaration, Param, Set, Source,
+        StBlock, StateDeclaration, Statement, StatementBlock, StructDeclaration, StructInit,
+        TypeVariant, UnaryExpression, Variable,
     },
     lexer::{Lexer, Token},
     parse,
@@ -98,7 +98,7 @@ fn test_simple_func() -> Result<(), String> {
 }
 
 const FACTORIAL_SRC: &str = r#"
-state EmptyState;
+state EmptyState 
 fn (out: int) calculate(value: int)
 st [
     value > 0,
@@ -525,6 +525,9 @@ fn () structs() {
     let { one, reset } = MyStruct : { ..obj };
     let a_enum = MyEnum.A;
 }
+
+model MyModel: ParentModel {
+}
 "#;
 
 #[test]
@@ -685,9 +688,189 @@ fn test_structs_enums() -> Result<(), String> {
                     ],
                 }),
             })),
+            Declaration::ModelDeclaration(Box::new(ModelDeclaration {
+                loc: 210..240,
+                name: Identifier {
+                    loc: 216..223,
+                    name: "MyModel".to_string(),
+                },
+                fields: vec![],
+                parent: Some(Identifier {
+                    loc: 225..236,
+                    name: "ParentModel".to_string(),
+                }),
+                st_block: None,
+            })),
         ],
     };
 
     assert_eq!(tree, parsed, "Invalid tree: {:#?}", parsed);
     Ok(())
+}
+
+const COMPLETE_SRC: &str = r#"
+# This is a comment
+enum Choice {
+    None,
+    Yay,
+    Nay
+}
+
+# This is 
+# a multiline comment
+
+
+model BeginModel {
+    start_block: int,
+    end_block: int,
+    voters: set<Address>,
+    proposal: String,
+    max_size: int
+} st [
+    start_block > (current_block + 10),
+    end_block > (start_block + 10),
+    voters.balance > 1000,
+    max_size > 0,
+    voter.size <= max_size
+]
+
+model VotingModel: BeginModel {
+    commits: mapping<address >-/> hex>
+} st [
+    commits.key in voters
+]
+
+model RevealModel {
+    proposal: string,
+    end_block: int,
+    commit: mapping<hex -> Choice>
+} st [
+    end_block > (current_block + 15),
+    yays >= 0,
+    nays >= 0,
+    (yays + nays) <= commits.size
+]
+
+model ExecuteModel {
+    proposal: string,
+    passed: bool
+}
+
+state BeginState(BeginModel)
+state VotingState(VotingModel)
+
+state RevealState(RevealModel) from (VotingState vst)
+st current_block > vst.end_block
+
+
+state ExecuteState(ExecuteModel) from RevealState st [
+    current_block > RevealModel.end_block 
+]
+
+state ExecuteState {
+    proposal: String,
+    passed: bool
+} from (RevealState rst) st [
+    current_block > rst.end_block 
+]
+
+@init
+@(any)
+fn () init(proposal: String, 
+          start_block: int, 
+          max_size: int, 
+          end_block: int) 
+when () -> BeginState
+{
+    move BeginState : {
+        proposal,
+        start_block,
+        end_block,
+        max_size
+    };
+}
+
+@(any)
+fn () join() when (BeginState s) -> BeginState {
+    let caller = caller();
+    let { voters, params } = s;
+    voters = voters + caller;
+    move BeginState : {
+        voters
+        | ..params
+    };
+}
+
+@(voters)
+fn () start_voting() when (BeginState s) -> VotingState {
+    commits = Set();
+    move VotingState : {
+        commits
+        | ..s 
+    };
+}
+
+@(voters)
+fn () commit(h: hex) when (VotingState s) -> VotingState {
+    let caller = caller();
+    let { commits, params } = s;
+
+    commits = commits :> add(caller, h);
+
+
+    move VotingState : {
+        commits
+        | ..params
+    };
+}
+
+
+@(any)
+fn () start_reveal() when (VotingState s) -> RevealState {
+    let { end_block, proposal, commits, params } = s;
+    move RevealState : {
+        endblock + 10,
+        proposal,
+        # we need to add lambda to grammar later
+        # commits :> map(|c| (c.value, Choice::None))
+        0,
+        0
+    };
+}
+
+
+@(any)
+fn () execute() when (RevealState s) -> ExecuteState {
+    let votes = s.commits.values;
+    # add lambda later
+    # let yay = votes :> filter(|v| v == Choice::Yay).sum();
+    let mut passed = false;
+    if votes.size / yay > 0.5 {
+        passed = true;
+        move ExecuteState : {
+            ss.proposal,
+            passed
+        };
+    } else {
+        move ExecuteState : {
+            s.proposal,
+            passed
+        };
+    }
+}
+
+view(BeginState s) fn list<Address> get_voters() {
+    return s.voters;
+} 
+"#;
+
+#[test]
+fn parse_complete_program() {
+    let res = parse(COMPLETE_SRC);
+    match res {
+        Ok(_) => {}
+        Err(errs) => {
+            panic!("{:#?}", errs)
+        }
+    }
 }

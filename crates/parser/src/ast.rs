@@ -190,6 +190,8 @@ pub struct ModelDeclaration {
     pub name: Identifier,
     /// Fields of the model.
     pub fields: Vec<Param>,
+    /// A parent model from which fields are inherited.
+    pub parent: Option<Identifier>,
     /// Model logical bounds.
     pub st_block: Option<StBlock>,
 }
@@ -301,6 +303,7 @@ pub enum Expression {
     Variable(Identifier),
 
     Number(UnaryExpression<String>),
+    Boolean(UnaryExpression<bool>),
     Float(UnaryExpression<String>),
     String(UnaryExpression<String>),
     Char(UnaryExpression<char>),

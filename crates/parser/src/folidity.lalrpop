@@ -36,14 +36,17 @@ EnumDeclaration: ast::EnumDeclaration = {
 }
 
 ModelDeclaration: ast::ModelDeclaration = {
-    <start:@L> "model" <i:Identifier> <params:Params> <st:StBlock?> <end:@R> => {
-        ast::ModelDeclaration::new(start, end, i, params, st)
+    <start:@L> "model" <i:Identifier> <parent:(":" <Identifier>)?> <params:Params> <st:StBlock?> <end:@R> => {
+        ast::ModelDeclaration::new(start, end, i, params, parent, st)
     }
 }
 
 FromState: (ast::Identifier, Option<ast::Identifier>) = {
-    "from" <s:Identifier> <si:Identifier?> => {
-        (s, si)
+    "from" "(" <s:Identifier> <si:Identifier> ")" => {
+        (s, Some(si))
+    },
+    "from" <s:Identifier> => {
+        (s, None)
     }
 }
 
@@ -58,7 +61,7 @@ StateDeclaration: ast::StateDeclaration = {
        ast::StateDeclaration::new(start, end, i, Some(ast::StateBody::Raw(params)), from, st)
     },
 
-    <start:@L> "state" <i:Identifier> ";"<end:@R> => {
+    <start:@L> "state" <i:Identifier> <end:@R> => {
        ast::StateDeclaration::new(start, end, i, None, None, None)
     },
 }
@@ -104,7 +107,7 @@ AccessAttr: ast::AccessAttribute = {
 
 
 View: ast::FunctionVisibility = {
-    <start:@L> "view" "(" <param:StateParam> ")" <end:@R> => {
+    <start:@L> "view" <param:StateParam>  <end:@R> => {
         ast::FunctionVisibility::View(
             ast::ViewState::new(start, end, param)
         )
@@ -452,6 +455,19 @@ Term: ast::Expression = {
             ast::UnaryExpression::new(start, end, val.to_string())
         )
     },
+
+    <start:@L> "true" <end:@R> => {
+        ast::Expression::Boolean(
+            ast::UnaryExpression::new(start, end, true)
+        )
+    },
+
+    <start:@L> "false" <end:@R> => {
+        ast::Expression::Boolean(
+            ast::UnaryExpression::new(start, end, false)
+        )
+    },
+
     <start:@L> <val:float> <end:@R> => {
         ast::Expression::Float(
             ast::UnaryExpression::new(start, end, val.to_string())
@@ -501,7 +517,10 @@ Type: ast::Type = {
 MappingRelation: ast::MappingRelation = {
     <start:@L> <inj:">"?> "-" <partial:"/"?> ">" <surj:">"?> <end:@R> => {
         ast::MappingRelation::new(start, end, inj.is_some(), partial.is_some(), surj.is_some())
-    }
+    },
+    <start:@L> <inj:">"?> "->" <end:@R> => {
+        ast::MappingRelation::new(start, end, false, false, false)
+    }, 
 }
 
 Mapping: ast::Mapping = {

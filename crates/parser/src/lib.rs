@@ -12,6 +12,14 @@ pub type Span = Range<usize>;
 
 lalrpop_mod!(pub folidity);
 
+/// Parses a Solidity file into a concrete syntax tree.
+/// # Returns
+///
+/// - A root of the syntax tree [`Source`]
+///
+/// # Errors
+///
+/// - A list of [`Report`] diagnostic error
 pub fn parse(src: &str) -> Result<Source, Vec<Report>> {
     let mut lexer_errors = Vec::new();
     let tokens = Lexer::new(src, &mut lexer_errors);
