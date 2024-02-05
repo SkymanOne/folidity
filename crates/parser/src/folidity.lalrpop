@@ -189,7 +189,7 @@ ListExpr: Vec<ast::Expression> = {
 
 
 ListComma<T>: Vec<T> = {
-    <first:T> <mut members:("," <T>)*> => {
+    <first:T> <mut members:("," <T>)*> ","? => {
         let mut all = vec![first];
         all.append(&mut members);
         all

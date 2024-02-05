@@ -725,7 +725,7 @@ model BeginModel {
     end_block: int,
     voters: set<Address>,
     proposal: String,
-    max_size: int
+    max_size: int,
 } st [
     start_block > (current_block + 10),
     end_block > (start_block + 10),
@@ -840,7 +840,13 @@ fn () start_reveal() when (VotingState s) -> RevealState {
 
 fn (out: int) map_lambda(item: int)
 st out < 1000 {
-    return out;
+    if item == 1 {
+        return item;
+    } else if item > 1000 {
+        return 1000;
+    } else {
+        return item;
+    }
 }
 
 @(any)
