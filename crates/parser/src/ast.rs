@@ -127,7 +127,7 @@ pub struct StateBound {
     /// Original state
     pub from: StateParam,
     /// Final state
-    pub to: StateParam,
+    pub to: Vec<StateParam>,
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]

@@ -803,7 +803,7 @@ fn () join() when (BeginState s) -> BeginState {
 
 @(voters)
 fn () start_voting() when (BeginState s) -> VotingState {
-    commits = Set();
+    let commits = Set();
     move VotingState : {
         commits
         | ..s 
@@ -832,12 +832,37 @@ fn () start_reveal() when (VotingState s) -> RevealState {
         endblock + 10,
         proposal,
         # we need to add lambda to grammar later
-        # commits :> map(|c| (c.value, Choice::None))
+        commits :> map(map_lambda),
         0,
         0
     };
 }
 
+fn (out: int) map_lambda(item: int)
+st out < 1000 {
+    return out;
+}
+
+@(any)
+fn int reveal(salt: int, vote: Choice) 
+when (RevealState s1) -> (RevealState s2), (ExecuteState s3)
+st s1.commits.size == s2.commits.size
+{
+    let calc_hash = hash(caller(), vote, salt);
+    let { commits, params } = s1;
+
+    commits = commits :> add(calc_hash, vote);
+
+    if s1.current_block > s1.end_block {
+        execute();
+    } else {
+        move RevealState : {
+            commits
+            | ..params
+        }; 
+        return commits.size;
+    }
+}
 
 @(any)
 fn () execute() when (RevealState s) -> ExecuteState {
@@ -861,7 +886,7 @@ fn () execute() when (RevealState s) -> ExecuteState {
 
 view(BeginState s) fn list<Address> get_voters() {
     return s.voters;
-} 
+}
 "#;
 
 #[test]

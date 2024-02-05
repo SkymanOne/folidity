@@ -12,7 +12,7 @@ pub type Span = Range<usize>;
 
 lalrpop_mod!(pub folidity);
 
-/// Parses a Solidity file into a concrete syntax tree.
+/// Parses a Folidity file into a concrete syntax tree.
 /// # Returns
 ///
 /// - A root of the syntax tree [`Source`]

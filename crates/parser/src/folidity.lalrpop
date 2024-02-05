@@ -198,9 +198,10 @@ ListComma<T>: Vec<T> = {
 
 
 StateBound: ast::StateBound = {
-    "when" <start:@L> <from:StateParam> "->" <to:StateParam> <end:@R> => {
+    "when" <start:@L> <from:StateParam> "->" <to:ListComma<StateParam>> <end:@R> => {
         ast::StateBound::new(start, end, from, to)
     }
+
 }
 
 StBlock: ast::StBlock = {
