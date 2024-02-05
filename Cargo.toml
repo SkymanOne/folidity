@@ -1,9 +1,11 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/derive_node", "crates/diagnostics",
+    "crates/derive_node", 
+    "crates/diagnostics",
     "crates/folidity",
-    "crates/parser",
+    "crates/parser", 
+    "crates/semantics",
 ]
 
 [workspace.package]
@@ -20,6 +22,7 @@ version = "1.0.0"
 folidity-parser = { path = "crates/parser" }
 folidity-diagnostics = { path = "crates/diagnostics" }
 derive-node = { path = "crates/derive_node" }
+folidity-semantics = { path = "crates/semantics" }
 logos = "0.13"
 lalrpop-util = "0.20"
 lalrpop = "0.20"
