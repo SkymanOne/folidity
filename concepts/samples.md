@@ -81,7 +81,7 @@ state VotingState(VotingModel);
 // Reveal state has explicit constraints that it must be transition from `VotingState`
 state RevealState(RevealModel) from VotingState st {
     // we specify that we can transition into this state only when
-    current_block > VotingState.end_block
+    current_block > st.end_block
 };
 
 state ExecuteState(ExecuteModel) from RevealState st {
@@ -160,12 +160,12 @@ pub fn () commit(h: Hash) when VotingState s -> VotingState {
     let caller = caller();
     let { commits, params } = s;
 
-    commits.set(caller, h);
+    commits :> set(caller, h);
 
     // symbolic execution will highlight
     // that model is violated since you are trying to add the caller twice
     // if (caller.balance > 2000) {
-    //     commits.set(caller, 0); 
+    //     commits :> set(caller, 0); 
     // }
 
     VotingState {
@@ -180,7 +180,7 @@ pub fn () start_reveal() when VotingState -> RevealState {
         -> RevealState {
             end_block = endblock + 10,
             proposal: proposal,
-            commits: commits.map(|c| (c.value, Choice::None))
+            commits: commits :> map(|c| (c.value, Choice::None))
             yays: 0,
             nays: 0,
         }
@@ -199,7 +199,7 @@ st s1.commits.size == s2.commits.size
     // it looks-up a keys or a value and updates
     // otherwise errors out
     // `.add()` add a new entry instead
-    commits.set(calc_hash, vote)
+    commits :> set(calc_hash, vote)
 
     if s1.current_block > s1.end_block {
         execute()
@@ -214,7 +214,7 @@ st s1.commits.size == s2.commits.size
 @(any)
 pub fn () execute() when RevealState s -> ExecuteState {
     let votes = s.commits.values;
-    let yay = votes.filter(|v| v == Choice::Yay).sum();
+    let yay = votes :> filter(|v| v == Choice::Yay).sum();
     let mut passed = false;
     if (votes.size / yay) > 0.5 {
         log(f"Proposal {s.proposal} passed");
@@ -249,21 +249,24 @@ view(BeginState s) fn List<Address> get_voters() {
 version: "1.0.0"
 author: Gherman Nicolisin <gn2g21@soton.ac.uk>
 
-// We have empty state, no data stored
-state NoState;
+# We have empty state, no data stored
+# state NoState;
 
-// `out: int` creates binding for the return value to check the post-condition
-// Note that we don't have state transition spec as we don't mutate the storage.
+# `out: int` creates binding for the return value to check the post-condition
+# Note that we don't have state transition spec as we don't mutate the storage.
 fn (out: int) calculate(value: int)
-st value > 0,
+st {
+    value > 0,
    out < 10000
+}
 {
-    match value {
-        case 1 -> SimpleState (return value),
-        case other -> return calculate(
-                        // `.or(int)` specify what happens when operation fails
-                        value * (value - 1).or(1)
-                        )
+    if value == 1 {
+        SimpleState (return value)
+    } else {
+        return calculate(
+                // `.or(int)` specify what happens when operation fails
+                    value * (value - 1).or(1)
+                        );
     }
 }
 
@@ -298,3 +301,194 @@ You can notice some elements of imperative, OOP, and functional styles.
 This is because we want to give readability while preserving expressiveness and succinctness.
 This is heavily inspired from [F#](https://fsharp.org/) that has functional-first nature,
 but also provides support for classes, interfaces and inheritance.
+
+## Refined syntax
+
+- Lambdas are not yet supported in favour of function explicitness
+- `st` takes any expression
+- struct and models are inited in the same way: `<ident> : { args }` and `move <ident> : { args }`
+- Comments are defined as `# comment`
+- Object argument is passed as `| .. obj`
+- `pub` is removed as visibility is implied from the `caller attribute`
+- enums and struct fields and variants are accessed in the same way: `(enum | struct).(field | variant)`
+
+```
+# This is a comment
+enum Choice {
+    None,
+    Yay,
+    Nay
+}
+
+# This is 
+# a multiline comment
+
+
+model BeginModel {
+    start_block: int,
+    end_block: int,
+    voters: set<Address>,
+    proposal: String,
+    max_size: int,
+} st [
+    start_block > (current_block + 10),
+    end_block > (start_block + 10),
+    voters.balance > 1000,
+    max_size > 0,
+    voter.size <= max_size
+]
+
+model VotingModel: BeginModel {
+    commits: mapping<address >-/> hex>
+} st [
+    commits.key in voters
+]
+
+model RevealModel {
+    proposal: string,
+    end_block: int,
+    commit: mapping<hex -> Choice>
+} st [
+    end_block > (current_block + 15),
+    yays >= 0,
+    nays >= 0,
+    (yays + nays) <= commits.size
+]
+
+model ExecuteModel {
+    proposal: string,
+    passed: bool
+}
+
+state BeginState(BeginModel)
+state VotingState(VotingModel)
+
+state RevealState(RevealModel) from (VotingState vst)
+st current_block > vst.end_block
+
+
+state ExecuteState(ExecuteModel) from RevealState st [
+    current_block > RevealModel.end_block 
+]
+
+state ExecuteState {
+    proposal: String,
+    passed: bool
+} from (RevealState rst) st [
+    current_block > rst.end_block 
+]
+
+@init
+@(any)
+fn () init(proposal: String, 
+          start_block: int, 
+          max_size: int, 
+          end_block: int) 
+when () -> BeginState
+{
+    move BeginState : {
+        proposal,
+        start_block,
+        end_block,
+        max_size
+    };
+}
+
+@(any)
+fn () join() when (BeginState s) -> BeginState {
+    let caller = caller();
+    let { voters, params } = s;
+    voters = voters + caller;
+    move BeginState : {
+        voters
+        | ..params
+    };
+}
+
+@(voters)
+fn () start_voting() when (BeginState s) -> VotingState {
+    let commits = Set();
+    move VotingState : {
+        commits
+        | ..s 
+    };
+}
+
+@(voters)
+fn () commit(h: hex) when (VotingState s) -> VotingState {
+    let caller = caller();
+    let { commits, params } = s;
+
+    commits = commits :> add(caller, h);
+
+
+    move VotingState : {
+        commits
+        | ..params
+    };
+}
+
+
+@(any)
+fn () start_reveal() when (VotingState s) -> RevealState {
+    let { end_block, proposal, commits, params } = s;
+    move RevealState : {
+        endblock + 10,
+        proposal,
+        # we need to add lambda to grammar later
+        commits :> map(map_lambda),
+        0,
+        0
+    };
+}
+
+fn (out: int) map_lambda(item: int)
+st out < 1000 {
+    return out;
+}
+
+@(any)
+fn int reveal(salt: int, vote: Choice) 
+when (RevealState s1) -> (RevealState s2), (ExecuteState s3)
+st s1.commits.size == s2.commits.size
+{
+    let calc_hash = hash(caller(), vote, salt);
+    let { commits, params } = s1;
+
+    commits = commits :> add(calc_hash, vote);
+
+    if s1.current_block > s1.end_block {
+        execute();
+    } else {
+        move RevealState : {
+            commits
+            | ..params
+        }; 
+        return commits.size;
+    }
+}
+
+@(any)
+fn () execute() when (RevealState s) -> ExecuteState {
+    let votes = s.commits.values;
+    # add lambda later
+    # let yay = votes :> filter(|v| v == Choice.Yay).sum();
+    let mut passed = false;
+    if votes.size / yay > 0.5 {
+        passed = true;
+        move ExecuteState : {
+            ss.proposal,
+            passed
+        };
+    } else {
+        move ExecuteState : {
+            s.proposal,
+            passed
+        };
+    }
+}
+
+view(BeginState s) fn list<Address> get_voters() {
+    return s.voters;
+}
+```

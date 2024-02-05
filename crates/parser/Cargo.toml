@@ -11,9 +11,11 @@ repository = { workspace = true }
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-logos = "0.13"
-lalrpop-util = "0.20"
-thiserror = "1.0"
+logos = { workspace = true }
+lalrpop-util = { workspace = true }
+thiserror = { workspace = true }
+derive-node = { workspace = true }
+folidity-diagnostics = { workspace = true }
 
 [build-dependencies] # <-- We added this and everything after!
-lalrpop = "0.20"
+lalrpop = { workspace = true }

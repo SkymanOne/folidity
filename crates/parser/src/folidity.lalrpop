@@ -1,61 +1,537 @@
 use crate::lexer::{Token, LexicalError};
 use crate::ast;
+use crate::Span;
 use lalrpop_util::ErrorRecovery;
+use lalrpop_util::ParseError;
 
 grammar<'input, 'err>(errors: &'err mut Vec<ErrorRecovery<usize, Token<'input>, LexicalError>>);
 
 pub FolidityTree: ast::Source = {
-    Expression* => ast::Source { expressions: <> }
+    Declaration* => ast::Source { declarations: <> }
+}
+
+Declaration: ast::Declaration = {
+    <FunDeclaration> => ast::Declaration::FunDeclaration(Box::new(<>)),
+    <StructDeclaration> => ast::Declaration::StructDeclaration(Box::new(<>)),
+    <EnumDeclaration> => ast::Declaration::EnumDeclaration(Box::new(<>)),
+    <ModelDeclaration> => ast::Declaration::ModelDeclaration(Box::new(<>)),
+    <StateDeclaration> => ast::Declaration::StateDeclaration(Box::new(<>)),
+    <start:@L> <error:!> <end:@R> => {
+        errors.push(error);
+        ast::Declaration::Error(Span { start, end })
+    }
+}
+
+
+StructDeclaration: ast::StructDeclaration = {
+    <start:@L> "struct" <i:Identifier> <params:Params> <end:@R> => {
+        ast::StructDeclaration::new(start, end, i, params)
+    }
+}
+
+EnumDeclaration: ast::EnumDeclaration = {
+    <start:@L> "enum" <i:Identifier> <vars:Variants> <end:@R> => {
+        ast::EnumDeclaration::new(start, end, i, vars)
+    }
+}
+
+ModelDeclaration: ast::ModelDeclaration = {
+    <start:@L> "model" <i:Identifier> <parent:(":" <Identifier>)?> <params:Params> <st:StBlock?> <end:@R> => {
+        ast::ModelDeclaration::new(start, end, i, params, parent, st)
+    }
+}
+
+FromState: (ast::Identifier, Option<ast::Identifier>) = {
+    "from" "(" <s:Identifier> <si:Identifier> ")" => {
+        (s, Some(si))
+    },
+    "from" <s:Identifier> => {
+        (s, None)
+    }
+}
+
+StateDeclaration: ast::StateDeclaration = {
+    <start:@L> "state" <i:Identifier> "(" <m:Identifier> ")"
+    <from:FromState?> <st:StBlock?> <end:@R> => {
+        ast::StateDeclaration::new(start, end, i, Some(ast::StateBody::Model(m)), from, st)
+    },
+
+    <start:@L> "state" <i:Identifier> <params:Params>
+    <from:FromState?> <st:StBlock?> <end:@R> => {
+       ast::StateDeclaration::new(start, end, i, Some(ast::StateBody::Raw(params)), from, st)
+    },
+
+    <start:@L> "state" <i:Identifier> <end:@R> => {
+       ast::StateDeclaration::new(start, end, i, None, None, None)
+    },
+}
+
+FunDeclaration: ast::FunctionDeclaration = {
+    <start:@L> <init:"@init"?> <attrs:AccessAttr*> <view:View?> "fn" <ty:FuncReturnType> <i:Identifier>
+    <params:MutParams> <sb:StateBound?> <st:StBlock?> <body:FunBody> <end:@R> =>  {
+        let is_pub = attrs.len() > 0;
+        let vis = match view {
+            Some(v) => v,
+            _ if is_pub => ast::FunctionVisibility::Pub,
+            _ => ast::FunctionVisibility::Priv
+        };
+        ast::FunctionDeclaration::new(
+            start,
+            end,
+            init.is_some(),
+            attrs,
+            vis,
+            ty,
+            i,
+            params,
+            sb,
+            st,
+            body
+        )
+    }
+}
+
+FunBody: ast::Statement = {
+    <block:StatementBlock> => ast::Statement::Block(block),
+    "=" <Statement> => <>
+}
+
+AccessAttr: ast::AccessAttribute = {
+    <start:@L> "@" "(" <first:Expression?> <mut memebers:("|" <Expression>)*> ")" <end:@R> => {
+        let mut all = if first.is_some() { vec![first.unwrap()] } else { vec![] };
+        all.append(&mut memebers);
+        ast::AccessAttribute::new(start, end, all)
+    }
+}
+
+
+
+View: ast::FunctionVisibility = {
+    <start:@L> "view" <param:StateParam>  <end:@R> => {
+        ast::FunctionVisibility::View(
+            ast::ViewState::new(start, end, param)
+        )
+    }
+}
+
+StateParam: ast::StateParam = {
+    <start:@L> <ty:Identifier> <end:@R> => {
+        ast::StateParam::new(start, end, Some(ty), None)
+    },
+    <start:@L> "(" <ty:Identifier> <name_op:Identifier> ")" <end:@R> => {
+        ast::StateParam::new(start, end, Some(ty), Some(name_op))
+    },
+    <start:@L> "()" <end:@R> => {
+        ast::StateParam::new(start, end, None, None)
+    }
+}
+
+FuncReturnType: ast::FuncReturnType = {
+    "(" <pt:Param> ")" => ast::FuncReturnType::ParamType(pt),
+
+    <t:Type> => ast::FuncReturnType::Type(t),
+}
+
+MutParam: ast::Param = {
+    <start:@L> <m:"mut"?> <i:Identifier> ":" <t:Type> <end:@R> => {
+        ast::Param::new(start, end, t, i, m.is_some())
+    }
+}
+
+MutParams: Vec<ast::Param> = {
+    "(" <ListComma<MutParam>> ")" => <>,
+
+    "()" => Vec::new(),
+    "(" ")" => Vec::new(),
+    "(" <error:!> ")" => {
+        errors.push(error);
+        Vec::new()
+    }
+}
+
+Param: ast::Param = {
+    <start:@L> <i:Identifier> ":" <t:Type> <end:@R> => {
+        ast::Param::new(start, end, t, i, true)
+    }
+}
+
+
+Params: Vec<ast::Param> = {
+    "{" <ListComma<Param>> "}" => <>,
+
+    "{" "}" => Vec::new(),
+    "{" <error:!> "}" => {
+        errors.push(error);
+        Vec::new()
+    }
+}
+
+Variants: Vec<ast::Identifier> = {
+    "{" <ListComma<Identifier>> "}" => <>,
+
+    "{" "}" => Vec::new(),
+    "{" <error:!> "}" => {
+        errors.push(error);
+        Vec::new()
+    }
+}
+
+
+ListExpr: Vec<ast::Expression> = {
+    "[" <ListComma<Expression>> "]" => <>,
+
+    "[" "]" => Vec::new(),
+    "[" <error:!> "]" => {
+        errors.push(error);
+        Vec::new()
+    }
+}
+
+
+ListComma<T>: Vec<T> = {
+    <first:T> <mut members:("," <T>)*> ","? => {
+        let mut all = vec![first];
+        all.append(&mut members);
+        all
+    },
+}
+
+
+StateBound: ast::StateBound = {
+    "when" <start:@L> <from:StateParam> "->" <to:ListComma<StateParam>> <end:@R> => {
+        ast::StateBound::new(start, end, from, to)
+    }
+
+}
+
+StBlock: ast::StBlock = {
+    <start:@L> "st" <e:Expression> <end:@R> => {
+        ast::StBlock::new(start, end, e)
+    }
+}
+
+StatementBlock: ast::StatementBlock = {
+    <start:@L> "{" <statements:Statement*> "}" <end:@L> => {
+        ast::StatementBlock::new(start, end, statements)
+    }
+}
+
+Variable: ast::Variable = {
+    <start:@L> "let" <mt:"mut"?> <i:Identifier> <ty:(":" <Type>)?> <val:("=" <Expression>)?> <end:@R> => {
+        ast::Variable::new(start, end, vec![i], mt.is_some(), ty, val)
+    },
+
+    <start:@L> "let" <mt:"mut"?> <is:Variants> <ty:(":" <Type>)?> <val:("=" <Expression>)?> <end:@R> => {
+        ast::Variable::new(start, end, is, mt.is_some(), ty, val)
+    },
+
+     <start:@L> "let" <mt:"mut"?> <is:Variants> <ty:(":" <Type>)?> <error:!> <end:@R> => {
+        errors.push(error);
+        ast::Variable::new(start, end, is, mt.is_some(), ty, None)
+    },
+}
+
+Assign: ast::Assign = {
+    <start:@L> <i:Identifier> "=" <val:Expression> <end:@R> => {
+        ast::Assign::new(start, end, i, val)
+    }
+}
+
+IfElse: ast::IfElse = {
+    #[precedence(level = "0")]
+    <start:@L> "if" <cond:Expression> <body:StatementBlock> <end:@R> => {
+        ast::IfElse::new(start, end, cond, Box::new(body), None)
+    },
+
+    #[precedence(level = "1")]
+    <start:@L> "if" <cond:Expression> <body:StatementBlock> <mid:@R> "else" <else_part:Statement> <end:@R> => {
+        match else_part {
+            ast::Statement::Block(_) | ast::Statement::IfElse(_) => {},
+            _ => {
+                let error = ErrorRecovery {
+                    error: ParseError::User {
+                        error: LexicalError::InvalidElseBlock(Span { start: mid, end })
+                    },
+                    dropped_tokens: Vec::new(),
+                };
+                errors.push(error);
+            }
+        };
+        ast::IfElse::new(start, end, cond, Box::new(body), Some(Box::new(else_part)))
+    },
+}
+
+ForLoop: ast::ForLoop = {
+    <start:@L> "for" "(" <var:Variable> ";" <cond:Expression> ";" <incr:Expression> ")" <body:StatementBlock>  <end:@R> => {
+        ast::ForLoop::new(start, end, var, cond, incr, Box::new(body))
+    }
+}
+
+Iterator: ast::Iterator = {
+    <start:@L> "for" "(" <i:Identifier> "in" <list:Expression> ")" <body:StatementBlock> <end:@R> => {
+        ast::Iterator::new(start, end, vec![i], list, Box::new(body))
+    },
+
+    <start:@L> "for" "(" "{" <is:Identifier+> "}" "in" <list:Expression> ")" <body:StatementBlock> <end:@R> => {
+        ast::Iterator::new(start, end, is, list, Box::new(body))
+    }
+}
+
+FunCall: ast::FunctionCall = {
+    <start:@L> <i:Identifier> <args:FunArgs> <end:@R> => {
+        ast::FunctionCall::new(start, end, i, args)
+    }
+}
+
+StructInit: ast::StructInit = {
+    <start:@L> <i:Identifier> ":" "{" ".." <auto_obj:Identifier> "}" <end:@R> => {
+        ast::StructInit::new(start, end, i, vec![], Some(auto_obj))
+    },
+    <start:@L> <i:Identifier> ":" "{" <args:ListComma<Expression>> <auto_obj:("|" ".." <Identifier>)?> "}" <end:@R> => {
+        ast::StructInit::new(start, end, i, args, auto_obj)
+    },
+    <start:@L> <i:Identifier> ":" "{" "}" <end:@R> => {
+        ast::StructInit::new(start, end, i, vec![], None)
+    },
+}
+
+FunArgs: Vec<ast::Expression> = {
+    "(" ")" => Vec::new(),
+    "()" => Vec::new(),
+    "(" <ListComma<Expression>> ")" => <>,
+
+    "(" <error:!> ")" => {
+        errors.push(error);
+        Vec::new()
+    }
+}
+
+Statement: ast::Statement = {
+    <Variable> ";" => ast::Statement::Variable(<>),
+    <Assign> ";" => ast::Statement::Assign(<>),
+    <IfElse> => ast::Statement::IfElse(<>),
+    <ForLoop> => ast::Statement::ForLoop(<>),
+    <Iterator> => ast::Statement::Iterator(<>),
+    "return" <Expression> ";" => ast::Statement::Return(<>),
+    <FunCall> ";" => ast::Statement::FunCall(<>),
+    "move" <StructInit> ";" => ast::Statement::StateTransition(<>),
+
+    <block:StatementBlock> => ast::Statement::Block(block),
+
+    <start:@L> <error:!> <end:@R> => {
+        errors.push(error);
+        ast::Statement::Error(Span { start, end })
+
+    }
 }
 
 Expression: ast::Expression = {
-    <e:ExpressionNested> => *e,
-}
-
-ExpressionNested: Box<ast::Expression> = {
     #[precedence(level="0")]
     Term,
 
     #[precedence(level="1")] #[assoc(side="left")]
-    <start:@L> <lhs:ExpressionNested> "*" <rhs:ExpressionNested> <end:@R> => {
-        Box::new(
-            ast::Expression::Multiply(
-                ast::BinaryExpression::new(start, end, lhs, rhs)
-            )
-        )
-    },
-    <start:@L> <lhs:ExpressionNested> "/" <rhs:ExpressionNested> <end:@R> => {
-        Box::new(
-            ast::Expression::Divide(
-                ast::BinaryExpression::new(start, end, lhs, rhs)
-            )
+    <start:@L> <e:Expression> "." <i:Identifier> <end:@R> => {
+        ast::Expression::MemberAccess(
+            ast::MemberAccess::new(start, end, Box::new(e), i)
         )
     },
 
     #[precedence(level="2")] #[assoc(side="left")]
-    <start:@L> <lhs:ExpressionNested> "+" <rhs:ExpressionNested> <end:@R> => {
-        Box::new(
-            ast::Expression::Add(
-                ast::BinaryExpression::new(start, end, lhs, rhs)
-            )
+    <start:@L> <lhs:Expression> "*" <rhs:Expression> <end:@R> => {
+        ast::Expression::Multiply(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
         )
     },
-    <start:@L> <lhs:ExpressionNested> "-" <rhs:ExpressionNested> <end:@R> => {
-        Box::new(
-            ast::Expression::Subtract(
-                ast::BinaryExpression::new(start, end, lhs, rhs)
-            )
+
+    <start:@L> <lhs:Expression> "/" <rhs:Expression> <end:@R> => {
+        ast::Expression::Divide(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
         )
     },
+    <start:@L> <lhs:Expression> "%" <rhs:Expression> <end:@R> => {
+        ast::Expression::Divide(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
+        )
+    },
+
+    #[precedence(level="3")] #[assoc(side="left")]
+    <start:@L> <lhs:Expression> "+" <rhs:Expression> <end:@R> => {
+        ast::Expression::Add(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
+        )
+    },
+    <start:@L> <lhs:Expression> "-" <rhs:Expression> <end:@R> => {
+        ast::Expression::Subtract(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
+        )
+    },
+
+    #[precedence(level="4")]
+    <start:@L> "!" <val:Expression> <end:@R> => {
+        ast::Expression::Not(
+            ast::UnaryExpression::new(start, end, Box::new(val))
+        )
+    },
+
+    #[precedence(level="5")] #[assoc(side="left")]
+    <start:@L> <lhs:Expression> ":>" <rhs:Expression> <end:@R> => {
+        ast::Expression::Pipe(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
+        )
+    },
+
+   #[precedence(level="6")] #[assoc(side="left")]
+    <start:@L> <lhs:Expression> "==" <rhs:Expression> <end:@R> => {
+        ast::Expression::Equal(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
+        )
+    },
+    <start:@L> <lhs:Expression> "!=" <rhs:Expression> <end:@R> => {
+        ast::Expression::NotEqual(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
+        )
+    },
+    <start:@L> <lhs:Expression> ">" <rhs:Expression> <end:@R> => {
+        ast::Expression::Greater(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
+        )
+    },
+    <start:@L> <lhs:Expression> "<" <rhs:Expression> <end:@R> => {
+        ast::Expression::Less(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
+        )
+    },
+    <start:@L> <lhs:Expression> ">=" <rhs:Expression> <end:@R> => {
+        ast::Expression::GreaterEq(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
+        )
+    },
+    <start:@L> <lhs:Expression> "<=" <rhs:Expression> <end:@R> => {
+        ast::Expression::LessEq(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
+        )
+    },
+    <start:@L> <lhs:Expression> "in" <rhs:Expression> <end:@R> => {
+        ast::Expression::In(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
+        )
+    },
+
+    #[precedence(level="7")] #[assoc(side="left")]
+    <start:@L> <lhs:Expression> "||" <rhs:Expression> <end:@R> => {
+        ast::Expression::Or(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
+        )
+    },
+    <start:@L> <lhs:Expression> "&&" <rhs:Expression> <end:@R> => {
+        ast::Expression::And(
+            ast::BinaryExpression::new(start, end, Box::new(lhs), Box::new(rhs))
+        )
+    },
+
 }
 
-Term: Box<ast::Expression> = {
-    <start:@L> <val:number> <end:@R> => {
-        Box::new(ast::Expression::Number(
-            ast::UnaryExpression::new(start, end, val.to_string())
-        ))
+Term: ast::Expression = {
+    #[precedence(level="1")]
+    <i:Identifier> => {
+        ast::Expression::Variable(i)
     },
-    "(" <ExpressionNested> ")" => <> 
+
+    <start:@L> <val:StructInit> <end:@R> => {
+        ast::Expression::StructInit(
+            ast::UnaryExpression::new(start, end, val)
+        )
+    },
+
+    <FunCall> => ast::Expression::FunctionCall(<>),
+
+    <start:@L> <val:ListExpr> <end:@R> => {
+        ast::Expression::List(
+            ast::UnaryExpression::new(start, end, val)
+        )  
+    },
+
+    <start:@L> <val:number> <end:@R> => {
+        ast::Expression::Number(
+            ast::UnaryExpression::new(start, end, val.to_string())
+        )
+    },
+
+    <start:@L> "true" <end:@R> => {
+        ast::Expression::Boolean(
+            ast::UnaryExpression::new(start, end, true)
+        )
+    },
+
+    <start:@L> "false" <end:@R> => {
+        ast::Expression::Boolean(
+            ast::UnaryExpression::new(start, end, false)
+        )
+    },
+
+    <start:@L> <val:float> <end:@R> => {
+        ast::Expression::Float(
+            ast::UnaryExpression::new(start, end, val.to_string())
+        )
+    },
+    <start:@L> <val:string> <end:@R> => {
+        ast::Expression::String(
+            ast::UnaryExpression::new(start, end, val.to_string())
+        )
+    },
+    <start:@L> <val:char_token> <end:@R> => {
+        ast::Expression::Char(
+            ast::UnaryExpression::new(start, end, val)
+        )
+    },
+    <start:@L> <val:hex> <end:@R> => {
+        ast::Expression::Hex(
+            ast::UnaryExpression::new(start, end, val.to_string())
+        )
+    },
+    <start:@L> <val:address> <end:@R> => {
+        ast::Expression::Address(
+            ast::UnaryExpression::new(start, end, val.to_string())
+        )
+    },
+
+
+    "(" <Expression> ")" => <>
+}
+
+Type: ast::Type = {
+    <start:@L> "int" <end:@R> => ast::Type::new(start, end, ast::TypeVariant::Int),
+    <start:@L> "uint" <end:@R> => ast::Type::new(start, end, ast::TypeVariant::Uint),
+    <start:@L> "float" <end:@R> => ast::Type::new(start, end, ast::TypeVariant::Float),
+    <start:@L> "char" <end:@R> => ast::Type::new(start, end, ast::TypeVariant::Char),
+    <start:@L> "string" <end:@R> => ast::Type::new(start, end, ast::TypeVariant::String),
+    <start:@L> "hex" <end:@R> => ast::Type::new(start, end, ast::TypeVariant::Hex),
+    <start:@L> "address" <end:@R> => ast::Type::new(start, end, ast::TypeVariant::Address),
+    <start:@L> "()" <end:@R> => ast::Type::new(start, end, ast::TypeVariant::Unit),
+    <start:@L> "bool" <end:@R> => ast::Type::new(start, end, ast::TypeVariant::Bool),
+    <start:@L> "set" "<" <ty:Type> ">" <end:@R> => ast::Type::new(start, end, ast::TypeVariant::Set(ast::Set::new(Box::new(ty)))),
+    <start:@L> "list" "<" <ty:Type> ">" <end:@R> => ast::Type::new(start, end, ast::TypeVariant::List(ast::List::new(Box::new(ty)))),
+    <start:@L> <m:Mapping> <end:@R> => ast::Type::new(start, end, ast::TypeVariant::Mapping(m)),
+    <i:Identifier> => ast::Type::new(i.loc.start, i.loc.end, ast::TypeVariant::Custom(i))
+}
+
+MappingRelation: ast::MappingRelation = {
+    <start:@L> <inj:">"?> "-" <partial:"/"?> ">" <surj:">"?> <end:@R> => {
+        ast::MappingRelation::new(start, end, inj.is_some(), partial.is_some(), surj.is_some())
+    },
+    <start:@L> <inj:">"?> "->" <end:@R> => {
+        ast::MappingRelation::new(start, end, false, false, false)
+    }, 
+}
+
+Mapping: ast::Mapping = {
+    "mapping" "<" <from:Type> <rel:MappingRelation> <to:Type> ">" => {
+        ast::Mapping::new(Box::new(from), rel, Box::new(to))
+    }
+}
+
+Identifier: ast::Identifier = {
+    <start:@L> <i:ident> <end:@L> => ast::Identifier::new(start, end, i.to_string())
 }
 
 extern {
@@ -64,10 +540,11 @@ extern {
 
     enum Token<'input> {
         number => Token::Number(<&'input str>),
-        float => Token::Float(<f64>),
+        float => Token::Float(<&'input str>),
         char_token => Token::Char(<char>),
         string => Token::String(<&'input str>),
-        hex_string => Token::String(<&'input str>),
+        address => Token::Address(<&'input str>),
+        hex => Token::String(<&'input str>),
         ident => Token::Identifier(<&'input str>),
         "true" => Token::True,
         "false" => Token::False,
@@ -75,6 +552,8 @@ extern {
         ")" => Token::RParen,
         "{" => Token::LCurly,
         "}" => Token::RCurly,
+        "[" => Token::LSquare,
+        "]" => Token::RSquare,
         "<" => Token::LAngle,
         ">" => Token::RAngle,
         "=" => Token::Assign,
@@ -82,26 +561,30 @@ extern {
         "-" => Token::Minus,
         "*" => Token::Mul,
         "/" => Token::Div,
+        "%" => Token::Modulo,
+        "!" => Token::Not,
         "==" => Token::Eq,
-        "/=" => Token::Neq,
+        "!=" => Token::Neq,
         "<=" => Token::Leq,
         ">=" => Token::Meq,
         "in" => Token::In,
+        "||" => Token::Or,
+        "&&" => Token::And,
         "int" => Token::IntType,
         "uint" => Token::UIntType,
         "float" => Token::FloatType,
         "char" => Token::CharType,
         "string" => Token::StringType,
         "hex" => Token::HexType,
-        "hash" => Token::HashType,
         "address" => Token::AddressType,
         "bool" => Token::BoolType,
         "()" => Token::UnitType,
-        "Mapping" => Token::Mapping,
-        "Set" => Token::Set,
-        "List" => Token::List,
+        "mapping" => Token::Mapping,
+        "set" => Token::Set,
+        "list" => Token::List,
         "struct" => Token::Struct,
         "enum" => Token::Enum,
+        "model" => Token::Model,
         "state" => Token::State,
         "fn" => Token::Func,
         "from" => Token::From,
@@ -126,6 +609,9 @@ extern {
         "@" => Token::At,
         ":>" => Token::Pipe,
         "|" => Token::MatchOr,
+        "." => Token::Dot,
         ".." => Token::DoubleDot,
+        "," => Token::Coma,
+        "move" => Token::Move,
     }
 }

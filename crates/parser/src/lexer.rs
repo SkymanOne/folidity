@@ -12,11 +12,14 @@ pub enum LogosError {
 
 #[derive(Default, Clone, Debug, PartialEq, Error)]
 pub enum LexicalError {
-    #[error("Invalid token found, '{1}'")]
-    InvalidToken(Span, String),
+    #[error("Invalid token found")]
+    InvalidToken(Span),
 
     #[error("Invalid integer value")]
     InvalidInteger(Span),
+
+    #[error("Invalid else block. Expected block or `if`")]
+    InvalidElseBlock(Span),
 
     #[default]
     #[error("Unknown error occurred")]
@@ -40,15 +43,17 @@ pub enum Token<'input> {
     // Type values
     #[regex("[0-9]+", |lex| lex.slice(), priority = 2)]
     Number(&'input str),
-    #[regex("([0-9]*[.])?[0-9]+", |lex| lex.slice().parse().ok(), priority = 1)]
-    Float(f64),
+    #[regex("([0-9]*[.])?[0-9]+", |lex| lex.slice(), priority = 1)]
+    Float(&'input str),
     #[regex("\'[a-zA-Z]\'", |lex| lex.slice().parse().ok())]
     Char(char),
     #[regex("\"[a-zA-Z]+\"", |lex| lex.slice())]
     String(&'input str),
     #[regex("hex\"[a-zA-Z]+\"", |lex| lex.slice())]
-    HexString(&'input str),
-    #[regex("[_a-zA-Z][_0-9a-zA-Z]+", |lex| lex.slice())]
+    Hex(&'input str),
+    #[regex("a\"[a-zA-Z]+\"", |lex| lex.slice())]
+    Address(&'input str),
+    #[regex("[_a-zA-Z][_0-9a-zA-Z]*", |lex| lex.slice())]
     Identifier(&'input str),
     #[token("true")]
     True,
@@ -70,6 +75,11 @@ pub enum Token<'input> {
     #[token(">")]
     RAngle,
 
+    #[token("[")]
+    LSquare,
+    #[token("]")]
+    RSquare,
+
     #[token("=")]
     Assign,
 
@@ -82,6 +92,8 @@ pub enum Token<'input> {
     Mul,
     #[token("/")]
     Div,
+    #[token("%")]
+    Modulo,
 
     #[token("!")]
     Not,
@@ -98,7 +110,13 @@ pub enum Token<'input> {
     #[token("in")]
     In,
 
-    //Types
+    // Bool operations
+    #[token("||")]
+    Or,
+    #[token("&&")]
+    And,
+
+    // Types
     #[token("int")]
     IntType,
     #[token("unit")]
@@ -111,8 +129,6 @@ pub enum Token<'input> {
     StringType,
     #[token("hex")]
     HexType,
-    #[token("hash")]
-    HashType,
     #[token("address")]
     AddressType,
     #[token("bool")]
@@ -120,17 +136,19 @@ pub enum Token<'input> {
     #[token("()")]
     UnitType,
 
-    //Keywords
-    #[token("Mapping")]
+    // Keywords
+    #[token("mapping")]
     Mapping,
-    #[token("Set")]
+    #[token("set")]
     Set,
-    #[token("List")]
+    #[token("list")]
     List,
     #[token("struct")]
     Struct,
     #[token("enum")]
     Enum,
+    #[token("model")]
+    Model,
     #[token("state")]
     State,
     #[token("fn")]
@@ -185,8 +203,13 @@ pub enum Token<'input> {
     Dot,
     #[token("..")]
     DoubleDot,
+    #[token(",")]
+    Coma,
 
-    //comment
+    #[token("move")]
+    Move,
+
+    // comment
     #[regex(r"#[^\n]*", |lex| lex.slice())]
     Comment(&'input str),
 }
@@ -199,7 +222,8 @@ impl<'input> fmt::Display for Token<'input> {
             Token::Float(n) => write!(f, "{n}"),
             Token::Char(c) => write!(f, "\'{c}'"),
             Token::String(s) => write!(f, "\"{s}\""),
-            Token::HexString(s) => write!(f, "hex\"{s}\""),
+            Token::Hex(s) => write!(f, "hex\"{s}\""),
+            Token::Address(s) => write!(f, "hex\"{s}\""),
             Token::Identifier(i) => write!(f, "{i}"),
             Token::True => word("true"),
             Token::False => word("false"),
@@ -207,6 +231,8 @@ impl<'input> fmt::Display for Token<'input> {
             Token::RParen => word(")"),
             Token::LCurly => word("{"),
             Token::RCurly => word("}"),
+            Token::LSquare => word("["),
+            Token::RSquare => word("]"),
             Token::LAngle => word("<"),
             Token::RAngle => word(">"),
             Token::Assign => word("="),
@@ -214,27 +240,30 @@ impl<'input> fmt::Display for Token<'input> {
             Token::Minus => word("-"),
             Token::Mul => word("*"),
             Token::Div => word("/"),
+            Token::Modulo => word("%"),
             Token::Not => word("!"),
             Token::Eq => word("=="),
             Token::Neq => word("/="),
             Token::Leq => word("<="),
             Token::Meq => word(">="),
             Token::In => word("in"),
+            Token::Or => word("||"),
+            Token::And => word("&&"),
             Token::IntType => word("int"),
             Token::UIntType => word("unit"),
             Token::FloatType => word("float"),
             Token::CharType => word("char"),
             Token::StringType => word("string"),
             Token::HexType => word("hex"),
-            Token::HashType => word("hash"),
             Token::AddressType => word("address"),
             Token::BoolType => word("bool"),
             Token::UnitType => word("()"),
-            Token::Mapping => word("Mapping"),
-            Token::Set => word("Set"),
-            Token::List => word("List"),
+            Token::Mapping => word("mapping"),
+            Token::Set => word("set"),
+            Token::List => word("list"),
             Token::Struct => word("struct"),
             Token::Enum => word("enum"),
+            Token::Model => word("model"),
             Token::State => word("state"),
             Token::Func => word("fn"),
             Token::From => word("from"),
@@ -261,6 +290,8 @@ impl<'input> fmt::Display for Token<'input> {
             Token::MatchOr => word("|"),
             Token::Dot => word("."),
             Token::DoubleDot => word(".."),
+            Token::Coma => word(","),
+            Token::Move => word("move"),
             Token::Comment(c) => write!(f, "{c}"),
         }
     }
@@ -294,8 +325,7 @@ impl<'input> Iterator for Lexer<'input> {
                     _ => Some((span.start, tok, span.end)),
                 },
                 Err(err) => {
-                    self.errors
-                        .push(logos_to_lexical_error(&err, &span, &self.token_stream));
+                    self.errors.push(logos_to_lexical_error(&err, &span));
                     self.next()
                 }
             }
@@ -305,15 +335,9 @@ impl<'input> Iterator for Lexer<'input> {
     }
 }
 
-fn logos_to_lexical_error<'input>(
-    error: &LogosError,
-    span: &Span,
-    tokens: &SpannedIter<'input, Token<'input>>,
-) -> LexicalError {
+fn logos_to_lexical_error(error: &LogosError, span: &Span) -> LexicalError {
     match error {
-        LogosError::InvalidToken => {
-            LexicalError::InvalidToken(span.clone(), tokens.slice().to_string())
-        }
+        LogosError::InvalidToken => LexicalError::InvalidToken(span.clone()),
         LogosError::InvalidInteger => LexicalError::InvalidInteger(span.clone()),
     }
 }

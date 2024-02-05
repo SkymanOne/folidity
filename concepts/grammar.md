@@ -6,54 +6,49 @@ Based on the [sample program](samples.md) we can design the first version of eBN
 Based on holistic approach
 
 ```xml
-<program>      := <metadata> <decl>+
-<metadata>     := (<version> <author>) | (<author> <version>)
-<version>      := `version` `:` `"` <number> `.` <number> `.` <number>
-<author>       := `author` `:` `"` <ident> `<` <ident> `>`
+<program>      := <decl>+
 
 <decl>         := <func_decl> | <model_decl> | <state_decl> | <enum_decl> | <struct_decl>
 
-<func_decl>    := <attrs>+ <vis> `fn` <type_decl> <ident> `(` <params>? `)` <state_bound>? <st_block>? `{` <func_body> `}`
+<func_decl>    :=  `@init`? <attrs>+ <view>? `fn` <type_decl> <ident> `(` <params>? `)` <state_bound>? <st_block>? `{` <func_body> `}`
 <type_decl>    := <type> | `(` <param> `)`
 
-<attrs>        := `@` `(` <attr_ident> `)` | `@init`
-<attr_ident>   := <ident> | ( <attr_ident> `|` )*
-<params>       := <param> | (params `,`)*
+<attrs>        := `@` `(` <attr_ident> `)`
+<attr_ident>   := <ident> | ( <expr> `|` )*
+<params>       := <param> | <param> (`,` <params>)*
 <param>        := <ident> `:` <type>
-<vis>          := `pub` | `view` `(` <ident> <ident> `)`
-<state_bound>  := `when` <ident> <ident> <arr> <ident> <ident>?
+<view>          := `view` `(` <state_param> `)`
+<state_bound>  := `when` <state_param> <arr> ( <state_param> | <state_param> (`,` <state_param>)*)
 <func_body>    := (<statement>)*
+<state_param>  := (<ident> <ident>?) | `()`
 
-<st_block>     := `st` <st_body>
-<st_body>      := <cond> | `{` <st_list> `}`
-<st_list>      := <cond> | (<st_list> `,`)*
+<st_block>     := `st` <expr>
 
-<statement>    := <var> | <assign> | <if> | <for> | <foreach> | <return> | <func_call> | <state_t>
-<var>          := let `mut`? <var_ident> (`=` <expr>)?
+<statement>    := <var> | <assign> | <if> | <for> | <foreach> | <return> | <func_call> | <state_t> `;`
+<state_t>      := `move` <struct_init>
+<var>          := let `mut`? <var_ident> (`:` <type>)? (`=` <expr>)?
 <var_ident>    := (<ident> | <decon>)
 <decon>        := `{` <decon_list> `}`
-<decon_list>   := <ident> | (<decond_list> `,` )*
+<decon_list>   := <ident> | <ident> (`,` <decon_list>)*
 
 <assign>       := <ident> `=` <expr>
-<if>           := `if` `(` <cond> `)` `{` <statement> `}` (`else` `{` <statement> `}`)?
-<foreach>      := `for` `(` `var_ident` `in` (<ident> | <range>) `)` `{` <statement> `}`
-<for>          := `for` `(` <var> `;` <cond> `;` <expr> `)` `{` <statement> `}`
-<range>        := `range` `(` <number> `to` <number> `)` 
-<cond>         := <expr> <rel> <expr>
+<if>           := `if` <expr> ` `{` <statement> `}` (`else` <if>? )*
+<foreach>      := `for` `(` <var_ident> `in` (<ident> | <range>) `)` `{` <statement> `}`
+<for>          := `for` `(` <var> `;` <expr> `;` <expr> `)` `{` <statement> `}`
 <return>       := `return` <expr>
-<state_t>      := <ident> `{` <struct_args> `}`
-<struct_args>  := <expr> | (<struct_args> `,`)* | <arg_obj>
+<struct_init>  := <ident> : `{` <struct_args> `}`
+<struct_args>  := <expr> | (`,` <expr>)* | <arg_obj>
 <struct_arg>   := <ident> `:` <expr>
-<arg_obj>      := `..` <ident>
+<arg_obj>      := `|` `..` <ident>
 
 <model_decl>   := `model` <ident> `{` params `}` <st_block>?
 
 <state_decl>   := `state` <ident> (`from` <ident> <ident>)?  <state_body> <st_block>?
 <state_body>   := `(` <ident> `)` |  `{` params `}`
-<enum_decl>    := `enum` `{` <ident>+ `}`
-<struct_decl>  := `struct` `{` params `}`
+<enum_decl>    := `enum` `{` (<ident> | <ident> (`,` <ident>)* ) `}`
+<struct_decl>  := `struct` `{` <params> `}`
 
-<type>         := `int` | `uint` | `float` | `char` | `string` | `hex` | `hash` 
+<type>         := `int` | `uint` | `float` | `char` | `string` | `hex` 
              | `address` | `()` | `bool` | <set_type> | <list_type> | <mapping_type>
 
 
@@ -62,14 +57,16 @@ Based on holistic approach
 <mapping_type> := `Mapping` `<` <type> <mapping_rel> <type> `>`
 <mapping_rel>  := (`>`)? `-` (`/`)? (`>`)? `>`
 
-<char>         := ? UTF-8 char ?
-<string>       := `"` <char>* `"`
+<char>         := ? '` <char>* `'`
+<hex>          := `hex` `"` <char>* `"`
+<address>      := `a` `"` <char>* `"`
 
 <digit>        := [0-9]
 <number>       := <digit>+
 
 <bool>         := `true` | `false`
 <rel>          := `==` | `!=` | `<` | `>` | `<=` | `>=` | `in` 
+<bool_op>      := `||` | '&&'
 
 <period>       := `.`
 <float>        := <number> <period> <number>?
@@ -85,10 +82,15 @@ Based on holistic approach
 <div>          := `/`
 <mul>          := `*`
 <not>          := `!`
-<expr>         := <term> ( (<plus> | <minus> | <not>) <term> )*
-<term>         := <factor> ( (<mul> | <div>) <factor> )*
+<modulo>       := `%`
+<expr>         := <not>? <expr_nested>
+<expr_nested>  := <term> <bool_op> <expr>
+<cond>         := <expr> <rel> <expr> 
+<math_expr>    := <term> ( (<plus> | <minus>) <term> )*
+<term>         := <factor> ( (<mul> | <div> | <modulo>) <factor> )*
 <factor>       := <ident> | <constant> | <func_call> | <func_pipe> | <member_acc> | `(` <expr> `)`
-<constant>     := <number> | <float> | <bool> | <string>
+<constant>     := <number> | <float> | <bool> | <string> | <hex> | <address> | <list>
+<list>         := `[` ( <expr>? | <expr> (`,` <expr>)* ) `]`
 <ident>        := <char>+
 <arr>          := `->`
 
