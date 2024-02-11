@@ -11,3 +11,7 @@ version.workspace = true
 
 
 [dependencies]
+folidity-parser = { workspace = true }
+folidity-diagnostics = { workspace = true }
+derive-node = { workspace = true }
+indexmap = { workspace = true }
