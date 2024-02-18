@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use folidity_parser::ast::{Identifier, TypeVariant};
 use indexmap::IndexMap;
 
-use crate::contract::{ContractDefinition, Expression};
+use crate::{ast::Expression, contract::ContractDefinition};
 
 #[derive(Debug, Clone)]
 pub struct VariableSym {
@@ -16,7 +16,7 @@ pub struct VariableSym {
     /// Has the variable been used?
     pub used: bool,
     /// The usage context of the variable.
-    pub usage: VariableType,
+    pub usage: VariableKind,
 }
 
 impl VariableSym {
@@ -25,16 +25,17 @@ impl VariableSym {
     }
 }
 
+/// A kind of a variable used.
 #[derive(Debug, Clone)]
-pub enum VariableType {
+pub enum VariableKind {
     Return,
     Destructor,
     Param,
     Local,
     State,
     /// A user defined type
-    /// e.g. Struct, Model, Enum
-    /// Which should exist in global namespace.
+    /// (e.g. Struct, Model, Enum, Function)
+    /// which should exist in global namespace.
     User(usize),
 }
 
@@ -53,7 +54,7 @@ impl SymTable {
         name: &Identifier,
         ty: TypeVariant,
         value: Option<Expression>,
-        usage: VariableType,
+        usage: VariableKind,
     ) {
         let current_id = contract.next_var_id;
         contract.next_var_id += 1;
