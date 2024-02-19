@@ -10,7 +10,7 @@ pub enum GlobalSymbol {
 }
 
 /// Global user defined symbol info.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SymbolInfo {
     /// Locations of the global symbol.
     pub loc: Span,

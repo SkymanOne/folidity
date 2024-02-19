@@ -1,9 +1,11 @@
 use derive_node::Node;
 use folidity_parser::{
-    ast::{BinaryExpression, Identifier, UnaryExpression},
+    ast::{BinaryExpression, Identifier, MappingRelation, UnaryExpression},
     Span,
 };
 use indexmap::IndexMap;
+
+use crate::global_symbol::SymbolInfo;
 
 #[derive(Clone, Debug, PartialEq, Node)]
 pub struct Type {
@@ -25,10 +27,11 @@ pub enum TypeVariant {
     Set(Set),
     List(List),
     Mapping(Mapping),
-    Function(Box<FuncReturnType>),
-    Struct(usize),
-    Model(usize),
-    State(usize),
+    Function(SymbolInfo),
+    Struct(SymbolInfo),
+    Model(SymbolInfo),
+    Enum(SymbolInfo),
+    State(SymbolInfo),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -45,20 +48,6 @@ pub struct Set {
 #[derive(Clone, Debug, PartialEq, Node)]
 pub struct List {
     pub ty: Box<Type>,
-}
-
-#[derive(Clone, Debug, PartialEq, Node)]
-pub struct MappingRelation {
-    pub loc: Span,
-    pub injective: bool,
-    pub partial: bool,
-    pub surjective: bool,
-}
-
-impl MappingRelation {
-    pub fn is_bijective(&self) -> bool {
-        self.injective && self.surjective
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]

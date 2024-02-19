@@ -6,7 +6,8 @@ use folidity_parser::{ast::Source, Span};
 use indexmap::IndexMap;
 
 use crate::ast::{
-    EnumDeclaration, FunctionDeclaration, ModelDeclaration, StateDeclaration, StructDeclaration,
+    EnumDeclaration, FunctionDeclaration, ModelDeclaration, Param, StateDeclaration,
+    StructDeclaration,
 };
 use crate::decls::DelayedFields;
 use crate::global_symbol::SymbolInfo;
@@ -23,6 +24,7 @@ const RESERVED_TYPE_NAMES: &[&str] = &[
 
 /// Semantically analysed contract definition.
 /// Ready for the the next stage of compilation.
+#[derive(Debug, Clone, Default)]
 pub struct ContractDefinition {
     /// List of all enums in the contract.
     pub enums: Vec<EnumDeclaration>,
@@ -69,6 +71,7 @@ impl ContractDefinition {
         delay
     }
 
+    /// Resolves fields during the second pass.
     pub fn resolve_fields(&mut self, delay: &DelayedDeclarations) {}
 
     fn analyze_enum(&mut self, item: &parsed_ast::EnumDeclaration) {
@@ -113,7 +116,43 @@ impl ContractDefinition {
         );
     }
 
-    pub fn analyze_struct(
+    fn analyze_fields(&mut self, fields: &[&parsed_ast::Param], ident: &Identifier) {
+        let analyzed_fields: Vec<Param> = Vec::new();
+        if fields.is_empty() {
+            self.diagnostics.push(Report::semantic_error(
+                ident.loc.clone(),
+                format!("`{}` has no fields", &ident.name),
+            ));
+            return;
+        }
+
+        for field in fields {
+            let duplicates: Vec<&parsed_ast::Param> = fields
+                .iter()
+                .filter(|f| f.name.name == field.name.name)
+                .copied()
+                .collect();
+            if !duplicates.is_empty() {
+                let start = duplicates
+                    .iter()
+                    .min_by(|x, y| x.loc.start.cmp(&y.loc.start))
+                    .map(|p| p.loc.start)
+                    .unwrap();
+                let end = duplicates
+                    .iter()
+                    .max_by(|x, y| x.loc.end.cmp(&y.loc.end))
+                    .map(|p| p.loc.end)
+                    .unwrap();
+
+                self.diagnostics.push(Report::semantic_error(
+                    Span { start, end },
+                    format!("`{}` is duplicated", field.name.name),
+                ));
+            }
+        }
+    }
+
+    fn analyze_struct(
         &mut self,
         item: &parsed_ast::StructDeclaration,
         delay: &mut DelayedDeclarations,
@@ -140,7 +179,7 @@ impl ContractDefinition {
         }
     }
 
-    pub fn analyze_model(
+    fn analyze_model(
         &mut self,
         item: &parsed_ast::ModelDeclaration,
         delay: &mut DelayedDeclarations,
@@ -169,7 +208,7 @@ impl ContractDefinition {
         }
     }
 
-    pub fn analyze_state(
+    fn analyze_state(
         &mut self,
         item: &parsed_ast::StateDeclaration,
         delay: &mut DelayedDeclarations,
@@ -203,7 +242,7 @@ impl ContractDefinition {
     /// # Errors
     /// - The symbol table is already in use.
     /// - The symbol name is a reserved word.
-    fn add_global_symbol(&mut self, ident: &Identifier, symbol: GlobalSymbol) -> bool {
+    pub fn add_global_symbol(&mut self, ident: &Identifier, symbol: GlobalSymbol) -> bool {
         if RESERVED_TYPE_NAMES.contains(&ident.name.as_str()) {
             self.diagnostics.push(Report::semantic_error(
                 ident.loc.clone(),
