@@ -6,11 +6,12 @@ use folidity_parser::{ast::Source, Span};
 use indexmap::IndexMap;
 
 use crate::ast::{
-    EnumDeclaration, FunctionDeclaration, ModelDeclaration, Param, StateDeclaration,
+    EnumDeclaration, FunctionDeclaration, ModelDeclaration, Param, StateBody, StateDeclaration,
     StructDeclaration,
 };
-use crate::decls::DelayedFields;
+use crate::decls::DelayedDeclaration;
 use crate::global_symbol::SymbolInfo;
+use crate::types::map_type;
 use crate::{decls::DelayedDeclarations, global_symbol::GlobalSymbol};
 
 /// Arbitrary limit of a max number of topic.
@@ -72,8 +73,101 @@ impl ContractDefinition {
     }
 
     /// Resolves fields during the second pass.
-    pub fn resolve_fields(&mut self, delay: &DelayedDeclarations) {}
+    pub fn resolve_fields(&mut self, delay: &DelayedDeclarations) {
+        // Update fields of the models and structs together.
+        for (s, m) in delay.structs.iter().zip(delay.models.iter()) {
+            let s_fields = self.analyze_fields(&s.decl.fields, &s.decl.name);
+            self.structs[s.i].fields = s_fields;
 
+            let m_fields = self.analyze_fields(&m.decl.fields, &m.decl.name);
+            self.models[m.i].fields = m_fields;
+        }
+
+        for state in &delay.states {
+            let body = match &state.decl.body {
+                Some(parsed_ast::StateBody::Raw(params)) => {
+                    let fields = self.analyze_fields(params, &state.decl.name);
+                    Some(StateBody::Raw(fields))
+                }
+                Some(parsed_ast::StateBody::Model(ident)) => {
+                    let Some(symbol) = self.declaration_symbols.get(&ident.name) else {
+                        self.diagnostics.push(Report::semantic_error(
+                            ident.loc.clone(),
+                            String::from("The model has not been declared."),
+                        ));
+                        continue;
+                    };
+                    match symbol {
+                        GlobalSymbol::Model(m) => Some(StateBody::Model(m.clone())),
+                        _ => {
+                            self.diagnostics.push(Report::semantic_error(
+                                ident.loc.clone(),
+                                String::from("Expected model, found other type."),
+                            ));
+                            continue;
+                        }
+                    }
+                }
+                None => None,
+            };
+
+            self.states[state.i].body = body;
+
+            // todo: check for cycles.
+            // todo: check for valid types.
+        }
+    }
+
+    /// Resolve fields of declarations.
+    fn analyze_fields(&mut self, fields: &[parsed_ast::Param], ident: &Identifier) -> Vec<Param> {
+        let mut analyzed_fields: Vec<Param> = Vec::new();
+        if fields.is_empty() {
+            self.diagnostics.push(Report::semantic_error(
+                ident.loc.clone(),
+                format!("`{}` has no fields", &ident.name),
+            ));
+            return analyzed_fields;
+        }
+
+        for field in fields {
+            let duplicates: Vec<&parsed_ast::Param> = fields
+                .iter()
+                .filter(|f| f.name.name == field.name.name)
+                .collect();
+            if !duplicates.is_empty() {
+                let start = duplicates
+                    .iter()
+                    .min_by(|x, y| x.loc.start.cmp(&y.loc.start))
+                    .map(|p| p.loc.start)
+                    .unwrap();
+                let end = duplicates
+                    .iter()
+                    .max_by(|x, y| x.loc.end.cmp(&y.loc.end))
+                    .map(|p| p.loc.end)
+                    .unwrap();
+
+                self.diagnostics.push(Report::semantic_error(
+                    Span { start, end },
+                    format!("`{}` is duplicated", field.name.name),
+                ));
+            }
+
+            let Ok(param_type) = map_type(self, &field.ty) else {
+                continue;
+            };
+            let param = Param {
+                loc: field.loc.clone(),
+                ty: param_type,
+                name: field.name.clone(),
+                is_mut: field.is_mut,
+            };
+
+            analyzed_fields.push(param);
+        }
+        analyzed_fields
+    }
+
+    /// Resolves enum declarations. This is done in one pass.
     fn analyze_enum(&mut self, item: &parsed_ast::EnumDeclaration) {
         if item.variants.is_empty() {
             self.diagnostics.push(Report::semantic_error(
@@ -116,42 +210,7 @@ impl ContractDefinition {
         );
     }
 
-    fn analyze_fields(&mut self, fields: &[&parsed_ast::Param], ident: &Identifier) {
-        let analyzed_fields: Vec<Param> = Vec::new();
-        if fields.is_empty() {
-            self.diagnostics.push(Report::semantic_error(
-                ident.loc.clone(),
-                format!("`{}` has no fields", &ident.name),
-            ));
-            return;
-        }
-
-        for field in fields {
-            let duplicates: Vec<&parsed_ast::Param> = fields
-                .iter()
-                .filter(|f| f.name.name == field.name.name)
-                .copied()
-                .collect();
-            if !duplicates.is_empty() {
-                let start = duplicates
-                    .iter()
-                    .min_by(|x, y| x.loc.start.cmp(&y.loc.start))
-                    .map(|p| p.loc.start)
-                    .unwrap();
-                let end = duplicates
-                    .iter()
-                    .max_by(|x, y| x.loc.end.cmp(&y.loc.end))
-                    .map(|p| p.loc.end)
-                    .unwrap();
-
-                self.diagnostics.push(Report::semantic_error(
-                    Span { start, end },
-                    format!("`{}` is duplicated", field.name.name),
-                ));
-            }
-        }
-    }
-
+    /// Analyses struct declaration creating a delay in the symbol table.
     fn analyze_struct(
         &mut self,
         item: &parsed_ast::StructDeclaration,
@@ -172,13 +231,14 @@ impl ContractDefinition {
 
             delay
                 .structs
-                .push(DelayedFields::<parsed_ast::StructDeclaration> {
+                .push(DelayedDeclaration::<parsed_ast::StructDeclaration> {
                     decl: item.clone(),
                     i: struct_len,
                 });
         }
     }
 
+    /// Same as `analyze_struct`
     fn analyze_model(
         &mut self,
         item: &parsed_ast::ModelDeclaration,
@@ -201,7 +261,7 @@ impl ContractDefinition {
 
             delay
                 .models
-                .push(DelayedFields::<parsed_ast::ModelDeclaration> {
+                .push(DelayedDeclaration::<parsed_ast::ModelDeclaration> {
                     decl: item.clone(),
                     i: model_len,
                 });
@@ -230,7 +290,7 @@ impl ContractDefinition {
 
             delay
                 .states
-                .push(DelayedFields::<parsed_ast::StateDeclaration> {
+                .push(DelayedDeclaration::<parsed_ast::StateDeclaration> {
                     decl: item.clone(),
                     i: state_len,
                 });

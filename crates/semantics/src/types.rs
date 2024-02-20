@@ -1,9 +1,9 @@
 use crate::ast::{List, Mapping, Set, Type, TypeVariant};
 use crate::contract::ContractDefinition;
-use crate::global_symbol::GlobalSymbol;
+use crate::global_symbol::{GlobalSymbol, SymbolInfo};
 use folidity_diagnostics::Report;
-use folidity_parser::ast as parsed_ast;
 use folidity_parser::ast::Identifier;
+use folidity_parser::{ast as parsed_ast, Span};
 
 /// Maps type from parsed AST to semantically resolved type.
 /// - Primitive types are simply mapped 1-1.
@@ -60,4 +60,24 @@ pub fn map_type(contract: &mut ContractDefinition, ty: &parsed_ast::Type) -> Res
         loc: ty.loc.clone(),
         ty: variant,
     })
+}
+
+/// Attempts to find a user defined type recursion.
+/// Returns span of the of the first instance.
+///
+/// # Outline
+/// - Generate a dependency tree of user defined types.
+/// - Check for cycles.
+pub fn find_user_type_recursion(contract: &mut ContractDefinition, ty: &Type) -> Result<(), Span> {
+    match &ty.ty {
+        TypeVariant::Struct(s) => find_field_cycles(contract, s),
+        TypeVariant::Model(s) => find_field_cycles(contract, s),
+        TypeVariant::State(s) => find_field_cycles(contract, s),
+        _ => Ok(()),
+    }
+}
+
+fn find_field_cycles(contract: &mut ContractDefinition, s: &SymbolInfo) -> Result<(), Span> {
+    // let fields = contract.
+    Ok(())
 }

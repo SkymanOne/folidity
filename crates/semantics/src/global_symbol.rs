@@ -1,6 +1,6 @@
 use folidity_parser::Span;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum GlobalSymbol {
     Struct(SymbolInfo),
     Model(SymbolInfo),

@@ -5,7 +5,7 @@ use folidity_parser::{
 };
 use indexmap::IndexMap;
 
-use crate::global_symbol::SymbolInfo;
+use crate::global_symbol::{GlobalSymbol, SymbolInfo};
 
 #[derive(Clone, Debug, PartialEq, Node)]
 pub struct Type {
@@ -181,7 +181,7 @@ pub enum StateBody {
     /// Fields are specified manually.
     Raw(Vec<Param>),
     /// Fields are derived from model.
-    Model(usize),
+    Model(SymbolInfo),
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]
