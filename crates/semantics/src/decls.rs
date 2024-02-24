@@ -4,7 +4,9 @@ pub struct DelayedDeclaration<T> {
     pub i: usize,
 }
 
-/// Delayed declarations for the second pass semantic analysis.
+/// Saved declaration for later analysis.
+/// The first pass should resolve the fields.
+/// The second pass should resolve model bounds.
 #[derive(Debug, Default)]
 pub struct DelayedDeclarations {
     pub structs: Vec<DelayedDeclaration<folidity_parser::ast::StructDeclaration>>,

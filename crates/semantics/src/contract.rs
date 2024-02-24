@@ -89,6 +89,7 @@ impl ContractDefinition {
                     let fields = self.analyze_fields(params, &state.decl.name);
                     Some(StateBody::Raw(fields))
                 }
+                // If the body is a model, then we need to resolve the model symbol in the symbol table
                 Some(parsed_ast::StateBody::Model(ident)) => {
                     let Some(symbol) = self.declaration_symbols.get(&ident.name) else {
                         self.diagnostics.push(Report::semantic_error(
@@ -99,6 +100,7 @@ impl ContractDefinition {
                     };
                     match symbol {
                         GlobalSymbol::Model(m) => Some(StateBody::Model(m.clone())),
+                        // The symbol must be a model, otherwise the type is invalid.
                         _ => {
                             self.diagnostics.push(Report::semantic_error(
                                 ident.loc.clone(),
@@ -112,10 +114,9 @@ impl ContractDefinition {
             };
 
             self.states[state.i].body = body;
-
-            // todo: check for cycles.
-            // todo: check for valid types.
         }
+        // todo: check for cycles.
+        // todo: check for valid types.
     }
 
     /// Resolve fields of declarations.
@@ -160,6 +161,7 @@ impl ContractDefinition {
                 ty: param_type,
                 name: field.name.clone(),
                 is_mut: field.is_mut,
+                recursive: false,
             };
 
             analyzed_fields.push(param);

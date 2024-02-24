@@ -1,16 +1,69 @@
+use std::collections::HashSet;
+
 use derive_node::Node;
+use folidity_diagnostics::Report;
 use folidity_parser::{
     ast::{BinaryExpression, Identifier, MappingRelation, UnaryExpression},
     Span,
 };
 use indexmap::IndexMap;
 
-use crate::global_symbol::{GlobalSymbol, SymbolInfo};
+use crate::{
+    contract::ContractDefinition,
+    global_symbol::{GlobalSymbol, SymbolInfo},
+};
 
 #[derive(Clone, Debug, PartialEq, Node)]
 pub struct Type {
     pub loc: Span,
     pub ty: TypeVariant,
+}
+
+impl Type {
+    /// Is data type primitive.
+    pub fn is_primitive(&self) -> bool {
+        matches!(
+            &self.ty,
+            TypeVariant::Int
+                | TypeVariant::Uint
+                | TypeVariant::Float
+                | TypeVariant::Char
+                | TypeVariant::String
+                | TypeVariant::Hex
+                | TypeVariant::Address
+                | TypeVariant::Unit
+                | TypeVariant::Bool
+        )
+    }
+
+    /// Find the set of dependent user defined types that are encapsulated by this type.
+    pub fn custom_type_dependencies(&self, contract: &mut ContractDefinition) -> HashSet<usize> {
+        match &self.ty {
+            TypeVariant::Set(s) => s.ty.custom_type_dependencies(contract),
+            TypeVariant::List(s) => s.ty.custom_type_dependencies(contract),
+            TypeVariant::Mapping(m) => {
+                let mut set = m.from_ty.custom_type_dependencies(contract);
+                set.extend(m.to_ty.custom_type_dependencies(contract));
+                set
+            }
+            TypeVariant::Struct(s) => HashSet::from([s.i]),
+            TypeVariant::Model(s) => {
+                contract.diagnostics.push(Report::semantic_error(
+                    s.loc.clone(),
+                    String::from("Cannot use model as a type here,"),
+                ));
+                HashSet::new()
+            }
+            TypeVariant::State(s) => {
+                contract.diagnostics.push(Report::semantic_error(
+                    s.loc.clone(),
+                    String::from("Cannot use state as a type here,"),
+                ));
+                HashSet::new()
+            }
+            _ => HashSet::new(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -77,6 +130,8 @@ pub struct Param {
     pub name: Identifier,
     /// Is param mutable.
     pub is_mut: bool,
+    /// Is the field recursive.
+    pub recursive: bool,
 }
 
 /// View state modifier.
