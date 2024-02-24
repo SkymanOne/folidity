@@ -9,10 +9,12 @@ use crate::ast::{
     EnumDeclaration, FunctionDeclaration, ModelDeclaration, Param, StateBody, StateDeclaration,
     StructDeclaration,
 };
-use crate::decls::DelayedDeclaration;
+
+use crate::global_symbol::GlobalSymbol;
 use crate::global_symbol::SymbolInfo;
-use crate::types::{find_user_type_recursion, map_type, validate_fields};
-use crate::{decls::DelayedDeclarations, global_symbol::GlobalSymbol};
+use crate::types::{
+    find_user_type_recursion, map_type, validate_fields, DelayedDeclaration, DelayedDeclarations,
+};
 
 /// Arbitrary limit of a max number of topic.
 /// To be determined later.

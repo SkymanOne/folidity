@@ -2,7 +2,6 @@ use std::collections::HashSet;
 
 use crate::ast::{List, Mapping, Param, Set, StateBody, Type, TypeVariant};
 use crate::contract::ContractDefinition;
-use crate::decls::DelayedDeclarations;
 use crate::global_symbol::GlobalSymbol;
 use folidity_diagnostics::Report;
 use folidity_parser::ast as parsed_ast;
@@ -10,6 +9,22 @@ use petgraph::algo::{all_simple_paths, tarjan_scc};
 use petgraph::{Directed, Graph};
 
 type FieldGraph = Graph<(), usize, Directed, usize>;
+
+#[derive(Debug, Clone)]
+pub struct DelayedDeclaration<T> {
+    pub decl: T,
+    pub i: usize,
+}
+
+/// Saved declaration for later analysis.
+/// The first pass should resolve the fields.
+/// The second pass should resolve model bounds.
+#[derive(Debug, Default)]
+pub struct DelayedDeclarations {
+    pub structs: Vec<DelayedDeclaration<folidity_parser::ast::StructDeclaration>>,
+    pub models: Vec<DelayedDeclaration<folidity_parser::ast::ModelDeclaration>>,
+    pub states: Vec<DelayedDeclaration<folidity_parser::ast::StateDeclaration>>,
+}
 
 /// Maps type from parsed AST to semantically resolved type.
 /// - Primitive types are simply mapped 1-1.
