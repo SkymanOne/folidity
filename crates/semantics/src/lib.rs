@@ -1,5 +1,6 @@
 use contract::ContractDefinition;
 use folidity_parser::ast::Source;
+use types::check_inheritance;
 
 mod ast;
 mod contract;
@@ -19,6 +20,8 @@ pub fn resolve_semantics(source: &Source) -> ContractDefinition {
     let mut definition = ContractDefinition::default();
     let delay = definition.resolve_declarations(source);
     definition.resolve_fields(&delay);
+
+    check_inheritance(&mut definition, &delay);
 
     definition
 }

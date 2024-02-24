@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use crate::ast::{List, Mapping, Param, Set, StateBody, Type, TypeVariant};
 use crate::contract::ContractDefinition;
+use crate::decls::DelayedDeclarations;
 use crate::global_symbol::GlobalSymbol;
 use folidity_diagnostics::Report;
 use folidity_parser::ast as parsed_ast;
@@ -132,6 +133,7 @@ fn check_for_recursive_types(node: usize, graph: &FieldGraph, contract: &mut Con
     }
 }
 
+/// Validate that fields of user defined types do not contain references to models and states.
 pub fn validate_fields(contract: &mut ContractDefinition) {
     let mut validate = |fields: &[Param]| {
         for field in fields.iter() {
@@ -165,5 +167,50 @@ pub fn validate_fields(contract: &mut ContractDefinition) {
 
     for m in &contract.models {
         validate(&m.fields);
+    }
+}
+
+/// Check that model and state inheritance is valid.
+pub fn check_inheritance(contract: &mut ContractDefinition, delay: &DelayedDeclarations) {
+    for model in &delay.models {
+        if let Some(ident) = &model.decl.parent {
+            if let Some(symbol) = contract.declaration_symbols.get(&ident.name) {
+                match symbol {
+                    GlobalSymbol::Model(s) => contract.models[model.i].parent = Some(s.i),
+                    _ => {
+                        contract.diagnostics.push(Report::semantic_error(
+                            ident.loc.clone(),
+                            String::from("Model can only inherit other models."),
+                        ));
+                    }
+                }
+            } else {
+                contract.diagnostics.push(Report::semantic_error(
+                    ident.loc.clone(),
+                    String::from("Model is not declared."),
+                ));
+            }
+        }
+    }
+
+    for state in &delay.states {
+        if let Some((ident, var)) = &state.decl.from {
+            if let Some(symbol) = contract.declaration_symbols.get(&ident.name) {
+                match symbol {
+                    GlobalSymbol::State(s) => {
+                        contract.states[state.i].from = Some((s.i, var.clone()))
+                    }
+                    _ => contract.diagnostics.push(Report::semantic_error(
+                        ident.loc.clone(),
+                        String::from("Declaration must a declared state."),
+                    )),
+                }
+            } else {
+                contract.diagnostics.push(Report::semantic_error(
+                    ident.loc.clone(),
+                    String::from("State is not declared."),
+                ));
+            }
+        }
     }
 }
