@@ -18,6 +18,7 @@ mod tests;
 pub fn resolve_semantics(source: &Source) -> ContractDefinition {
     let mut definition = ContractDefinition::default();
     let delay = definition.resolve_declarations(source);
+    definition.resolve_fields(&delay);
 
     definition
 }

@@ -47,20 +47,6 @@ impl Type {
                 set
             }
             TypeVariant::Struct(s) => HashSet::from([s.i]),
-            TypeVariant::Model(s) => {
-                contract.diagnostics.push(Report::semantic_error(
-                    s.loc.clone(),
-                    String::from("Cannot use model as a type here,"),
-                ));
-                HashSet::new()
-            }
-            TypeVariant::State(s) => {
-                contract.diagnostics.push(Report::semantic_error(
-                    s.loc.clone(),
-                    String::from("Cannot use state as a type here,"),
-                ));
-                HashSet::new()
-            }
             _ => HashSet::new(),
         }
     }

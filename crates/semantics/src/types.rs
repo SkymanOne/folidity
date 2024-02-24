@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::ast::{List, Mapping, Param, Set, Type, TypeVariant};
+use crate::ast::{List, Mapping, Param, Set, StateBody, Type, TypeVariant};
 use crate::contract::ContractDefinition;
 use crate::global_symbol::{GlobalSymbol, SymbolInfo};
 use folidity_diagnostics::Report;
@@ -81,7 +81,7 @@ pub fn map_type(contract: &mut ContractDefinition, ty: &parsed_ast::Type) -> Res
 /// Licensed as Apache 2.0
 //todo: rewrite.
 //TODO: support finite size recursive types.
-pub fn find_user_type_recursion(contract: &mut ContractDefinition) -> Result<(), Span> {
+pub fn find_user_type_recursion(contract: &mut ContractDefinition) {
     let mut edges = HashSet::new();
     for n in 0..contract.structs.len() {
         collect_edges(
@@ -111,8 +111,6 @@ pub fn find_user_type_recursion(contract: &mut ContractDefinition) -> Result<(),
             ));
         }
     }
-
-    Ok(())
 }
 
 /// Collect field dependencies into the graph edges.
@@ -143,5 +141,41 @@ fn check_for_recursive_types(node: usize, graph: &FieldGraph, contract: &mut Con
                 }
             }
         }
+    }
+}
+
+pub fn validate_fields(contract: &mut ContractDefinition) {
+    let mut validate = |fields: &[Param]| {
+        for field in fields.iter() {
+            match &field.ty.ty {
+                TypeVariant::Function(_) => contract.diagnostics.push(Report::semantic_error(
+                    field.loc.clone(),
+                    String::from("Function cannot be used as a field type."),
+                )),
+                TypeVariant::Model(_) => contract.diagnostics.push(Report::semantic_error(
+                    field.loc.clone(),
+                    String::from("Model cannot be used as a field type."),
+                )),
+                TypeVariant::State(_) => contract.diagnostics.push(Report::semantic_error(
+                    field.loc.clone(),
+                    String::from("State cannot be used as a field type."),
+                )),
+                _ => {}
+            }
+        }
+    };
+
+    for s in &contract.structs {
+        validate(&s.fields);
+    }
+
+    for s in &contract.states {
+        if let Some(StateBody::Raw(fields)) = &s.body {
+            validate(fields);
+        }
+    }
+
+    for m in &contract.models {
+        validate(&m.fields);
     }
 }

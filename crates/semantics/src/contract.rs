@@ -11,7 +11,7 @@ use crate::ast::{
 };
 use crate::decls::DelayedDeclaration;
 use crate::global_symbol::SymbolInfo;
-use crate::types::map_type;
+use crate::types::{find_user_type_recursion, map_type, validate_fields};
 use crate::{decls::DelayedDeclarations, global_symbol::GlobalSymbol};
 
 /// Arbitrary limit of a max number of topic.
@@ -73,6 +73,9 @@ impl ContractDefinition {
     }
 
     /// Resolves fields during the second pass.
+    /// - Discover fields for structs, models, and states.
+    /// - Detect any cycles and report them.
+    /// - Ensure that no fields have types of any state or model.
     pub fn resolve_fields(&mut self, delay: &DelayedDeclarations) {
         // Update fields of the models and structs together.
         for (s, m) in delay.structs.iter().zip(delay.models.iter()) {
@@ -115,8 +118,9 @@ impl ContractDefinition {
 
             self.states[state.i].body = body;
         }
-        // todo: check for cycles.
-        // todo: check for valid types.
+
+        find_user_type_recursion(self);
+        validate_fields(self);
     }
 
     /// Resolve fields of declarations.
