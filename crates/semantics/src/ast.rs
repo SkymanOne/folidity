@@ -1,17 +1,13 @@
 use std::collections::HashSet;
 
 use derive_node::Node;
-use folidity_diagnostics::Report;
 use folidity_parser::{
     ast::{BinaryExpression, Identifier, MappingRelation, UnaryExpression},
     Span,
 };
 use indexmap::IndexMap;
 
-use crate::{
-    contract::ContractDefinition,
-    global_symbol::{GlobalSymbol, SymbolInfo},
-};
+use crate::global_symbol::SymbolInfo;
 
 #[derive(Clone, Debug, PartialEq, Node)]
 pub struct Type {
@@ -37,13 +33,13 @@ impl Type {
     }
 
     /// Find the set of dependent user defined types that are encapsulated by this type.
-    pub fn custom_type_dependencies(&self, contract: &mut ContractDefinition) -> HashSet<usize> {
+    pub fn custom_type_dependencies(&self) -> HashSet<usize> {
         match &self.ty {
-            TypeVariant::Set(s) => s.ty.custom_type_dependencies(contract),
-            TypeVariant::List(s) => s.ty.custom_type_dependencies(contract),
+            TypeVariant::Set(s) => s.ty.custom_type_dependencies(),
+            TypeVariant::List(s) => s.ty.custom_type_dependencies(),
             TypeVariant::Mapping(m) => {
-                let mut set = m.from_ty.custom_type_dependencies(contract);
-                set.extend(m.to_ty.custom_type_dependencies(contract));
+                let mut set = m.from_ty.custom_type_dependencies();
+                set.extend(m.to_ty.custom_type_dependencies());
                 set
             }
             TypeVariant::Struct(s) => HashSet::from([s.i]),

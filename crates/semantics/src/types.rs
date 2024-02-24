@@ -2,12 +2,10 @@ use std::collections::HashSet;
 
 use crate::ast::{List, Mapping, Param, Set, StateBody, Type, TypeVariant};
 use crate::contract::ContractDefinition;
-use crate::global_symbol::{GlobalSymbol, SymbolInfo};
+use crate::global_symbol::GlobalSymbol;
 use folidity_diagnostics::Report;
-use folidity_parser::ast::Identifier;
-use folidity_parser::{ast as parsed_ast, Span};
+use folidity_parser::ast as parsed_ast;
 use petgraph::algo::{all_simple_paths, tarjan_scc};
-use petgraph::graph::NodeIndex;
 use petgraph::{Directed, Graph};
 
 type FieldGraph = Graph<(), usize, Directed, usize>;
@@ -84,12 +82,7 @@ pub fn map_type(contract: &mut ContractDefinition, ty: &parsed_ast::Type) -> Res
 pub fn find_user_type_recursion(contract: &mut ContractDefinition) {
     let mut edges = HashSet::new();
     for n in 0..contract.structs.len() {
-        collect_edges(
-            &mut edges,
-            &contract.structs[n].fields,
-            n,
-            &mut contract.clone(),
-        )
+        collect_edges(&mut edges, &contract.structs[n].fields, n)
     }
 
     let graph: FieldGraph = Graph::from_edges(edges);
@@ -114,16 +107,11 @@ pub fn find_user_type_recursion(contract: &mut ContractDefinition) {
 }
 
 /// Collect field dependencies into the graph edges.
-fn collect_edges(
-    edges: &mut HashSet<(usize, usize, usize)>,
-    fields: &[Param],
-    struct_no: usize,
-    contract: &mut ContractDefinition,
-) {
+fn collect_edges(edges: &mut HashSet<(usize, usize, usize)>, fields: &[Param], struct_no: usize) {
     for (no, field) in fields.iter().enumerate() {
-        for dependency in field.ty.custom_type_dependencies(contract) {
+        for dependency in field.ty.custom_type_dependencies() {
             if edges.insert((no, dependency, struct_no)) {
-                collect_edges(edges, fields, struct_no, contract)
+                collect_edges(edges, fields, struct_no)
             }
         }
     }
