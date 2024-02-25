@@ -318,6 +318,10 @@ Statement: ast::Statement = {
 
     <block:StatementBlock> => ast::Statement::Block(block),
 
+    <start:@L> "skip" <end:@R> ";" => {
+        ast::Statement::Skip(Span { start, end })
+    },
+
     <start:@L> <error:!> <end:@R> => {
         errors.push(error);
         ast::Statement::Error(Span { start, end })
@@ -603,6 +607,7 @@ extern {
         "author" => Token::Author,
         "let" => Token::Let,
         "mut" => Token::Mut,
+        "skip" => Token::Skip,
         "->" => Token::Arr,
         ";" => Token::SemiCol,
         ":" => Token::Col,

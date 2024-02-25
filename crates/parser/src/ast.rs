@@ -236,6 +236,7 @@ pub enum Statement {
     Return(Expression),
     FunCall(FunctionCall),
     StateTransition(StructInit),
+    Skip(Span),
 
     Block(StatementBlock),
     Error(Span),

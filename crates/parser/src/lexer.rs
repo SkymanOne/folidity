@@ -185,6 +185,8 @@ pub enum Token<'input> {
     Let,
     #[token("mut")]
     Mut,
+    #[token("skip")]
+    Skip,
 
     // Misc chars
     #[token("->")]
@@ -282,6 +284,7 @@ impl<'input> fmt::Display for Token<'input> {
             Token::Author => word("author"),
             Token::Let => word("let"),
             Token::Mut => word("mut"),
+            Token::Skip => word("skip"),
             Token::Arr => word("->"),
             Token::Col => word(":"),
             Token::SemiCol => word(";"),
