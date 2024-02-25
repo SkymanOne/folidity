@@ -20,7 +20,8 @@ pub struct VariableSym {
 }
 
 impl VariableSym {
-    pub fn is_assigned(&self) -> bool {
+    /// Check if the variable has been assigned an expression.
+    pub fn assigned(&self) -> bool {
         self.value.is_some()
     }
 }

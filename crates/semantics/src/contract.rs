@@ -265,6 +265,7 @@ impl ContractDefinition {
                 fields: Vec::new(),
                 parent: None,
                 bounds: Vec::new(),
+                recursive_parent: false,
             });
 
             delay
@@ -294,6 +295,7 @@ impl ContractDefinition {
                 body: None,
                 from: None,
                 bounds: Vec::new(),
+                recursive_parent: false,
             });
 
             delay

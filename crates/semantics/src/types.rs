@@ -109,7 +109,7 @@ pub fn find_user_type_recursion(contract: &mut ContractDefinition) {
     }
 
     for node in nodes {
-        check_for_recursive_types(node.index(), &graph, contract);
+        check_for_recursive_fields(node.index(), &graph, contract);
     }
 
     for n in 0..contract.structs.len() {
@@ -134,7 +134,7 @@ fn collect_edges(edges: &mut HashSet<(usize, usize, usize)>, fields: &[Param], s
 }
 
 /// Check for recursive edges.
-fn check_for_recursive_types(node: usize, graph: &FieldGraph, contract: &mut ContractDefinition) {
+fn check_for_recursive_fields(node: usize, graph: &FieldGraph, contract: &mut ContractDefinition) {
     for n in 0..contract.structs.len() {
         for simple_path in
             all_simple_paths::<Vec<_>, &FieldGraph>(graph, n.into(), node.into(), 0, None)
@@ -227,5 +227,87 @@ pub fn check_inheritance(contract: &mut ContractDefinition, delay: &DelayedDecla
                 ));
             }
         }
+    }
+
+    detect_model_cycle(contract);
+    detect_state_cycle(contract);
+}
+
+/// Detect cyclic model inheritances.
+fn detect_model_cycle(contract: &mut ContractDefinition) {
+    let mut edges = HashSet::new();
+    for edge in contract.models.iter().filter_map(|m| m.parent).enumerate() {
+        edges.insert(edge);
+    }
+    let graph: FieldGraph = Graph::from_edges(edges);
+    let tarjan = tarjan_scc(&graph);
+    let mut nodes = HashSet::new();
+    for node in tarjan.iter().flatten() {
+        nodes.insert(node);
+    }
+
+    for node in nodes {
+        for n in 0..contract.models.len() {
+            for simple_path in all_simple_paths::<Vec<_>, &FieldGraph>(
+                &graph,
+                n.into(),
+                node.index().into(),
+                0,
+                None,
+            ) {
+                for (a, b) in simple_path.windows(2).map(|p| (p[0], p[1])) {
+                    contract.models[a.index()].recursive_parent = true;
+                }
+            }
+        }
+    }
+
+    for model in contract.models.iter().filter(|m| m.recursive_parent) {
+        contract.diagnostics.push(Report::semantic_error(
+            model.loc.clone(),
+            String::from("This model inheritance is cyclic."),
+        ));
+    }
+}
+
+/// Detect cyclic state transition bounds.
+fn detect_state_cycle(contract: &mut ContractDefinition) {
+    let mut edges = HashSet::new();
+    for edge in contract
+        .states
+        .iter()
+        .filter_map(|m| m.from.as_ref().map(|x| x.0))
+        .enumerate()
+    {
+        edges.insert(edge);
+    }
+    let graph: FieldGraph = Graph::from_edges(edges);
+    let tarjan = tarjan_scc(&graph);
+    let mut nodes = HashSet::new();
+    for node in tarjan.iter().flatten() {
+        nodes.insert(node);
+    }
+
+    for node in nodes {
+        for n in 0..contract.states.len() {
+            for simple_path in all_simple_paths::<Vec<_>, &FieldGraph>(
+                &graph,
+                n.into(),
+                node.index().into(),
+                0,
+                None,
+            ) {
+                for (a, _) in simple_path.windows(2).map(|p| (p[0], p[1])) {
+                    contract.states[a.index()].recursive_parent = true;
+                }
+            }
+        }
+    }
+
+    for state in contract.states.iter().filter(|m| m.recursive_parent) {
+        contract.diagnostics.push(Report::semantic_error(
+            state.loc.clone(),
+            String::from("This state transition bound is cyclic."),
+        ));
     }
 }

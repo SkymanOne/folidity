@@ -211,6 +211,8 @@ pub struct ModelDeclaration {
     pub parent: Option<usize>,
     /// Model logical bounds.
     pub bounds: Vec<Expression>,
+    /// Is the parent model recursive.
+    pub recursive_parent: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -234,6 +236,8 @@ pub struct StateDeclaration {
     pub from: Option<(usize, Option<Identifier>)>,
     /// Model logical bounds.
     pub bounds: Vec<Expression>,
+    /// Is the parent state recursive.
+    pub recursive_parent: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]
