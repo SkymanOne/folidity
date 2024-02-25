@@ -330,8 +330,8 @@ impl ContractDefinition {
                 GlobalSymbol::Function(_) => "function",
             };
             let err_msg = format!(
-                "The {} has already been defined {} earlier.",
-                ident.name, error_type
+                "The {} `{}` has already been defined earlier.",
+                error_type, ident.name
             );
 
             self.diagnostics
