@@ -7,7 +7,7 @@ use folidity_parser::{
 };
 use indexmap::IndexMap;
 
-use crate::global_symbol::SymbolInfo;
+use crate::{global_symbol::SymbolInfo, symtable::SymTable};
 
 #[derive(Clone, Debug, PartialEq, Node)]
 pub struct Type {
@@ -153,8 +153,8 @@ pub struct AccessAttribute {
     pub members: Vec<Expression>,
 }
 
-#[derive(Clone, Debug, PartialEq, Node)]
-pub struct FunctionDeclaration {
+#[derive(Clone, Debug, Node)]
+pub struct Function {
     /// Location span of the function.
     pub loc: Span,
     /// Is it an initializer?
@@ -169,13 +169,13 @@ pub struct FunctionDeclaration {
     /// Function name.
     pub name: Identifier,
     /// List of parameters.
-    pub params: Vec<Param>,
-    /// Bounds for the state transition.
-    pub state_bound: Option<StateBound>,
-    /// Function logical bounds
-    pub st_block: Option<StBlock>,
+    pub params: IndexMap<String, Param>,
+    /// Function logical bounds.
+    pub bounds: Vec<Expression>,
     /// The body of the function.
     pub body: Statement,
+    /// Symbol table for the function context.
+    pub symtable: SymTable,
 }
 
 #[derive(Clone, Debug, PartialEq)]

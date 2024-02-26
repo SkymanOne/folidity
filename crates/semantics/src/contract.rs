@@ -6,7 +6,7 @@ use folidity_parser::{ast::Source, Span};
 use indexmap::IndexMap;
 
 use crate::ast::{
-    EnumDeclaration, FunctionDeclaration, ModelDeclaration, Param, StateBody, StateDeclaration,
+    EnumDeclaration, Function, ModelDeclaration, Param, StateBody, StateDeclaration,
     StructDeclaration,
 };
 
@@ -38,7 +38,7 @@ pub struct ContractDefinition {
     /// List of all states in the contract.
     pub states: Vec<StateDeclaration>,
     /// list of all functions in the contract.
-    pub functions: Vec<FunctionDeclaration>,
+    pub functions: Vec<Function>,
     /// Mapping from identifiers to global declaration symbols.
     pub declaration_symbols: HashMap<String, GlobalSymbol>,
     /// Id of the next variable in the sym table.
@@ -48,6 +48,7 @@ pub struct ContractDefinition {
 }
 
 impl ContractDefinition {
+    /// Resolve user defined structures: enums, models, states.
     pub fn resolve_declarations(&mut self, tree: &Source) -> DelayedDeclarations {
         let mut delay = DelayedDeclarations {
             structs: Vec::new(),
@@ -70,6 +71,22 @@ impl ContractDefinition {
                 _ => (),
             }
         }
+
+        delay
+    }
+
+    /// Resolve function signatures
+    /// and adds it to the global symbol table.
+    pub fn resolve_function_sigs(
+        &mut self,
+        tree: &Source,
+    ) -> Vec<DelayedDeclaration<parsed_ast::FunctionDeclaration>> {
+        let mut delay = Vec::new();
+
+        for f in tree.declarations.iter().filter_map(|d| match d {
+            parsed_ast::Declaration::FunDeclaration(func) => Some(func),
+            _ => None,
+        }) {}
 
         delay
     }
