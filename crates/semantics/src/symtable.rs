@@ -40,12 +40,24 @@ pub enum VariableKind {
     User(usize),
 }
 
-#[derive(Debug, Clone)]
+/// Context of the scope in the symtable.
+#[derive(Debug, Clone, Default)]
+pub enum ScopeContext {
+    Bounds,
+    Function,
+    #[default]
+    Global,
+    Loop,
+}
+
+#[derive(Debug, Clone, Default)]
 pub struct SymTable {
     /// Indexed map of variables
     pub vars: IndexMap<usize, VariableSym>,
     /// Variable names in the current scope.
     pub names: HashMap<String, usize>,
+    // Context of variables in the given scope.
+    pub context: ScopeContext,
 }
 
 impl SymTable {

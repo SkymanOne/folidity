@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::ast::{List, Mapping, Param, Set, StateBody, Type, TypeVariant};
+use crate::ast::{List, Mapping, Param, Set, StateBody, StateDeclaration, Type, TypeVariant};
 use crate::contract::ContractDefinition;
 use crate::global_symbol::GlobalSymbol;
 use folidity_diagnostics::Report;
@@ -19,11 +19,19 @@ pub struct DelayedDeclaration<T> {
 /// Saved declaration for later analysis.
 /// The first pass should resolve the fields.
 /// The second pass should resolve model bounds.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct DelayedDeclarations {
-    pub structs: Vec<DelayedDeclaration<folidity_parser::ast::StructDeclaration>>,
-    pub models: Vec<DelayedDeclaration<folidity_parser::ast::ModelDeclaration>>,
-    pub states: Vec<DelayedDeclaration<folidity_parser::ast::StateDeclaration>>,
+    pub structs: Vec<DelayedDeclaration<parsed_ast::StructDeclaration>>,
+    pub models: Vec<DelayedDeclaration<parsed_ast::ModelDeclaration>>,
+    pub states: Vec<DelayedDeclaration<parsed_ast::StateDeclaration>>,
+}
+
+/// Delayed declarations for later resolution of bounds (i.e. `st` blocks).
+#[derive(Debug)]
+pub struct DelayedBounds {
+    pub models: Vec<DelayedDeclaration<parsed_ast::ModelDeclaration>>,
+    pub states: Vec<DelayedDeclaration<parsed_ast::StateDeclaration>>,
+    pub functions: Vec<DelayedDeclaration<parsed_ast::FunctionDeclaration>>,
 }
 
 /// Maps type from parsed AST to semantically resolved type.
@@ -59,7 +67,7 @@ pub fn map_type(contract: &mut ContractDefinition, ty: &parsed_ast::Type) -> Res
             ))
         }
         parsed_ast::TypeVariant::Custom(user_ty) => {
-            if let Some(symbol) = contract.declaration_symbols.get(&user_ty.name) {
+            if let Some(symbol) = GlobalSymbol::lookup(contract, user_ty) {
                 match symbol {
                     GlobalSymbol::Struct(info) => TypeVariant::Struct(info.clone()),
                     GlobalSymbol::Model(info) => TypeVariant::Model(info.clone()),
@@ -68,10 +76,6 @@ pub fn map_type(contract: &mut ContractDefinition, ty: &parsed_ast::Type) -> Res
                     GlobalSymbol::Function(info) => TypeVariant::Function(info.clone()),
                 }
             } else {
-                contract.diagnostics.push(Report::semantic_error(
-                    user_ty.loc.clone(),
-                    format!("`{}` is not defined", user_ty.name),
-                ));
                 return Err(());
             }
         }
@@ -189,7 +193,7 @@ pub fn validate_fields(contract: &mut ContractDefinition) {
 pub fn check_inheritance(contract: &mut ContractDefinition, delay: &DelayedDeclarations) {
     for model in &delay.models {
         if let Some(ident) = &model.decl.parent {
-            if let Some(symbol) = contract.declaration_symbols.get(&ident.name) {
+            if let Some(symbol) = GlobalSymbol::lookup(contract, ident) {
                 match symbol {
                     GlobalSymbol::Model(s) => contract.models[model.i].parent = Some(s.i),
                     _ => {
@@ -199,18 +203,13 @@ pub fn check_inheritance(contract: &mut ContractDefinition, delay: &DelayedDecla
                         ));
                     }
                 }
-            } else {
-                contract.diagnostics.push(Report::semantic_error(
-                    ident.loc.clone(),
-                    String::from("Model is not declared."),
-                ));
             }
         }
     }
 
     for state in &delay.states {
         if let Some((ident, var)) = &state.decl.from {
-            if let Some(symbol) = contract.declaration_symbols.get(&ident.name) {
+            if let Some(symbol) = GlobalSymbol::lookup(contract, ident) {
                 match symbol {
                     GlobalSymbol::State(s) => {
                         contract.states[state.i].from = Some((s.i, var.clone()))
@@ -220,11 +219,6 @@ pub fn check_inheritance(contract: &mut ContractDefinition, delay: &DelayedDecla
                         String::from("Declaration must a declared state."),
                     )),
                 }
-            } else {
-                contract.diagnostics.push(Report::semantic_error(
-                    ident.loc.clone(),
-                    String::from("State is not declared."),
-                ));
             }
         }
     }

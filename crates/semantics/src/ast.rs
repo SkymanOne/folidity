@@ -9,7 +9,7 @@ use indexmap::IndexMap;
 
 use crate::{global_symbol::SymbolInfo, symtable::SymTable};
 
-#[derive(Clone, Debug, PartialEq, Node)]
+#[derive(Clone, Debug, PartialEq, Node, Default)]
 pub struct Type {
     pub loc: Span,
     pub ty: TypeVariant,
@@ -48,8 +48,9 @@ impl Type {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub enum TypeVariant {
+    #[default]
     Int,
     Uint,
     Float,
@@ -75,7 +76,7 @@ pub struct FunctionType {
     returns: TypeVariant,
 }
 
-#[derive(Clone, Debug, PartialEq, Node)]
+#[derive(Clone, Debug, PartialEq, Node, Default)]
 pub struct Set {
     pub ty: Box<Type>,
 }
@@ -85,7 +86,7 @@ pub struct List {
     pub ty: Box<Type>,
 }
 
-#[derive(Clone, Debug, PartialEq, Node)]
+#[derive(Clone, Debug, PartialEq, Node, Default)]
 pub struct Mapping {
     pub from_ty: Box<Type>,
     pub relation: MappingRelation,
@@ -98,9 +99,9 @@ pub struct Mapping {
 pub struct StateParam {
     pub loc: Span,
     /// State type identifier.
-    pub ty: Option<Identifier>,
+    pub ty: usize,
     /// Variable name identifier.
-    pub name: Option<Identifier>,
+    pub name: Identifier,
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]
@@ -153,7 +154,7 @@ pub struct AccessAttribute {
     pub members: Vec<Expression>,
 }
 
-#[derive(Clone, Debug, Node)]
+#[derive(Clone, Debug)]
 pub struct Function {
     /// Location span of the function.
     pub loc: Span,
@@ -173,9 +174,33 @@ pub struct Function {
     /// Function logical bounds.
     pub bounds: Vec<Expression>,
     /// The body of the function.
-    pub body: Statement,
+    pub body: Vec<Statement>,
     /// Symbol table for the function context.
     pub symtable: SymTable,
+}
+
+impl Function {
+    pub fn new(
+        loc: Span,
+        is_init: bool,
+        vis: FunctionVisibility,
+        return_ty: FuncReturnType,
+        name: Identifier,
+        params: IndexMap<String, Param>,
+    ) -> Self {
+        Function {
+            loc,
+            is_init,
+            access_attributes: Vec::new(),
+            vis,
+            return_ty,
+            name,
+            params,
+            body: Vec::new(),
+            bounds: Vec::new(),
+            symtable: SymTable::default(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

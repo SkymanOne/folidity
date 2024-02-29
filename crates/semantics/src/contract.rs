@@ -10,10 +10,12 @@ use crate::ast::{
     StructDeclaration,
 };
 
+use crate::functions::function_decl;
 use crate::global_symbol::GlobalSymbol;
 use crate::global_symbol::SymbolInfo;
 use crate::types::{
-    find_user_type_recursion, map_type, validate_fields, DelayedDeclaration, DelayedDeclarations,
+    find_user_type_recursion, map_type, validate_fields, DelayedBounds, DelayedDeclaration,
+    DelayedDeclarations,
 };
 
 /// Arbitrary limit of a max number of topic.
@@ -77,18 +79,29 @@ impl ContractDefinition {
 
     /// Resolve function signatures
     /// and adds it to the global symbol table.
-    pub fn resolve_function_sigs(
-        &mut self,
-        tree: &Source,
-    ) -> Vec<DelayedDeclaration<parsed_ast::FunctionDeclaration>> {
-        let mut delay = Vec::new();
+    pub fn resolve_functions(&mut self, tree: &Source, delayed_bounds: &mut DelayedBounds) {
+        let mut delayed_bodies: Vec<DelayedDeclaration<parsed_ast::FunctionDeclaration>> =
+            Vec::new();
 
         for f in tree.declarations.iter().filter_map(|d| match d {
             parsed_ast::Declaration::FunDeclaration(func) => Some(func),
             _ => None,
-        }) {}
+        }) {
+            if let Ok(id) = function_decl(f, self) {
+                delayed_bodies.push(DelayedDeclaration {
+                    i: id,
+                    decl: *f.clone(),
+                });
 
-        delay
+                delayed_bounds.functions.push(DelayedDeclaration {
+                    decl: *f.clone(),
+                    i: id,
+                })
+            }
+        }
+
+        //todo: resolve bodies
+        // for f in delayed_bodies {}
     }
 
     /// Resolves fields during the second pass.
@@ -113,11 +126,7 @@ impl ContractDefinition {
                 }
                 // If the body is a model, then we need to resolve the model symbol in the symbol table
                 Some(parsed_ast::StateBody::Model(ident)) => {
-                    let Some(symbol) = self.declaration_symbols.get(&ident.name) else {
-                        self.diagnostics.push(Report::semantic_error(
-                            ident.loc.clone(),
-                            String::from("The model has not been declared."),
-                        ));
+                    let Some(symbol) = GlobalSymbol::lookup(self, ident) else {
                         continue;
                     };
                     match symbol {

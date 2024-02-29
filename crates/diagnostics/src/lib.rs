@@ -52,12 +52,22 @@ impl Report {
         }
     }
 
-    /// build a report from the semantic error.
+    /// Build a report from the semantic error.
     pub fn semantic_error(loc: Span, message: String) -> Self {
         Self {
             loc,
             error_type: ErrorType::Semantics,
             level: Level::Error,
+            message,
+        }
+    }
+
+    /// Build a report from the semantic warning.
+    pub fn semantic_warning(loc: Span, message: String) -> Self {
+        Self {
+            loc,
+            error_type: ErrorType::Semantics,
+            level: Level::Warning,
             message,
         }
     }

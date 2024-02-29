@@ -6,7 +6,7 @@ pub struct Source {
     pub declarations: Vec<Declaration>,
 }
 
-#[derive(Clone, Debug, PartialEq, Node)]
+#[derive(Clone, Debug, PartialEq, Node, Default)]
 pub struct Identifier {
     /// Location of the identifier.
     pub loc: Span,
@@ -57,7 +57,7 @@ pub struct List {
     pub ty: Box<Type>,
 }
 
-#[derive(Clone, Debug, PartialEq, Node)]
+#[derive(Clone, Debug, PartialEq, Node, Default)]
 pub struct MappingRelation {
     pub loc: Span,
     pub injective: bool,

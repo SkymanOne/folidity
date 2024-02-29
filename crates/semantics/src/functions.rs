@@ -1,12 +1,20 @@
 use folidity_diagnostics::Report;
 use folidity_parser::ast as parsed_ast;
+use folidity_parser::ast::Identifier;
 use folidity_parser::Span;
 use indexmap::IndexMap;
 
 use crate::ast::FuncReturnType;
+use crate::ast::Function;
+use crate::ast::FunctionVisibility;
 use crate::ast::Param;
+use crate::ast::StateParam;
+use crate::ast::Type;
 use crate::ast::TypeVariant;
+use crate::ast::ViewState;
 use crate::contract::ContractDefinition;
+use crate::global_symbol::GlobalSymbol;
+use crate::global_symbol::SymbolInfo;
 use crate::types::map_type;
 
 /// Parses the function declaration without the body.
@@ -14,11 +22,17 @@ pub fn function_decl(
     func: &parsed_ast::FunctionDeclaration,
     contract: &mut ContractDefinition,
 ) -> Result<usize, ()> {
-    let error = false;
+    let mut error = false;
     let function_no = contract.functions.len();
 
-    let params = resolve_func_param(&func.params, contract)?;
-    let return_ty = resolve_func_return(
+    let params = match resolve_func_param(&func.params, contract) {
+        Ok(v) => v,
+        Err(()) => {
+            error = true;
+            IndexMap::default()
+        }
+    };
+    let return_ty = match resolve_func_return(
         &func.return_ty,
         params
             .keys()
@@ -26,8 +40,136 @@ pub fn function_decl(
             .collect::<Vec<String>>()
             .as_slice(),
         contract,
+    ) {
+        Ok(v) => v,
+        Err(()) => {
+            error = true;
+            FuncReturnType::Type(Type::new(0, 0, TypeVariant::Int))
+        }
+    };
+
+    // Check if the function attributes do not conflict with each other.
+    if func.is_init {
+        match &func.vis {
+            &parsed_ast::FunctionVisibility::Priv => {
+                contract.diagnostics.push(Report::semantic_error(
+                    func.loc.clone(),
+                    String::from("Initialising functions cannot be private."),
+                ));
+                error = true;
+            }
+            parsed_ast::FunctionVisibility::View(v) => {
+                contract.diagnostics.push(Report::semantic_error(
+                    v.loc.clone(),
+                    String::from("Initialising functions cannot be views."),
+                ));
+                error = true;
+            }
+            _ => {}
+        }
+    }
+
+    let mut func_vis = FunctionVisibility::Priv;
+    if let parsed_ast::FunctionVisibility::View(v) = &func.vis {
+        let mut view_error = false;
+        let mut id = 0;
+        let mut ident = Identifier::default();
+        if func.access_attributes.is_empty() {
+            contract.diagnostics.push(Report::semantic_warning(
+                v.loc.clone(),
+                String::from(
+                    "This view function is inaccessible and will be omitted from the final build.",
+                ),
+            ));
+        }
+
+        if let Some(ident) = &v.param.ty {
+            if let Some(sym) = GlobalSymbol::lookup(contract, ident) {
+                if let GlobalSymbol::State(s) = sym {
+                    id = s.i;
+                } else {
+                    contract.diagnostics.push(Report::semantic_error(
+                        ident.loc.clone(),
+                        String::from("You can only view states."),
+                    ));
+                    view_error = true;
+                }
+            } else {
+                view_error = true;
+            }
+        } else {
+            contract.diagnostics.push(Report::semantic_error(
+                v.loc.clone(),
+                String::from("State name must be specified."),
+            ));
+            view_error = true;
+        }
+
+        if let Some(name) = &v.param.name {
+            if contract.declaration_symbols.get(&name.name).is_some() {
+                contract.diagnostics.push(Report::semantic_error(
+                    name.loc.clone(),
+                    String::from("This identifier has been declared before."),
+                ));
+                view_error = true;
+            } else {
+                ident = name.clone();
+            }
+        } else {
+            contract.diagnostics.push(Report::semantic_error(
+                v.loc.clone(),
+                String::from("State binding variable must be specified."),
+            ));
+            view_error = true;
+        }
+
+        if view_error {
+            error = true;
+        } else {
+            func_vis = FunctionVisibility::View(ViewState {
+                loc: v.loc.clone(),
+                param: StateParam {
+                    loc: v.param.loc.clone(),
+                    ty: id,
+                    name: ident,
+                },
+            })
+        }
+    } else {
+        match &func.vis {
+            parsed_ast::FunctionVisibility::Pub => {
+                func_vis = FunctionVisibility::Pub;
+            }
+            parsed_ast::FunctionVisibility::Priv => {
+                func_vis = FunctionVisibility::Priv;
+            }
+            _ => {}
+        }
+    }
+
+    if error {
+        return Err(());
+    }
+
+    let decl = Function::new(
+        func.loc.clone(),
+        func.is_init,
+        func_vis,
+        return_ty,
+        func.name.clone(),
+        params,
     );
+
     //todo: check annotations
+
+    contract.declaration_symbols.insert(
+        decl.name.name.clone(),
+        GlobalSymbol::Function(SymbolInfo {
+            loc: decl.loc.clone(),
+            i: function_no,
+        }),
+    );
+    contract.functions.push(decl);
 
     Ok(function_no)
 }
