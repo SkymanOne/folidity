@@ -16,3 +16,5 @@ folidity-diagnostics = { workspace = true }
 derive-node = { workspace = true }
 indexmap = { workspace = true }
 petgraph = { workspace = true }
+num-bigint = { workspace = true }
+num-rational = { workspace = true }

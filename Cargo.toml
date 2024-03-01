@@ -23,7 +23,7 @@ folidity-parser = { path = "crates/parser" }
 folidity-diagnostics = { path = "crates/diagnostics" }
 derive-node = { path = "crates/derive_node" }
 folidity-semantics = { path = "crates/semantics" }
-logos = "0.13"
+logos = "0.14"
 lalrpop-util = "0.20"
 lalrpop = "0.20"
 thiserror = "1.0"
@@ -33,3 +33,5 @@ proc-macro2 = "1.0"
 quote = "1.0"
 indexmap = "2.2"
 petgraph = "0.6.4"
+num-bigint = "0.4"
+num-rational = "0.4"

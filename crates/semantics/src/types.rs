@@ -1,10 +1,11 @@
 use std::collections::HashSet;
+use std::fmt::Display;
 
 use crate::ast::{List, Mapping, Param, Set, StateBody, StateDeclaration, Type, TypeVariant};
 use crate::contract::ContractDefinition;
 use crate::global_symbol::GlobalSymbol;
 use folidity_diagnostics::Report;
-use folidity_parser::ast as parsed_ast;
+use folidity_parser::{ast as parsed_ast, Span};
 use petgraph::algo::{all_simple_paths, tarjan_scc};
 use petgraph::{Directed, Graph};
 
@@ -32,6 +33,33 @@ pub struct DelayedBounds {
     pub models: Vec<DelayedDeclaration<parsed_ast::ModelDeclaration>>,
     pub states: Vec<DelayedDeclaration<parsed_ast::StateDeclaration>>,
     pub functions: Vec<DelayedDeclaration<parsed_ast::FunctionDeclaration>>,
+}
+
+/// The expected type the expression is expected to resolve to.
+#[derive(Debug, Clone)]
+pub enum ExpectedType {
+    /// The expression is not expected to resolve to any type (e.g. a function call)
+    Empty,
+    /// The expression is expected to resolve to a concrete type.
+    /// e.g. `let a: int = <expr>`
+    Concrete(TypeVariant),
+    /// The expression can be resolved to different types and casted later.
+    Dynamic(Vec<TypeVariant>),
+}
+
+impl Display for ExpectedType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ExpectedType::Empty => f.write_str("nothing"),
+            ExpectedType::Concrete(ty) => write!(f, "{}", ty),
+            ExpectedType::Dynamic(tys) => {
+                let args = tys
+                    .iter()
+                    .fold(String::new(), |acc, x| format!("{}, {}", acc, x));
+                f.write_str(args.trim_start_matches(", "))
+            }
+        }
+    }
 }
 
 /// Maps type from parsed AST to semantically resolved type.
@@ -304,4 +332,17 @@ fn detect_state_cycle(contract: &mut ContractDefinition) {
             String::from("This state transition bound is cyclic."),
         ));
     }
+}
+
+/// Push diagnostic error about the type mismatch.
+pub(super) fn report_type_mismatch(
+    expected: &ExpectedType,
+    actual: &TypeVariant,
+    loc: &Span,
+    contract: &mut ContractDefinition,
+) {
+    contract.diagnostics.push(Report::type_error(
+        loc.clone(),
+        format!("Mismatched types: expected {}, got {}", expected, actual),
+    ));
 }

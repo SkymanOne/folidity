@@ -71,4 +71,14 @@ impl Report {
             message,
         }
     }
+
+    /// Build a report from the type error.
+    pub fn type_error(loc: Span, message: String) -> Self {
+        Self {
+            loc,
+            error_type: ErrorType::Type,
+            level: Level::Error,
+            message,
+        }
+    }
 }

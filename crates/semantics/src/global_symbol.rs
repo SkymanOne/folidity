@@ -13,6 +13,8 @@ pub enum GlobalSymbol {
 }
 
 impl GlobalSymbol {
+    /// Lookup symbol by ident in the contract definition,
+    /// and add diagnostic error if not present.
     pub fn lookup<'a>(
         contract: &'a mut ContractDefinition,
         ident: &'a Identifier,

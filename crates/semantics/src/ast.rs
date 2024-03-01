@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, fmt::Display};
 
 use derive_node::Node;
 use folidity_parser::{
@@ -6,6 +6,8 @@ use folidity_parser::{
     Span,
 };
 use indexmap::IndexMap;
+use num_bigint::{BigInt, BigUint};
+use num_rational::BigRational;
 
 use crate::{global_symbol::SymbolInfo, symtable::SymTable};
 
@@ -349,8 +351,10 @@ pub enum Expression {
     Variable(Identifier),
 
     Number(UnaryExpression<String>),
+    Int(UnaryExpression<BigInt>),
+    UInt(UnaryExpression<BigUint>),
+    Float(UnaryExpression<BigRational>),
     Boolean(UnaryExpression<bool>),
-    Float(UnaryExpression<String>),
     String(UnaryExpression<String>),
     Char(UnaryExpression<char>),
     Hex(UnaryExpression<String>),
@@ -405,4 +409,29 @@ pub struct MemberAccess {
     pub expr: Box<Expression>,
     /// List of arguments.
     pub member: Identifier,
+}
+
+impl Display for TypeVariant {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut word = |s: &str| -> std::fmt::Result { write!(f, "{s}") };
+        match self {
+            TypeVariant::Int => word("int"),
+            TypeVariant::Uint => word("uint"),
+            TypeVariant::Float => word("float"),
+            TypeVariant::Char => word("char"),
+            TypeVariant::String => word("string"),
+            TypeVariant::Hex => word("hex"),
+            TypeVariant::Address => word("address"),
+            TypeVariant::Unit => word("unit"),
+            TypeVariant::Bool => word("bool"),
+            TypeVariant::Set(_) => word("set"),
+            TypeVariant::List(_) => word("list"),
+            TypeVariant::Mapping(_) => word("mapping"),
+            TypeVariant::Function(_) => word("function"),
+            TypeVariant::Struct(_) => word("struct"),
+            TypeVariant::Model(_) => word("model"),
+            TypeVariant::Enum(_) => word("enum"),
+            TypeVariant::State(_) => word("state"),
+        }
+    }
 }

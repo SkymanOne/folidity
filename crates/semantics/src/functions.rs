@@ -160,7 +160,9 @@ pub fn function_decl(
         params,
     );
 
-    //todo: check annotations
+    //todo: resolve access attributes
+    // need to implement expression resolution first
+    // to resolve members to concrete types.
 
     contract.declaration_symbols.insert(
         decl.name.name.clone(),

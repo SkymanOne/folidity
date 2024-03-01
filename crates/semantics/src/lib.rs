@@ -4,8 +4,10 @@ use types::check_inheritance;
 
 mod ast;
 mod contract;
+mod expression;
 mod functions;
 mod global_symbol;
+mod statement;
 mod symtable;
 mod types;
 
