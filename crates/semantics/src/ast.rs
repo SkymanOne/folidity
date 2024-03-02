@@ -10,7 +10,7 @@ use num_bigint::{BigInt, BigUint};
 use num_rational::BigRational;
 
 use crate::{global_symbol::SymbolInfo, symtable::SymTable};
-use algonaut::core::Address;
+use algonaut_core::Address;
 
 #[derive(Clone, Debug, PartialEq, Node, Default)]
 pub struct Type {

@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use algonaut::core::Address;
+use algonaut_core::Address;
 use folidity_diagnostics::Report;
 use folidity_parser::{ast as parsed_ast, Span};
 

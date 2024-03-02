@@ -18,5 +18,5 @@ indexmap = { workspace = true }
 petgraph = { workspace = true }
 num-bigint = { workspace = true }
 num-rational = { workspace = true }
-algonaut = { workspace = true }
+algonaut_core = { workspace = true }
 hex = { workspace = true }
