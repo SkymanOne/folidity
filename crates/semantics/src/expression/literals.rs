@@ -10,6 +10,8 @@ use crate::{
     types::{report_type_mismatch, ExpectedType},
 };
 
+use super::dynamic_to_concrete_type;
+
 /// Resolve bool to an expression.
 ///
 /// # Errors
@@ -32,12 +34,7 @@ pub fn resolve_bool(
             }
         },
         ExpectedType::Dynamic(tys) => {
-            let mut allowed_tys = tys.iter().filter(|ty| matches!(ty, TypeVariant::Bool));
-            let expected = if let Some(ty) = allowed_tys.next() {
-                ExpectedType::Concrete(ty.clone())
-            } else {
-                ExpectedType::Concrete(TypeVariant::Bool)
-            };
+            let expected = dynamic_to_concrete_type(tys, &[TypeVariant::Bool]);
             resolve_bool(value, loc, contract, expected)
         }
         ExpectedType::Empty => {
@@ -72,12 +69,7 @@ pub fn resolve_char(
             }
         },
         ExpectedType::Dynamic(tys) => {
-            let mut allowed_tys = tys.iter().filter(|ty| matches!(ty, TypeVariant::Char));
-            let expected = if let Some(ty) = allowed_tys.next() {
-                ExpectedType::Concrete(ty.clone())
-            } else {
-                ExpectedType::Concrete(TypeVariant::Char)
-            };
+            let expected = dynamic_to_concrete_type(tys, &[TypeVariant::Char]);
             resolve_char(value, loc, contract, expected)
         }
         ExpectedType::Empty => {
@@ -113,12 +105,7 @@ pub fn resolve_string(
             }
         },
         ExpectedType::Dynamic(tys) => {
-            let mut allowed_tys = tys.iter().filter(|ty| matches!(ty, TypeVariant::String));
-            let expected = if let Some(ty) = allowed_tys.next() {
-                ExpectedType::Concrete(ty.clone())
-            } else {
-                ExpectedType::Concrete(TypeVariant::String)
-            };
+            let expected = dynamic_to_concrete_type(tys, &[TypeVariant::String]);
             resolve_string(value, loc, contract, expected)
         }
         ExpectedType::Empty => {
@@ -162,12 +149,7 @@ pub fn resolve_hex(
             }
         },
         ExpectedType::Dynamic(tys) => {
-            let mut allowed_tys = tys.iter().filter(|ty| matches!(ty, TypeVariant::Hex));
-            let expected = if let Some(ty) = allowed_tys.next() {
-                ExpectedType::Concrete(ty.clone())
-            } else {
-                ExpectedType::Concrete(TypeVariant::Hex)
-            };
+            let expected = dynamic_to_concrete_type(tys, &[TypeVariant::Hex]);
             resolve_hex(value, loc, contract, expected)
         }
         ExpectedType::Empty => {
@@ -206,12 +188,7 @@ pub fn resolve_address(
             }
         },
         ExpectedType::Dynamic(tys) => {
-            let mut allowed_tys = tys.iter().filter(|ty| matches!(ty, TypeVariant::Address));
-            let expected = if let Some(ty) = allowed_tys.next() {
-                ExpectedType::Concrete(ty.clone())
-            } else {
-                ExpectedType::Concrete(TypeVariant::Address)
-            };
+            let expected = dynamic_to_concrete_type(tys, &[TypeVariant::Address]);
             resolve_address(value, loc, contract, expected)
         }
         ExpectedType::Empty => {

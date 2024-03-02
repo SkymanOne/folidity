@@ -11,6 +11,8 @@ use crate::{
     types::{report_type_mismatch, ExpectedType},
 };
 
+use super::dynamic_to_concrete_type;
+
 /// Resolve signed and unsigned integers.
 ///
 /// # Errors
@@ -52,14 +54,7 @@ pub fn resolve_integer(
             // use first type to resolve in the list of possible types,
             // otherwise we resolve to signed int
             // The latter can happen when we have var declaration without the type annotation.
-            let mut allowed_tys = tys
-                .iter()
-                .filter(|ty| matches!(ty, TypeVariant::Int | TypeVariant::Uint));
-            let expected = if let Some(ty) = allowed_tys.next() {
-                ExpectedType::Concrete(ty.clone())
-            } else {
-                ExpectedType::Concrete(TypeVariant::Int)
-            };
+            let expected = dynamic_to_concrete_type(tys, &[TypeVariant::Int, TypeVariant::Uint]);
             resolve_integer(number_str, loc, contract, expected)
         }
         ExpectedType::Empty => {
@@ -108,12 +103,7 @@ pub fn resolve_float(
             }
         },
         ExpectedType::Dynamic(tys) => {
-            let mut allowed_tys = tys.iter().filter(|ty| matches!(ty, TypeVariant::Float));
-            let expected = if let Some(ty) = allowed_tys.next() {
-                ExpectedType::Concrete(ty.clone())
-            } else {
-                ExpectedType::Concrete(TypeVariant::Float)
-            };
+            let expected = dynamic_to_concrete_type(tys, &[TypeVariant::Float]);
             resolve_float(number_str, loc, contract, expected)
         }
         ExpectedType::Empty => {

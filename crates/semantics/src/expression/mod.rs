@@ -67,3 +67,14 @@ pub fn expression(
         parsed_ast::Expression::List(_) => todo!(),
     }
 }
+
+/// Derives a concrete expected type from the list of supported types.
+/// The first element is used as a fallback option in case `tys` is empty.
+pub fn dynamic_to_concrete_type(tys: &[TypeVariant], allowed: &[TypeVariant]) -> ExpectedType {
+    let mut allowed_tys = tys.iter().filter(|ty| allowed.contains(ty));
+    if let Some(ty) = allowed_tys.next() {
+        ExpectedType::Concrete(ty.clone())
+    } else {
+        ExpectedType::Concrete(allowed[0].clone())
+    }
+}
