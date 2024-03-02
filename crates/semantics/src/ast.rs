@@ -10,6 +10,7 @@ use num_bigint::{BigInt, BigUint};
 use num_rational::BigRational;
 
 use crate::{global_symbol::SymbolInfo, symtable::SymTable};
+use algonaut::core::Address;
 
 #[derive(Clone, Debug, PartialEq, Node, Default)]
 pub struct Type {
@@ -350,15 +351,15 @@ pub struct StructInit {
 pub enum Expression {
     Variable(Identifier),
 
-    Number(UnaryExpression<String>),
+    // Literals
     Int(UnaryExpression<BigInt>),
     UInt(UnaryExpression<BigUint>),
     Float(UnaryExpression<BigRational>),
     Boolean(UnaryExpression<bool>),
     String(UnaryExpression<String>),
     Char(UnaryExpression<char>),
-    Hex(UnaryExpression<String>),
-    Address(UnaryExpression<String>),
+    Hex(UnaryExpression<Vec<u8>>),
+    Address(UnaryExpression<Address>),
 
     // Maths operations.
     Multiply(BinaryExpression),

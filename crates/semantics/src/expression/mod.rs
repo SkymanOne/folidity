@@ -1,12 +1,19 @@
+mod literals;
 mod nums;
 
 use folidity_parser::ast as parsed_ast;
 
 use crate::{
-    ast::Expression, contract::ContractDefinition, symtable::SymTable, types::ExpectedType,
+    ast::{Expression, TypeVariant},
+    contract::ContractDefinition,
+    symtable::SymTable,
+    types::ExpectedType,
 };
 
-use self::nums::resolve_integer;
+use self::{
+    literals::{resolve_address, resolve_bool, resolve_char, resolve_hex, resolve_string},
+    nums::{resolve_float, resolve_integer},
+};
 
 /// Resolve parsed expression to a concrete expression.
 pub fn expression(
@@ -19,13 +26,25 @@ pub fn expression(
         parsed_ast::Expression::Number(n) => {
             resolve_integer(&n.element, n.loc.clone(), contract, expected_ty)
         }
+        parsed_ast::Expression::Float(n) => {
+            resolve_float(&n.element, n.loc.clone(), contract, expected_ty)
+        }
+        parsed_ast::Expression::Hex(h) => {
+            resolve_hex(&h.element, h.loc.clone(), contract, expected_ty)
+        }
+        parsed_ast::Expression::Char(c) => {
+            resolve_char(c.element, c.loc.clone(), contract, expected_ty)
+        }
+        parsed_ast::Expression::String(s) => {
+            resolve_string(s.element.clone(), s.loc.clone(), contract, expected_ty)
+        }
+        parsed_ast::Expression::Boolean(b) => {
+            resolve_bool(b.element, b.loc.clone(), contract, expected_ty)
+        }
+        parsed_ast::Expression::Address(a) => {
+            resolve_address(&a.element, a.loc.clone(), contract, expected_ty)
+        }
         parsed_ast::Expression::Variable(_) => todo!(),
-        parsed_ast::Expression::Boolean(_) => todo!(),
-        parsed_ast::Expression::Float(_) => todo!(),
-        parsed_ast::Expression::String(_) => todo!(),
-        parsed_ast::Expression::Char(_) => todo!(),
-        parsed_ast::Expression::Hex(_) => todo!(),
-        parsed_ast::Expression::Address(_) => todo!(),
         parsed_ast::Expression::Multiply(_) => todo!(),
         parsed_ast::Expression::Divide(_) => todo!(),
         parsed_ast::Expression::Modulo(_) => todo!(),
