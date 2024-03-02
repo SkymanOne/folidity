@@ -1,5 +1,7 @@
 mod literals;
 mod nums;
+#[cfg(test)]
+mod tests;
 
 use folidity_parser::ast as parsed_ast;
 
@@ -11,7 +13,9 @@ use crate::{
 };
 
 use self::{
-    literals::{resolve_address, resolve_bool, resolve_char, resolve_hex, resolve_string},
+    literals::{
+        resolve_address, resolve_bool, resolve_char, resolve_hex, resolve_lists, resolve_string,
+    },
     nums::{resolve_float, resolve_integer},
 };
 
@@ -44,6 +48,9 @@ pub fn expression(
         parsed_ast::Expression::Address(a) => {
             resolve_address(&a.element, a.loc.clone(), contract, expected_ty)
         }
+        parsed_ast::Expression::List(l) => {
+            resolve_lists(&l.element, l.loc.clone(), contract, symtable, expected_ty)
+        }
         parsed_ast::Expression::Variable(_) => todo!(),
         parsed_ast::Expression::Multiply(_) => todo!(),
         parsed_ast::Expression::Divide(_) => todo!(),
@@ -64,7 +71,6 @@ pub fn expression(
         parsed_ast::Expression::MemberAccess(_) => todo!(),
         parsed_ast::Expression::Pipe(_) => todo!(),
         parsed_ast::Expression::StructInit(_) => todo!(),
-        parsed_ast::Expression::List(_) => todo!(),
     }
 }
 

@@ -18,11 +18,33 @@ pub struct Type {
     pub ty: TypeVariant,
 }
 
-impl Type {
+#[derive(Clone, Debug, PartialEq, Default)]
+pub enum TypeVariant {
+    #[default]
+    Int,
+    Uint,
+    Float,
+    Char,
+    String,
+    Hex,
+    Address,
+    Unit,
+    Bool,
+    Set(Box<TypeVariant>),
+    List(Box<TypeVariant>),
+    Mapping(Mapping),
+    Function(SymbolInfo),
+    Struct(SymbolInfo),
+    Model(SymbolInfo),
+    Enum(SymbolInfo),
+    State(SymbolInfo),
+}
+
+impl TypeVariant {
     /// Is data type primitive.
     pub fn is_primitive(&self) -> bool {
         matches!(
-            &self.ty,
+            &self,
             TypeVariant::Int
                 | TypeVariant::Uint
                 | TypeVariant::Float
@@ -37,9 +59,9 @@ impl Type {
 
     /// Find the set of dependent user defined types that are encapsulated by this type.
     pub fn custom_type_dependencies(&self) -> HashSet<usize> {
-        match &self.ty {
-            TypeVariant::Set(s) => s.ty.custom_type_dependencies(),
-            TypeVariant::List(s) => s.ty.custom_type_dependencies(),
+        match &self {
+            TypeVariant::Set(ty) => ty.custom_type_dependencies(),
+            TypeVariant::List(ty) => ty.custom_type_dependencies(),
             TypeVariant::Mapping(m) => {
                 let mut set = m.from_ty.custom_type_dependencies();
                 set.extend(m.to_ty.custom_type_dependencies());
@@ -49,28 +71,6 @@ impl Type {
             _ => HashSet::new(),
         }
     }
-}
-
-#[derive(Clone, Debug, PartialEq, Default)]
-pub enum TypeVariant {
-    #[default]
-    Int,
-    Uint,
-    Float,
-    Char,
-    String,
-    Hex,
-    Address,
-    Unit,
-    Bool,
-    Set(Set),
-    List(List),
-    Mapping(Mapping),
-    Function(SymbolInfo),
-    Struct(SymbolInfo),
-    Model(SymbolInfo),
-    Enum(SymbolInfo),
-    State(SymbolInfo),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -91,9 +91,9 @@ pub struct List {
 
 #[derive(Clone, Debug, PartialEq, Node, Default)]
 pub struct Mapping {
-    pub from_ty: Box<Type>,
+    pub from_ty: Box<TypeVariant>,
     pub relation: MappingRelation,
-    pub to_ty: Box<Type>,
+    pub to_ty: Box<TypeVariant>,
 }
 
 /// Parameter declaration of the state.

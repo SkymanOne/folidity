@@ -308,7 +308,7 @@ impl ContractDefinition {
         item: &parsed_ast::StateDeclaration,
         delay: &mut DelayedDeclarations,
     ) {
-        let state_len = self.models.len();
+        let state_len = self.states.len();
         // if we successfully add a symbol to the symbol table,
         // then we can proceed with creating the delayed fields for the second pass.
         if self.add_global_symbol(

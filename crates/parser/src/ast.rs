@@ -303,6 +303,7 @@ pub struct StructInit {
 pub enum Expression {
     Variable(Identifier),
 
+    // Literals
     Number(UnaryExpression<String>),
     Boolean(UnaryExpression<bool>),
     Float(UnaryExpression<String>),
@@ -310,6 +311,7 @@ pub enum Expression {
     Char(UnaryExpression<char>),
     Hex(UnaryExpression<String>),
     Address(UnaryExpression<String>),
+    List(UnaryExpression<Vec<Expression>>),
 
     // Maths operations.
     Multiply(BinaryExpression),
@@ -336,8 +338,6 @@ pub enum Expression {
     MemberAccess(MemberAccess),
     Pipe(BinaryExpression),
     StructInit(UnaryExpression<StructInit>),
-
-    List(UnaryExpression<Vec<Expression>>),
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]

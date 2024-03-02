@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::fmt::Display;
 
-use crate::ast::{List, Mapping, Param, Set, StateBody, StateDeclaration, Type, TypeVariant};
+use crate::ast::{Mapping, Param, StateBody, Type, TypeVariant};
 use crate::contract::ContractDefinition;
 use crate::global_symbol::GlobalSymbol;
 use folidity_diagnostics::Report;
@@ -79,19 +79,19 @@ pub fn map_type(contract: &mut ContractDefinition, ty: &parsed_ast::Type) -> Res
         parsed_ast::TypeVariant::Bool => TypeVariant::Bool,
         parsed_ast::TypeVariant::Set(s) => {
             let set_ty = map_type(contract, &s.ty)?;
-            TypeVariant::Set(Set::new(Box::new(set_ty)))
+            TypeVariant::Set(Box::new(set_ty.ty))
         }
         parsed_ast::TypeVariant::List(l) => {
             let list_ty = map_type(contract, &l.ty)?;
-            TypeVariant::List(List::new(Box::new(list_ty)))
+            TypeVariant::List(Box::new(list_ty.ty))
         }
         parsed_ast::TypeVariant::Mapping(m) => {
             let m_from_ty = map_type(contract, &m.from_ty)?;
             let m_to_ty = map_type(contract, &m.to_ty)?;
             TypeVariant::Mapping(Mapping::new(
-                Box::new(m_from_ty),
+                Box::new(m_from_ty.ty),
                 m.relation.clone(),
-                Box::new(m_to_ty),
+                Box::new(m_to_ty.ty),
             ))
         }
         parsed_ast::TypeVariant::Custom(user_ty) => {
@@ -157,7 +157,7 @@ pub fn find_user_type_recursion(contract: &mut ContractDefinition) {
 /// Collect field dependencies into the graph edges.
 fn collect_edges(edges: &mut HashSet<(usize, usize, usize)>, fields: &[Param], struct_no: usize) {
     for (no, field) in fields.iter().enumerate() {
-        for dependency in field.ty.custom_type_dependencies() {
+        for dependency in field.ty.ty.custom_type_dependencies() {
             if edges.insert((no, dependency, struct_no)) {
                 collect_edges(edges, fields, struct_no)
             }
@@ -277,7 +277,7 @@ fn detect_model_cycle(contract: &mut ContractDefinition) {
                 0,
                 None,
             ) {
-                for (a, b) in simple_path.windows(2).map(|p| (p[0], p[1])) {
+                for (a, _) in simple_path.windows(2).map(|p| (p[0], p[1])) {
                     contract.models[a.index()].recursive_parent = true;
                 }
             }

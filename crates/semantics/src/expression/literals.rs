@@ -7,10 +7,11 @@ use folidity_parser::{ast as parsed_ast, Span};
 use crate::{
     ast::{Expression, TypeVariant},
     contract::ContractDefinition,
+    symtable::SymTable,
     types::{report_type_mismatch, ExpectedType},
 };
 
-use super::dynamic_to_concrete_type;
+use super::{dynamic_to_concrete_type, expression};
 
 /// Resolve bool to an expression.
 ///
@@ -195,6 +196,89 @@ pub fn resolve_address(
             contract.diagnostics.push(Report::semantic_error(
                 loc,
                 String::from("Address literals can only be used in expressions."),
+            ));
+            Err(())
+        }
+    }
+}
+
+/// Resolve list and set of expression to an AST expressions
+pub fn resolve_lists(
+    exprs: &[parsed_ast::Expression],
+    loc: Span,
+    contract: &mut ContractDefinition,
+    symtable: &mut SymTable,
+    expected_ty: ExpectedType,
+) -> Result<Expression, ()> {
+    let mut derive_expr = |ty: &TypeVariant, loc: Span| -> Result<Expression, ()> {
+        let mut error = false;
+        let eval_exprs: Vec<Expression> = exprs
+            .iter()
+            .filter_map(|e| {
+                if let Ok(e) = expression(e, ExpectedType::Concrete(ty.clone()), symtable, contract)
+                {
+                    Some(e)
+                } else {
+                    error = true;
+                    None
+                }
+            })
+            .collect();
+
+        if error {
+            Err(())
+        } else {
+            Ok(Expression::List(parsed_ast::UnaryExpression {
+                loc,
+                element: eval_exprs,
+            }))
+        }
+    };
+    match &expected_ty {
+        ExpectedType::Concrete(ty) => match ty {
+            TypeVariant::Set(ty) => derive_expr(ty, loc),
+            TypeVariant::List(ty) => derive_expr(ty, loc),
+            a_ty => {
+                report_type_mismatch(&expected_ty, a_ty, &loc, contract);
+                Err(())
+            }
+        },
+        ExpectedType::Dynamic(tys) => {
+            if tys.is_empty() {
+                // if there are no expected types, then we derive it from the first element in the list.
+                if exprs.is_empty() {
+                    contract.diagnostics.push(Report::type_error(
+                        loc,
+                        String::from(
+                            "Cannot derive type from the empty list without the type annotation.",
+                        ),
+                    ));
+                }
+                let list_expr = &exprs[0];
+                //todo: write a derivation function.
+                Err(())
+            } else {
+                // we need to manually inspect the type.
+                let allowed_tys: Vec<TypeVariant> = tys
+                    .iter()
+                    .filter(|ty| matches!(ty, TypeVariant::List(_) | TypeVariant::Set(_)))
+                    .cloned()
+                    .collect();
+                if allowed_tys.is_empty() {
+                    contract.diagnostics.push(Report::semantic_error(
+                        loc,
+                        format!("Expected list or set, found {:?}", tys),
+                    ));
+                    return Err(());
+                }
+                let concrete = ExpectedType::Concrete(allowed_tys.first().unwrap().clone());
+                resolve_lists(exprs, loc, contract, symtable, concrete)
+            }
+        }
+        ExpectedType::Empty => {
+            contract.diagnostics.push(Report::semantic_error(
+                loc,
+                String::from("List literals can only be used in expressions."),
             ));
             Err(())
         }
