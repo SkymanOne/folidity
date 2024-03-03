@@ -2,7 +2,7 @@ use std::{collections::HashSet, fmt::Display};
 
 use derive_node::Node;
 use folidity_parser::{
-    ast::{BinaryExpression, Identifier, MappingRelation, UnaryExpression},
+    ast::{Identifier, MappingRelation},
     Span,
 };
 use indexmap::IndexMap;
@@ -349,7 +349,7 @@ pub struct StructInit {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expression {
-    Variable(Identifier),
+    Variable(UnaryExpression<usize>),
 
     // Literals
     Int(UnaryExpression<BigInt>),
@@ -390,6 +390,33 @@ pub enum Expression {
     List(UnaryExpression<Vec<Expression>>),
 }
 
+/// Represents unary style expression.
+#[derive(Clone, Debug, PartialEq)]
+pub struct UnaryExpression<T> {
+    /// Location of the expression
+    pub loc: Span,
+    /// Element of the expression.
+    pub element: T,
+    /// Type of an expression.
+    pub ty: TypeVariant,
+}
+
+/// Represents binary-style expression.
+///
+/// # Example
+/// `10 + 2`
+#[derive(Clone, Debug, PartialEq, Node)]
+pub struct BinaryExpression {
+    /// Location of the parent expression.
+    pub loc: Span,
+    /// Left expression.
+    pub left: Box<Expression>,
+    /// Right expression
+    pub right: Box<Expression>,
+    /// Type of an expression.
+    pub ty: TypeVariant,
+}
+
 #[derive(Clone, Debug, PartialEq, Node)]
 pub struct FunctionCall {
     /// Location of the parent expression.
@@ -398,7 +425,6 @@ pub struct FunctionCall {
     pub name: Identifier,
     /// List of arguments.
     pub args: Vec<Expression>,
-
     pub returns: TypeVariant,
 }
 
@@ -410,6 +436,8 @@ pub struct MemberAccess {
     pub expr: Box<Expression>,
     /// List of arguments.
     pub member: Identifier,
+    /// Type of an expression.
+    pub ty: TypeVariant,
 }
 
 impl Display for TypeVariant {
@@ -433,6 +461,43 @@ impl Display for TypeVariant {
             TypeVariant::Model(_) => word("model"),
             TypeVariant::Enum(_) => word("enum"),
             TypeVariant::State(_) => word("state"),
+        }
+    }
+}
+
+impl Expression {
+    ///  Retrieves type from the expression.
+    pub fn ty(&self) -> &TypeVariant {
+        match self {
+            Expression::Variable(e) => &e.ty,
+            Expression::Int(e) => &e.ty,
+            Expression::UInt(e) => &e.ty,
+            Expression::Float(e) => &e.ty,
+            Expression::Boolean(e) => &e.ty,
+            Expression::String(e) => &e.ty,
+            Expression::Char(e) => &e.ty,
+            Expression::Hex(e) => &e.ty,
+            Expression::Address(e) => &e.ty,
+            Expression::Multiply(e) => &e.ty,
+            Expression::Divide(e) => &e.ty,
+            Expression::Modulo(e) => &e.ty,
+            Expression::Add(e) => &e.ty,
+            Expression::Subtract(e) => &e.ty,
+            Expression::Equal(e) => &e.ty,
+            Expression::NotEqual(e) => &e.ty,
+            Expression::Greater(e) => &e.ty,
+            Expression::Less(e) => &e.ty,
+            Expression::GreaterEq(e) => &e.ty,
+            Expression::LessEq(e) => &e.ty,
+            Expression::In(e) => &e.ty,
+            Expression::Not(e) => &e.ty,
+            Expression::Or(e) => &e.ty,
+            Expression::And(e) => &e.ty,
+            Expression::FunctionCall(e) => &e.returns,
+            Expression::MemberAccess(e) => &e.ty,
+            Expression::Pipe(e) => &e.ty,
+            Expression::StructInit(e) => &e.ty,
+            Expression::List(e) => &e.ty,
         }
     }
 }

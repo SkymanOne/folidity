@@ -6,7 +6,7 @@ use num_bigint::{BigInt, BigUint};
 use num_rational::BigRational;
 
 use crate::{
-    ast::{Expression, TypeVariant},
+    ast::{Expression, TypeVariant, UnaryExpression},
     contract::ContractDefinition,
     types::{report_type_mismatch, ExpectedType},
 };
@@ -28,9 +28,10 @@ pub fn resolve_integer(
         ExpectedType::Concrete(ty) => match ty {
             TypeVariant::Int => {
                 let number = BigInt::from_str(number_str).unwrap();
-                Ok(Expression::Int(parsed_ast::UnaryExpression {
+                Ok(Expression::Int(UnaryExpression {
                     loc,
                     element: number,
+                    ty: TypeVariant::Int,
                 }))
             }
             TypeVariant::Uint => {
@@ -40,9 +41,10 @@ pub fn resolve_integer(
                         String::from("Expected unsigned integer, got signed one"),
                     ));
                 })?;
-                Ok(Expression::UInt(parsed_ast::UnaryExpression {
+                Ok(Expression::UInt(UnaryExpression {
                     loc,
                     element: number,
+                    ty: TypeVariant::Uint,
                 }))
             }
             a_ty => {
@@ -92,9 +94,10 @@ pub fn resolve_float(
                         String::from("Error parsing real number"),
                     ));
                 })?;
-                Ok(Expression::Float(parsed_ast::UnaryExpression {
+                Ok(Expression::Float(UnaryExpression {
                     loc,
                     element: number,
+                    ty: TypeVariant::Float,
                 }))
             }
             a_ty => {

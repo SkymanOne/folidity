@@ -1,7 +1,10 @@
 use folidity_parser::{ast as parsed_ast, Span};
 
 use crate::{
-    ast::TypeVariant, contract::ContractDefinition, symtable::SymTable, types::ExpectedType,
+    ast::{Expression, TypeVariant},
+    contract::ContractDefinition,
+    symtable::SymTable,
+    types::ExpectedType,
 };
 
 use super::expression;
@@ -42,5 +45,19 @@ fn test_list() {
         &mut symtable,
         &mut contract,
     );
-    assert!(resolved_expr_err.is_err())
+    assert!(resolved_expr_err.is_err());
+
+    let resolved_expr = expression(
+        &parsed_list,
+        ExpectedType::Dynamic(vec![]),
+        &mut symtable,
+        &mut contract,
+    );
+
+    assert!(resolved_expr.is_ok());
+    let expr = resolved_expr.unwrap();
+    if let Expression::List(e) = expr {
+        assert_eq!(e.ty, TypeVariant::List(Box::new(TypeVariant::Int)));
+        assert_eq!(e.element.len(), 3)
+    }
 }

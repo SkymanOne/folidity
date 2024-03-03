@@ -5,7 +5,7 @@ use folidity_diagnostics::Report;
 use folidity_parser::{ast as parsed_ast, Span};
 
 use crate::{
-    ast::{Expression, TypeVariant},
+    ast::{Expression, TypeVariant, UnaryExpression},
     contract::ContractDefinition,
     symtable::SymTable,
     types::{report_type_mismatch, ExpectedType},
@@ -25,9 +25,10 @@ pub fn resolve_bool(
 ) -> Result<Expression, ()> {
     match &expected_ty {
         ExpectedType::Concrete(ty) => match ty {
-            TypeVariant::Bool => Ok(Expression::Boolean(parsed_ast::UnaryExpression {
+            TypeVariant::Bool => Ok(Expression::Boolean(UnaryExpression {
                 loc,
                 element: value,
+                ty: TypeVariant::Bool,
             })),
             a_ty => {
                 report_type_mismatch(&expected_ty, a_ty, &loc, contract);
@@ -60,9 +61,10 @@ pub fn resolve_char(
 ) -> Result<Expression, ()> {
     match &expected_ty {
         ExpectedType::Concrete(ty) => match ty {
-            TypeVariant::Char => Ok(Expression::Char(parsed_ast::UnaryExpression {
+            TypeVariant::Char => Ok(Expression::Char(UnaryExpression {
                 loc,
                 element: value,
+                ty: TypeVariant::Char,
             })),
             a_ty => {
                 report_type_mismatch(&expected_ty, a_ty, &loc, contract);
@@ -96,9 +98,10 @@ pub fn resolve_string(
 ) -> Result<Expression, ()> {
     match &expected_ty {
         ExpectedType::Concrete(ty) => match ty {
-            TypeVariant::String => Ok(Expression::String(parsed_ast::UnaryExpression {
+            TypeVariant::String => Ok(Expression::String(UnaryExpression {
                 loc,
                 element: value,
+                ty: TypeVariant::String,
             })),
             a_ty => {
                 report_type_mismatch(&expected_ty, a_ty, &loc, contract);
@@ -139,9 +142,10 @@ pub fn resolve_hex(
                         String::from("Value is not a valid hex string."),
                     ));
                 })?;
-                Ok(Expression::Hex(parsed_ast::UnaryExpression {
+                Ok(Expression::Hex(UnaryExpression {
                     loc,
                     element: bytes,
+                    ty: TypeVariant::Hex,
                 }))
             }
             a_ty => {
@@ -178,9 +182,10 @@ pub fn resolve_address(
         ExpectedType::Concrete(ty) => match ty {
             TypeVariant::Address => {
                 let address = Address::from_str(value).map_err(|_| {})?;
-                Ok(Expression::Address(parsed_ast::UnaryExpression {
+                Ok(Expression::Address(UnaryExpression {
                     loc,
                     element: address,
+                    ty: TypeVariant::Address,
                 }))
             }
             a_ty => {
@@ -226,11 +231,16 @@ pub fn resolve_lists(
             .collect();
 
         if error {
+            contract.diagnostics.push(Report::semantic_error(
+                loc,
+                String::from("List elements appear to be of different types."),
+            ));
             Err(())
         } else {
-            Ok(Expression::List(parsed_ast::UnaryExpression {
+            Ok(Expression::List(UnaryExpression {
                 loc,
                 element: eval_exprs,
+                ty: TypeVariant::List(Box::new(ty.clone())),
             }))
         }
     };
@@ -253,10 +263,13 @@ pub fn resolve_lists(
                             "Cannot derive type from the empty list without the type annotation.",
                         ),
                     ));
+                    return Err(());
                 }
-                let list_expr = &exprs[0];
-                //todo: write a derivation function.
-                Err(())
+                let expr =
+                    expression(&exprs[0], ExpectedType::Dynamic(vec![]), symtable, contract)?;
+                let exprt_ty =
+                    ExpectedType::Concrete(TypeVariant::List(Box::new(expr.ty().clone())));
+                resolve_lists(exprs, loc, contract, symtable, exprt_ty)
             } else {
                 // we need to manually inspect the type.
                 let allowed_tys: Vec<TypeVariant> = tys

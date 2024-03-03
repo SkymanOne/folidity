@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::fmt::Display;
 
-use crate::ast::{Mapping, Param, StateBody, Type, TypeVariant};
+use crate::ast::{Expression, Mapping, Param, StateBody, Type, TypeVariant};
 use crate::contract::ContractDefinition;
 use crate::global_symbol::GlobalSymbol;
 use folidity_diagnostics::Report;
