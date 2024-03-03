@@ -313,7 +313,7 @@ Statement: ast::Statement = {
     <ForLoop> => ast::Statement::ForLoop(<>),
     <Iterator> => ast::Statement::Iterator(<>),
     "return" <Expression> ";" => ast::Statement::Return(<>),
-    <FunCall> ";" => ast::Statement::FunCall(<>),
+    <Expression> ";" => ast::Statement::Expression(<>),
     "move" <StructInit> ";" => ast::Statement::StateTransition(<>),
 
     <block:StatementBlock> => ast::Statement::Block(block),

@@ -876,6 +876,8 @@ fn () execute() when (RevealState s) -> ExecuteState {
     # add lambda later
     # let yay = votes :> filter(|v| v == Choice::Yay).sum();
     let mut passed = false;
+    [1, 2, 3] :> func1 :> func2 :> func3;
+    func3();
     if votes.size / yay > 0.5 {
         passed = true;
         move ExecuteState : {

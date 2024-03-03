@@ -234,7 +234,7 @@ pub enum Statement {
     ForLoop(ForLoop),
     Iterator(Iterator),
     Return(Expression),
-    FunCall(FunctionCall),
+    Expression(Expression),
     StateTransition(StructInit),
     Skip(Span),
 
