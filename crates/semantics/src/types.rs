@@ -115,6 +115,44 @@ pub fn map_type(contract: &mut ContractDefinition, ty: &parsed_ast::Type) -> Res
     })
 }
 
+impl Expression {
+    ///  Retrieve type from the expression.
+    pub fn ty(&self) -> &TypeVariant {
+        match self {
+            Expression::Variable(e) => &e.ty,
+            Expression::Int(e) => &e.ty,
+            Expression::UInt(e) => &e.ty,
+            Expression::Float(e) => &e.ty,
+            Expression::Boolean(e) => &e.ty,
+            Expression::String(e) => &e.ty,
+            Expression::Char(e) => &e.ty,
+            Expression::Hex(e) => &e.ty,
+            Expression::Address(e) => &e.ty,
+            Expression::Multiply(e) => &e.ty,
+            Expression::Divide(e) => &e.ty,
+            Expression::Modulo(e) => &e.ty,
+            Expression::Add(e) => &e.ty,
+            Expression::Subtract(e) => &e.ty,
+            Expression::Equal(e) => &e.ty,
+            Expression::NotEqual(e) => &e.ty,
+            Expression::Greater(e) => &e.ty,
+            Expression::Less(e) => &e.ty,
+            Expression::GreaterEq(e) => &e.ty,
+            Expression::LessEq(e) => &e.ty,
+            Expression::In(e) => &e.ty,
+            Expression::Not(e) => &e.ty,
+            Expression::Or(e) => &e.ty,
+            Expression::And(e) => &e.ty,
+            Expression::FunctionCall(e) => &e.returns,
+            Expression::MemberAccess(e) => &e.ty,
+            Expression::Pipe(e) => &e.ty,
+            Expression::StructInit(e) => &e.ty,
+            Expression::List(e) => &e.ty,
+        }
+    }
+}
+
+
 /// Attempts to find a user defined type recursion.
 /// Returns span of the of the first instance.
 ///
