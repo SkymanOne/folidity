@@ -12,6 +12,17 @@ use crate::{
 };
 
 /// Resolve variable to a AST expression.
+///
+/// # Notes
+/// - If the expected type is a function, then we look it up and the scope table
+/// and validate that params and return types are matched.
+/// - Otherwise we just look up tha variable in the scope table.
+/// - If the expected type is dynamic, we check that the var's type is in the list.
+///
+/// # Errors
+/// - If the var is a function, param or return types mismatched with the expected ones.
+/// - The var is not declared.
+/// - The var type mismatched.
 pub fn resolve_variable(
     ident: &Identifier,
     scope: &mut Scope,
