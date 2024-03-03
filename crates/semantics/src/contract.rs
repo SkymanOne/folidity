@@ -11,8 +11,8 @@ use crate::ast::{
 };
 
 use crate::functions::function_decl;
-use crate::global_symbol::GlobalSymbol;
 use crate::global_symbol::SymbolInfo;
+use crate::global_symbol::{GlobalSymbol, SymbolKind};
 use crate::types::{
     find_user_type_recursion, map_type, validate_fields, DelayedBounds, DelayedDeclaration,
     DelayedDeclarations,
@@ -368,5 +368,68 @@ impl ContractDefinition {
         self.declaration_symbols.insert(ident.name.clone(), symbol);
 
         true
+    }
+
+    /// Find symbol in a global symbol table.
+    ///
+    /// # Notes
+    /// - Returns `None` if no symbol with provided name has been declared.
+    /// - Returns `None` if the found symbol is of different type.
+    pub fn find_global_symbol(
+        &mut self,
+        ident: &Identifier,
+        kind: SymbolKind,
+    ) -> Option<SymbolInfo> {
+        let report_error = |contract: &mut ContractDefinition, expected: String, found: String| {
+            contract.diagnostics.push(Report::type_error(
+                ident.loc.clone(),
+                format!("Expected to find {}, found {}", expected, found),
+            ));
+        };
+        let Some(sym) = GlobalSymbol::lookup(self, ident) else {
+            return None;
+        };
+        match &kind {
+            SymbolKind::Struct => {
+                if let GlobalSymbol::Struct(s) = sym {
+                    Some(s.clone())
+                } else {
+                    report_error(self, SymbolKind::Struct.to_string(), kind.to_string());
+                    None
+                }
+            }
+            SymbolKind::Model => {
+                if let GlobalSymbol::Model(s) = sym {
+                    Some(s.clone())
+                } else {
+                    report_error(self, SymbolKind::Model.to_string(), kind.to_string());
+                    None
+                }
+            }
+            SymbolKind::State => {
+                if let GlobalSymbol::State(s) = sym {
+                    Some(s.clone())
+                } else {
+                    report_error(self, SymbolKind::State.to_string(), kind.to_string());
+                    None
+                }
+            }
+            SymbolKind::Enum => {
+                if let GlobalSymbol::Enum(s) = sym {
+                    Some(s.clone())
+                } else {
+                    report_error(self, SymbolKind::Enum.to_string(), kind.to_string());
+                    None
+                }
+            }
+            SymbolKind::Function => {
+                if let GlobalSymbol::Function(s) = sym {
+                    Some(s.clone())
+                } else {
+                    report_error(self, SymbolKind::Function.to_string(), kind.to_string());
+                    None
+                }
+            }
+        }
     }
 }

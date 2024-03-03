@@ -1,7 +1,18 @@
+use std::fmt::Display;
+
 use folidity_diagnostics::Report;
 use folidity_parser::{ast::Identifier, Span};
 
 use crate::contract::ContractDefinition;
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum SymbolKind {
+    Struct,
+    Model,
+    State,
+    Enum,
+    Function,
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum GlobalSymbol {
@@ -28,6 +39,32 @@ impl GlobalSymbol {
                 ));
                 None
             }
+        }
+    }
+}
+
+impl Display for GlobalSymbol {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut word = |s: &str| -> std::fmt::Result { write!(f, "{s}") };
+        match self {
+            GlobalSymbol::Struct(_) => word("struct"),
+            GlobalSymbol::Model(_) => word("model"),
+            GlobalSymbol::Enum(_) => word("enum"),
+            GlobalSymbol::State(_) => word("state"),
+            GlobalSymbol::Function(_) => word("function"),
+        }
+    }
+}
+
+impl Display for SymbolKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut word = |s: &str| -> std::fmt::Result { write!(f, "{s}") };
+        match self {
+            SymbolKind::Struct => word("struct"),
+            SymbolKind::Model => word("model"),
+            SymbolKind::Enum => word("enum"),
+            SymbolKind::State => word("state"),
+            SymbolKind::Function => word("function"),
         }
     }
 }

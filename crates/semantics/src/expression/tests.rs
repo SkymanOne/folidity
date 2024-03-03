@@ -3,7 +3,7 @@ use folidity_parser::{ast as parsed_ast, Span};
 use crate::{
     ast::{Expression, TypeVariant},
     contract::ContractDefinition,
-    symtable::SymTable,
+    symtable::Scope,
     types::ExpectedType,
 };
 
@@ -13,7 +13,7 @@ use super::expression;
 fn test_list() {
     let loc = Span { start: 0, end: 0 };
     let mut contract = ContractDefinition::default();
-    let mut symtable = SymTable::default();
+    let mut scope = Scope::default();
     let parsed_list = parsed_ast::Expression::List(parsed_ast::UnaryExpression {
         loc: loc.clone(),
         element: vec![
@@ -34,7 +34,7 @@ fn test_list() {
     let resolved_expr = expression(
         &parsed_list,
         ExpectedType::Concrete(TypeVariant::List(Box::new(TypeVariant::Int))),
-        &mut symtable,
+        &mut scope,
         &mut contract,
     );
     assert!(resolved_expr.is_ok());
@@ -42,7 +42,7 @@ fn test_list() {
     let resolved_expr_err = expression(
         &parsed_list,
         ExpectedType::Concrete(TypeVariant::List(Box::new(TypeVariant::Float))),
-        &mut symtable,
+        &mut scope,
         &mut contract,
     );
     assert!(resolved_expr_err.is_err());
@@ -50,7 +50,7 @@ fn test_list() {
     let resolved_expr = expression(
         &parsed_list,
         ExpectedType::Dynamic(vec![]),
-        &mut symtable,
+        &mut scope,
         &mut contract,
     );
 

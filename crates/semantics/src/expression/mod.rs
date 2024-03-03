@@ -1,18 +1,20 @@
+mod complex;
 mod literals;
 mod nums;
 #[cfg(test)]
 mod tests;
 
-use folidity_parser::ast as parsed_ast;
+use folidity_parser::ast::{self as parsed_ast};
 
 use crate::{
     ast::{Expression, TypeVariant},
     contract::ContractDefinition,
-    symtable::SymTable,
+    symtable::Scope,
     types::ExpectedType,
 };
 
 use self::{
+    complex::resolve_variable,
     literals::{
         resolve_address, resolve_bool, resolve_char, resolve_hex, resolve_lists, resolve_string,
     },
@@ -23,7 +25,7 @@ use self::{
 pub fn expression(
     expr: &parsed_ast::Expression,
     expected_ty: ExpectedType,
-    symtable: &mut SymTable,
+    scope: &mut Scope,
     contract: &mut ContractDefinition,
 ) -> Result<Expression, ()> {
     match expr {
@@ -49,9 +51,11 @@ pub fn expression(
             resolve_address(&a.element, a.loc.clone(), contract, expected_ty)
         }
         parsed_ast::Expression::List(l) => {
-            resolve_lists(&l.element, l.loc.clone(), contract, symtable, expected_ty)
+            resolve_lists(&l.element, l.loc.clone(), contract, scope, expected_ty)
         }
-        parsed_ast::Expression::Variable(_) => todo!(),
+        parsed_ast::Expression::Variable(ident) => {
+            resolve_variable(ident, scope, contract, expected_ty)
+        }
         parsed_ast::Expression::Multiply(_) => todo!(),
         parsed_ast::Expression::Divide(_) => todo!(),
         parsed_ast::Expression::Modulo(_) => todo!(),

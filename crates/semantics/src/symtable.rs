@@ -1,9 +1,12 @@
 use std::collections::HashMap;
 
-use folidity_parser::ast::{Identifier, TypeVariant};
+use folidity_parser::ast::Identifier;
 use indexmap::IndexMap;
 
-use crate::{ast::Expression, contract::ContractDefinition};
+use crate::{
+    ast::{Expression, TypeVariant},
+    contract::ContractDefinition,
+};
 
 #[derive(Debug, Clone)]
 pub struct VariableSym {
@@ -86,12 +89,12 @@ impl SymTable {
         self.names.insert(name.name.clone(), current_id);
     }
 
-    pub fn get_name(&self, pos: usize) -> &str {
+    pub fn ame(&self, pos: usize) -> &str {
         &self.vars[&pos].name.name
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Scope {
     /// Parent scope.
     pub parent: Option<Box<Scope>>,
@@ -102,11 +105,11 @@ pub struct Scope {
 }
 
 impl Scope {
-    pub fn var(&self, name: &str) -> Option<&VariableSym> {
+    pub fn find_var(&self, name: &str) -> Option<usize> {
         if let Some(i) = self.symbols.names.get(name) {
-            return self.symbols.vars.get(i);
+            return Some(*i);
         } else if let Some(scope) = &self.parent {
-            return scope.var(name);
+            return scope.find_var(name);
         } else {
             None
         }

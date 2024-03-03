@@ -7,7 +7,7 @@ use folidity_parser::{ast as parsed_ast, Span};
 use crate::{
     ast::{Expression, TypeVariant, UnaryExpression},
     contract::ContractDefinition,
-    symtable::SymTable,
+    symtable::Scope,
     types::{report_type_mismatch, ExpectedType},
 };
 
@@ -207,12 +207,27 @@ pub fn resolve_address(
     }
 }
 
-/// Resolve list and set of expression to an AST expressions
+/// Resolve list and set of expression to a list of AST expressions.
+///
+/// # Notes
+///
+/// The list size is dynamic, so we don't check for sizes of any sub-arrays.
+///
+/// If the expected type is provided then we resolve every element to it,
+/// and report error if any.
+///
+/// If the expected type is not provided, then deduce the type from the first element of the list,
+/// and the resolve all consequent elements to that type.
+///
+/// # Errors
+/// - The expected type is different.
+/// - No expected types are provided and list contains no elements -> we can't deduce the type.
+/// - Elements are of different types.
 pub fn resolve_lists(
     exprs: &[parsed_ast::Expression],
     loc: Span,
     contract: &mut ContractDefinition,
-    symtable: &mut SymTable,
+    scope: &mut Scope,
     expected_ty: ExpectedType,
 ) -> Result<Expression, ()> {
     let mut derive_expr = |ty: &TypeVariant, loc: Span| -> Result<Expression, ()> {
@@ -220,8 +235,7 @@ pub fn resolve_lists(
         let eval_exprs: Vec<Expression> = exprs
             .iter()
             .filter_map(|e| {
-                if let Ok(e) = expression(e, ExpectedType::Concrete(ty.clone()), symtable, contract)
-                {
+                if let Ok(e) = expression(e, ExpectedType::Concrete(ty.clone()), scope, contract) {
                     Some(e)
                 } else {
                     error = true;
@@ -265,11 +279,10 @@ pub fn resolve_lists(
                     ));
                     return Err(());
                 }
-                let expr =
-                    expression(&exprs[0], ExpectedType::Dynamic(vec![]), symtable, contract)?;
+                let expr = expression(&exprs[0], ExpectedType::Dynamic(vec![]), scope, contract)?;
                 let exprt_ty =
                     ExpectedType::Concrete(TypeVariant::List(Box::new(expr.ty().clone())));
-                resolve_lists(exprs, loc, contract, symtable, exprt_ty)
+                resolve_lists(exprs, loc, contract, scope, exprt_ty)
             } else {
                 // we need to manually inspect the type.
                 let allowed_tys: Vec<TypeVariant> = tys
@@ -285,7 +298,7 @@ pub fn resolve_lists(
                     return Err(());
                 }
                 let concrete = ExpectedType::Concrete(allowed_tys.first().unwrap().clone());
-                resolve_lists(exprs, loc, contract, symtable, concrete)
+                resolve_lists(exprs, loc, contract, scope, concrete)
             }
         }
         ExpectedType::Empty => {

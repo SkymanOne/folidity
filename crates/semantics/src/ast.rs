@@ -33,7 +33,7 @@ pub enum TypeVariant {
     Set(Box<TypeVariant>),
     List(Box<TypeVariant>),
     Mapping(Mapping),
-    Function(SymbolInfo),
+    Function(FunctionType),
     Struct(SymbolInfo),
     Model(SymbolInfo),
     Enum(SymbolInfo),
@@ -73,10 +73,10 @@ impl TypeVariant {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct FunctionType {
-    params: Vec<TypeVariant>,
-    returns: TypeVariant,
+    pub params: Vec<TypeVariant>,
+    pub returns: Box<TypeVariant>,
 }
 
 #[derive(Clone, Debug, PartialEq, Node, Default)]
@@ -139,6 +139,16 @@ pub enum FunctionVisibility {
 pub enum FuncReturnType {
     Type(Type),
     ParamType(Param),
+}
+
+impl FuncReturnType {
+    /// Return [`TypeVariant`] of a function return type.
+    pub fn ty(&self) -> &TypeVariant {
+        match self {
+            FuncReturnType::Type(ty) => &ty.ty,
+            FuncReturnType::ParamType(pty) => &pty.ty.ty,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]

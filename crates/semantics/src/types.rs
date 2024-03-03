@@ -1,7 +1,9 @@
 use std::collections::HashSet;
 use std::fmt::Display;
 
-use crate::ast::{Expression, Mapping, Param, StateBody, Type, TypeVariant};
+use crate::ast::{
+    Expression, FuncReturnType, FunctionType, Mapping, Param, StateBody, Type, TypeVariant,
+};
 use crate::contract::ContractDefinition;
 use crate::global_symbol::GlobalSymbol;
 use folidity_diagnostics::Report;
@@ -101,7 +103,17 @@ pub fn map_type(contract: &mut ContractDefinition, ty: &parsed_ast::Type) -> Res
                     GlobalSymbol::Model(info) => TypeVariant::Model(info.clone()),
                     GlobalSymbol::Enum(info) => TypeVariant::Enum(info.clone()),
                     GlobalSymbol::State(info) => TypeVariant::State(info.clone()),
-                    GlobalSymbol::Function(info) => TypeVariant::Function(info.clone()),
+                    GlobalSymbol::Function(info) => {
+                        let i = info.i;
+                        let func = contract.functions.get(i).unwrap();
+                        let param_tys: Vec<TypeVariant> =
+                            func.params.values().map(|p| &p.ty.ty).cloned().collect();
+                        let return_ty = func.return_ty.ty().clone();
+                        TypeVariant::Function(FunctionType {
+                            params: param_tys,
+                            returns: Box::new(return_ty),
+                        })
+                    }
                 }
             } else {
                 return Err(());
@@ -151,7 +163,6 @@ impl Expression {
         }
     }
 }
-
 
 /// Attempts to find a user defined type recursion.
 /// Returns span of the of the first instance.
