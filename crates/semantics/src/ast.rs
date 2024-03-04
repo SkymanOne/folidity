@@ -1,15 +1,27 @@
-use std::{collections::HashSet, fmt::Display};
+use std::{
+    collections::HashSet,
+    fmt::Display,
+};
 
 use derive_node::Node;
 use folidity_parser::{
-    ast::{Identifier, MappingRelation},
+    ast::{
+        Identifier,
+        MappingRelation,
+    },
     Span,
 };
 use indexmap::IndexMap;
-use num_bigint::{BigInt, BigUint};
+use num_bigint::{
+    BigInt,
+    BigUint,
+};
 use num_rational::BigRational;
 
-use crate::{global_symbol::SymbolInfo, symtable::SymTable};
+use crate::{
+    global_symbol::SymbolInfo,
+    symtable::SymTable,
+};
 use algonaut_core::Address;
 
 #[derive(Clone, Debug, PartialEq, Node, Default)]

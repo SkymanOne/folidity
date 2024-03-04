@@ -4,11 +4,19 @@ use folidity_diagnostics::Report;
 use folidity_parser::ast::Identifier;
 
 use crate::{
-    ast::{Expression, FunctionType, TypeVariant, UnaryExpression},
+    ast::{
+        Expression,
+        FunctionType,
+        TypeVariant,
+        UnaryExpression,
+    },
     contract::ContractDefinition,
     global_symbol::SymbolKind,
-    symtable::{Scope, VariableSym},
-    types::{report_type_mismatch, ExpectedType},
+    symtable::Scope,
+    types::{
+        report_type_mismatch,
+        ExpectedType,
+    },
 };
 
 /// Resolve variable to a AST expression.

@@ -1,21 +1,41 @@
 use std::collections::HashMap;
 
 use folidity_diagnostics::Report;
-use folidity_parser::ast::{self as parsed_ast, Identifier};
-use folidity_parser::{ast::Source, Span};
+use folidity_parser::{
+    ast::{
+        self as parsed_ast,
+        Identifier,
+        Source,
+    },
+    Span,
+};
 use indexmap::IndexMap;
 
 use crate::ast::{
-    EnumDeclaration, Function, ModelDeclaration, Param, StateBody, StateDeclaration,
+    EnumDeclaration,
+    Function,
+    ModelDeclaration,
+    Param,
+    StateBody,
+    StateDeclaration,
     StructDeclaration,
 };
 
-use crate::functions::function_decl;
-use crate::global_symbol::SymbolInfo;
-use crate::global_symbol::{GlobalSymbol, SymbolKind};
-use crate::types::{
-    find_user_type_recursion, map_type, validate_fields, DelayedBounds, DelayedDeclaration,
-    DelayedDeclarations,
+use crate::{
+    functions::function_decl,
+    global_symbol::{
+        GlobalSymbol,
+        SymbolInfo,
+        SymbolKind,
+    },
+    types::{
+        find_user_type_recursion,
+        map_type,
+        validate_fields,
+        DelayedBounds,
+        DelayedDeclaration,
+        DelayedDeclarations,
+    },
 };
 
 /// Arbitrary limit of a max number of topic.
@@ -83,9 +103,11 @@ impl ContractDefinition {
         let mut delayed_bodies: Vec<DelayedDeclaration<parsed_ast::FunctionDeclaration>> =
             Vec::new();
 
-        for f in tree.declarations.iter().filter_map(|d| match d {
-            parsed_ast::Declaration::FunDeclaration(func) => Some(func),
-            _ => None,
+        for f in tree.declarations.iter().filter_map(|d| {
+            match d {
+                parsed_ast::Declaration::FunDeclaration(func) => Some(func),
+                _ => None,
+            }
         }) {
             if let Ok(id) = function_decl(f, self) {
                 delayed_bodies.push(DelayedDeclaration {
@@ -100,7 +122,7 @@ impl ContractDefinition {
             }
         }
 
-        //todo: resolve bodies
+        // todo: resolve bodies
         // for f in delayed_bodies {}
     }
 
@@ -124,7 +146,8 @@ impl ContractDefinition {
                     let fields = self.analyze_fields(params, &state.decl.name);
                     Some(StateBody::Raw(fields))
                 }
-                // If the body is a model, then we need to resolve the model symbol in the symbol table
+                // If the body is a model, then we need to resolve the model symbol in the
+                // symbol table
                 Some(parsed_ast::StateBody::Model(ident)) => {
                     let Some(symbol) = GlobalSymbol::lookup(self, ident) else {
                         continue;

@@ -2,16 +2,29 @@ use std::str::FromStr;
 
 use algonaut_core::Address;
 use folidity_diagnostics::Report;
-use folidity_parser::{ast as parsed_ast, Span};
-
-use crate::{
-    ast::{Expression, TypeVariant, UnaryExpression},
-    contract::ContractDefinition,
-    symtable::Scope,
-    types::{report_type_mismatch, ExpectedType},
+use folidity_parser::{
+    ast as parsed_ast,
+    Span,
 };
 
-use super::{dynamic_to_concrete_type, expression};
+use crate::{
+    ast::{
+        Expression,
+        TypeVariant,
+        UnaryExpression,
+    },
+    contract::ContractDefinition,
+    symtable::Scope,
+    types::{
+        report_type_mismatch,
+        ExpectedType,
+    },
+};
+
+use super::{
+    dynamic_to_concrete_type,
+    expression,
+};
 
 /// Resolve bool to an expression.
 ///
@@ -24,17 +37,21 @@ pub fn resolve_bool(
     expected_ty: ExpectedType,
 ) -> Result<Expression, ()> {
     match &expected_ty {
-        ExpectedType::Concrete(ty) => match ty {
-            TypeVariant::Bool => Ok(Expression::Boolean(UnaryExpression {
-                loc,
-                element: value,
-                ty: TypeVariant::Bool,
-            })),
-            a_ty => {
-                report_type_mismatch(&expected_ty, a_ty, &loc, contract);
-                Err(())
+        ExpectedType::Concrete(ty) => {
+            match ty {
+                TypeVariant::Bool => {
+                    Ok(Expression::Boolean(UnaryExpression {
+                        loc,
+                        element: value,
+                        ty: TypeVariant::Bool,
+                    }))
+                }
+                a_ty => {
+                    report_type_mismatch(&expected_ty, a_ty, &loc, contract);
+                    Err(())
+                }
             }
-        },
+        }
         ExpectedType::Dynamic(tys) => {
             let expected = dynamic_to_concrete_type(tys, &[TypeVariant::Bool]);
             resolve_bool(value, loc, contract, expected)
@@ -60,17 +77,21 @@ pub fn resolve_char(
     expected_ty: ExpectedType,
 ) -> Result<Expression, ()> {
     match &expected_ty {
-        ExpectedType::Concrete(ty) => match ty {
-            TypeVariant::Char => Ok(Expression::Char(UnaryExpression {
-                loc,
-                element: value,
-                ty: TypeVariant::Char,
-            })),
-            a_ty => {
-                report_type_mismatch(&expected_ty, a_ty, &loc, contract);
-                Err(())
+        ExpectedType::Concrete(ty) => {
+            match ty {
+                TypeVariant::Char => {
+                    Ok(Expression::Char(UnaryExpression {
+                        loc,
+                        element: value,
+                        ty: TypeVariant::Char,
+                    }))
+                }
+                a_ty => {
+                    report_type_mismatch(&expected_ty, a_ty, &loc, contract);
+                    Err(())
+                }
             }
-        },
+        }
         ExpectedType::Dynamic(tys) => {
             let expected = dynamic_to_concrete_type(tys, &[TypeVariant::Char]);
             resolve_char(value, loc, contract, expected)
@@ -89,7 +110,7 @@ pub fn resolve_char(
 ///
 /// # Errors
 /// - Expected type is different.
-//TODO: support string formatting
+// TODO: support string formatting
 pub fn resolve_string(
     value: String,
     loc: Span,
@@ -97,17 +118,21 @@ pub fn resolve_string(
     expected_ty: ExpectedType,
 ) -> Result<Expression, ()> {
     match &expected_ty {
-        ExpectedType::Concrete(ty) => match ty {
-            TypeVariant::String => Ok(Expression::String(UnaryExpression {
-                loc,
-                element: value,
-                ty: TypeVariant::String,
-            })),
-            a_ty => {
-                report_type_mismatch(&expected_ty, a_ty, &loc, contract);
-                Err(())
+        ExpectedType::Concrete(ty) => {
+            match ty {
+                TypeVariant::String => {
+                    Ok(Expression::String(UnaryExpression {
+                        loc,
+                        element: value,
+                        ty: TypeVariant::String,
+                    }))
+                }
+                a_ty => {
+                    report_type_mismatch(&expected_ty, a_ty, &loc, contract);
+                    Err(())
+                }
             }
-        },
+        }
         ExpectedType::Dynamic(tys) => {
             let expected = dynamic_to_concrete_type(tys, &[TypeVariant::String]);
             resolve_string(value, loc, contract, expected)
@@ -134,25 +159,27 @@ pub fn resolve_hex(
     expected_ty: ExpectedType,
 ) -> Result<Expression, ()> {
     match &expected_ty {
-        ExpectedType::Concrete(ty) => match ty {
-            TypeVariant::Hex => {
-                let bytes = hex::decode(value).map_err(|_| {
-                    contract.diagnostics.push(Report::semantic_error(
-                        loc.clone(),
-                        String::from("Value is not a valid hex string."),
-                    ));
-                })?;
-                Ok(Expression::Hex(UnaryExpression {
-                    loc,
-                    element: bytes,
-                    ty: TypeVariant::Hex,
-                }))
+        ExpectedType::Concrete(ty) => {
+            match ty {
+                TypeVariant::Hex => {
+                    let bytes = hex::decode(value).map_err(|_| {
+                        contract.diagnostics.push(Report::semantic_error(
+                            loc.clone(),
+                            String::from("Value is not a valid hex string."),
+                        ));
+                    })?;
+                    Ok(Expression::Hex(UnaryExpression {
+                        loc,
+                        element: bytes,
+                        ty: TypeVariant::Hex,
+                    }))
+                }
+                a_ty => {
+                    report_type_mismatch(&expected_ty, a_ty, &loc, contract);
+                    Err(())
+                }
             }
-            a_ty => {
-                report_type_mismatch(&expected_ty, a_ty, &loc, contract);
-                Err(())
-            }
-        },
+        }
         ExpectedType::Dynamic(tys) => {
             let expected = dynamic_to_concrete_type(tys, &[TypeVariant::Hex]);
             resolve_hex(value, loc, contract, expected)
@@ -179,20 +206,22 @@ pub fn resolve_address(
     expected_ty: ExpectedType,
 ) -> Result<Expression, ()> {
     match &expected_ty {
-        ExpectedType::Concrete(ty) => match ty {
-            TypeVariant::Address => {
-                let address = Address::from_str(value).map_err(|_| {})?;
-                Ok(Expression::Address(UnaryExpression {
-                    loc,
-                    element: address,
-                    ty: TypeVariant::Address,
-                }))
+        ExpectedType::Concrete(ty) => {
+            match ty {
+                TypeVariant::Address => {
+                    let address = Address::from_str(value).map_err(|_| {})?;
+                    Ok(Expression::Address(UnaryExpression {
+                        loc,
+                        element: address,
+                        ty: TypeVariant::Address,
+                    }))
+                }
+                a_ty => {
+                    report_type_mismatch(&expected_ty, a_ty, &loc, contract);
+                    Err(())
+                }
             }
-            a_ty => {
-                report_type_mismatch(&expected_ty, a_ty, &loc, contract);
-                Err(())
-            }
-        },
+        }
         ExpectedType::Dynamic(tys) => {
             let expected = dynamic_to_concrete_type(tys, &[TypeVariant::Address]);
             resolve_address(value, loc, contract, expected)
@@ -216,12 +245,13 @@ pub fn resolve_address(
 /// If the expected type is provided then we resolve every element to it,
 /// and report error if any.
 ///
-/// If the expected type is not provided, then deduce the type from the first element of the list,
-/// and the resolve all consequent elements to that type.
+/// If the expected type is not provided, then deduce the type from the first element of
+/// the list, and the resolve all consequent elements to that type.
 ///
 /// # Errors
 /// - The expected type is different.
-/// - No expected types are provided and list contains no elements -> we can't deduce the type.
+/// - No expected types are provided and list contains no elements -> we can't deduce the
+///   type.
 /// - Elements are of different types.
 pub fn resolve_lists(
     exprs: &[parsed_ast::Expression],
@@ -259,17 +289,20 @@ pub fn resolve_lists(
         }
     };
     match &expected_ty {
-        ExpectedType::Concrete(ty) => match ty {
-            TypeVariant::Set(ty) => derive_expr(ty, loc),
-            TypeVariant::List(ty) => derive_expr(ty, loc),
-            a_ty => {
-                report_type_mismatch(&expected_ty, a_ty, &loc, contract);
-                Err(())
+        ExpectedType::Concrete(ty) => {
+            match ty {
+                TypeVariant::Set(ty) => derive_expr(ty, loc),
+                TypeVariant::List(ty) => derive_expr(ty, loc),
+                a_ty => {
+                    report_type_mismatch(&expected_ty, a_ty, &loc, contract);
+                    Err(())
+                }
             }
-        },
+        }
         ExpectedType::Dynamic(tys) => {
             if tys.is_empty() {
-                // if there are no expected types, then we derive it from the first element in the list.
+                // if there are no expected types, then we derive it from the first
+                // element in the list.
                 if exprs.is_empty() {
                     contract.diagnostics.push(Report::type_error(
                         loc,

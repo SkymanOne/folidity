@@ -14,7 +14,8 @@ mod types;
 #[cfg(test)]
 mod tests;
 
-/// Resolves the contract's parsed tree into the semantically analysed and typed-checked definition.
+/// Resolves the contract's parsed tree into the semantically analysed and typed-checked
+/// definition.
 ///
 /// # Errors
 /// [`ContractDefinition`] may contain errors stored in the `diagnostics` field.

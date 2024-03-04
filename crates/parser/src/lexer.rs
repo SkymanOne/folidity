@@ -1,6 +1,12 @@
 use super::Span;
-use logos::{Logos, SpannedIter};
-use std::{fmt, num::ParseIntError};
+use logos::{
+    Logos,
+    SpannedIter,
+};
+use std::{
+    fmt,
+    num::ParseIntError,
+};
 use thiserror::Error;
 
 #[derive(Default, Clone, Debug, PartialEq)]
@@ -323,10 +329,12 @@ impl<'input> Iterator for Lexer<'input> {
     fn next(&mut self) -> Option<Self::Item> {
         if let Some((tok_res, span)) = self.token_stream.next() {
             match tok_res {
-                Ok(tok) => match tok {
-                    Token::Comment(_) => self.next(),
-                    _ => Some((span.start, tok, span.end)),
-                },
+                Ok(tok) => {
+                    match tok {
+                        Token::Comment(_) => self.next(),
+                        _ => Some((span.start, tok, span.end)),
+                    }
+                }
                 Err(err) => {
                     self.errors.push(logos_to_lexical_error(&err, &span));
                     self.next()

@@ -4,7 +4,10 @@ use folidity_parser::ast::Identifier;
 use indexmap::IndexMap;
 
 use crate::{
-    ast::{Expression, TypeVariant},
+    ast::{
+        Expression,
+        TypeVariant,
+    },
     contract::ContractDefinition,
 };
 
@@ -107,9 +110,9 @@ pub struct Scope {
 impl Scope {
     pub fn find_var(&self, name: &str) -> Option<usize> {
         if let Some(i) = self.symbols.names.get(name) {
-            return Some(*i);
+            Some(*i)
         } else if let Some(scope) = &self.parent {
-            return scope.find_var(name);
+            scope.find_var(name)
         } else {
             None
         }

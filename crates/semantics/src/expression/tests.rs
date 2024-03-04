@@ -1,7 +1,13 @@
-use folidity_parser::{ast as parsed_ast, Span};
+use folidity_parser::{
+    ast as parsed_ast,
+    Span,
+};
 
 use crate::{
-    ast::{Expression, TypeVariant},
+    ast::{
+        Expression,
+        TypeVariant,
+    },
     contract::ContractDefinition,
     symtable::Scope,
     types::ExpectedType,

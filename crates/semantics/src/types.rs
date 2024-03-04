@@ -1,15 +1,34 @@
-use std::collections::HashSet;
-use std::fmt::Display;
-
-use crate::ast::{
-    Expression, FuncReturnType, FunctionType, Mapping, Param, StateBody, Type, TypeVariant,
+use std::{
+    collections::HashSet,
+    fmt::Display,
 };
-use crate::contract::ContractDefinition;
-use crate::global_symbol::GlobalSymbol;
+
+use crate::{
+    ast::{
+        Expression,
+        FunctionType,
+        Mapping,
+        Param,
+        StateBody,
+        Type,
+        TypeVariant,
+    },
+    contract::ContractDefinition,
+    global_symbol::GlobalSymbol,
+};
 use folidity_diagnostics::Report;
-use folidity_parser::{ast as parsed_ast, Span};
-use petgraph::algo::{all_simple_paths, tarjan_scc};
-use petgraph::{Directed, Graph};
+use folidity_parser::{
+    ast as parsed_ast,
+    Span,
+};
+use petgraph::{
+    algo::{
+        all_simple_paths,
+        tarjan_scc,
+    },
+    Directed,
+    Graph,
+};
 
 type FieldGraph = Graph<(), usize, Directed, usize>;
 
@@ -174,8 +193,8 @@ impl Expression {
 /// Inspired by https://github.com/hyperledger/solang/blob/d7a875afe73f95e3c9d5112aa36c8f9eb91a6e00/src/sema/types.rs#L359.
 ///
 /// Licensed as Apache 2.0
-//todo: rewrite.
-//TODO: support finite size recursive types.
+// todo: rewrite.
+// TODO: support finite size recursive types.
 pub fn find_user_type_recursion(contract: &mut ContractDefinition) {
     let mut edges = HashSet::new();
     for n in 0..contract.structs.len() {
@@ -229,23 +248,30 @@ fn check_for_recursive_fields(node: usize, graph: &FieldGraph, contract: &mut Co
     }
 }
 
-/// Validate that fields of user defined types do not contain references to models and states.
+/// Validate that fields of user defined types do not contain references to models and
+/// states.
 pub fn validate_fields(contract: &mut ContractDefinition) {
     let mut validate = |fields: &[Param]| {
         for field in fields.iter() {
             match &field.ty.ty {
-                TypeVariant::Function(_) => contract.diagnostics.push(Report::semantic_error(
-                    field.loc.clone(),
-                    String::from("Function cannot be used as a field type."),
-                )),
-                TypeVariant::Model(_) => contract.diagnostics.push(Report::semantic_error(
-                    field.loc.clone(),
-                    String::from("Model cannot be used as a field type."),
-                )),
-                TypeVariant::State(_) => contract.diagnostics.push(Report::semantic_error(
-                    field.loc.clone(),
-                    String::from("State cannot be used as a field type."),
-                )),
+                TypeVariant::Function(_) => {
+                    contract.diagnostics.push(Report::semantic_error(
+                        field.loc.clone(),
+                        String::from("Function cannot be used as a field type."),
+                    ))
+                }
+                TypeVariant::Model(_) => {
+                    contract.diagnostics.push(Report::semantic_error(
+                        field.loc.clone(),
+                        String::from("Model cannot be used as a field type."),
+                    ))
+                }
+                TypeVariant::State(_) => {
+                    contract.diagnostics.push(Report::semantic_error(
+                        field.loc.clone(),
+                        String::from("State cannot be used as a field type."),
+                    ))
+                }
                 _ => {}
             }
         }
@@ -291,10 +317,12 @@ pub fn check_inheritance(contract: &mut ContractDefinition, delay: &DelayedDecla
                     GlobalSymbol::State(s) => {
                         contract.states[state.i].from = Some((s.i, var.clone()))
                     }
-                    _ => contract.diagnostics.push(Report::semantic_error(
-                        ident.loc.clone(),
-                        String::from("Declaration must a declared state."),
-                    )),
+                    _ => {
+                        contract.diagnostics.push(Report::semantic_error(
+                            ident.loc.clone(),
+                            String::from("Declaration must a declared state."),
+                        ))
+                    }
                 }
             }
         }

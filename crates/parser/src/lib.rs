@@ -3,9 +3,16 @@ pub mod lexer;
 
 use ast::Source;
 use folidity_diagnostics::Report;
-use lalrpop_util::ParseError;
-use lalrpop_util::{lalrpop_mod, ErrorRecovery};
-use lexer::{Lexer, LexicalError, Token};
+use lalrpop_util::{
+    lalrpop_mod,
+    ErrorRecovery,
+    ParseError,
+};
+use lexer::{
+    Lexer,
+    LexicalError,
+    Token,
+};
 use std::ops::Range;
 
 pub type Span = Range<usize>;
@@ -54,10 +61,12 @@ impl From<LexicalError> for Report {
             LexicalError::InvalidElseBlock(l) => {
                 Report::lexer_error(l, "Invalid branch block".to_string())
             }
-            LexicalError::UnknownError => Report::lexer_error(
-                Range { start: 0, end: 0 },
-                "Unknown error occurred".to_string(),
-            ),
+            LexicalError::UnknownError => {
+                Report::lexer_error(
+                    Range { start: 0, end: 0 },
+                    "Unknown error occurred".to_string(),
+                )
+            }
         }
     }
 }

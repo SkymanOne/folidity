@@ -1,21 +1,29 @@
 use folidity_diagnostics::Report;
-use folidity_parser::ast as parsed_ast;
-use folidity_parser::ast::Identifier;
-use folidity_parser::Span;
+use folidity_parser::{
+    ast as parsed_ast,
+    ast::Identifier,
+    Span,
+};
 use indexmap::IndexMap;
 
-use crate::ast::FuncReturnType;
-use crate::ast::Function;
-use crate::ast::FunctionVisibility;
-use crate::ast::Param;
-use crate::ast::StateParam;
-use crate::ast::Type;
-use crate::ast::TypeVariant;
-use crate::ast::ViewState;
-use crate::contract::ContractDefinition;
-use crate::global_symbol::GlobalSymbol;
-use crate::global_symbol::SymbolInfo;
-use crate::types::map_type;
+use crate::{
+    ast::{
+        FuncReturnType,
+        Function,
+        FunctionVisibility,
+        Param,
+        StateParam,
+        Type,
+        TypeVariant,
+        ViewState,
+    },
+    contract::ContractDefinition,
+    global_symbol::{
+        GlobalSymbol,
+        SymbolInfo,
+    },
+    types::map_type,
+};
 
 /// Parses the function declaration without the body.
 pub fn function_decl(
@@ -160,7 +168,7 @@ pub fn function_decl(
         params,
     );
 
-    //todo: resolve access attributes
+    // todo: resolve access attributes
     // need to implement expression resolution first
     // to resolve members to concrete types.
 

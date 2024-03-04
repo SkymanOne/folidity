@@ -4,10 +4,15 @@ mod nums;
 #[cfg(test)]
 mod tests;
 
-use folidity_parser::ast::{self as parsed_ast};
+use folidity_parser::ast::{
+    self as parsed_ast,
+};
 
 use crate::{
-    ast::{Expression, TypeVariant},
+    ast::{
+        Expression,
+        TypeVariant,
+    },
     contract::ContractDefinition,
     symtable::Scope,
     types::ExpectedType,
@@ -16,9 +21,17 @@ use crate::{
 use self::{
     complex::resolve_variable,
     literals::{
-        resolve_address, resolve_bool, resolve_char, resolve_hex, resolve_lists, resolve_string,
+        resolve_address,
+        resolve_bool,
+        resolve_char,
+        resolve_hex,
+        resolve_lists,
+        resolve_string,
     },
-    nums::{resolve_float, resolve_integer},
+    nums::{
+        resolve_float,
+        resolve_integer,
+    },
 };
 
 /// Resolve parsed expression to a concrete expression.

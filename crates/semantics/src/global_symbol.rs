@@ -1,7 +1,10 @@
 use std::fmt::Display;
 
 use folidity_diagnostics::Report;
-use folidity_parser::{ast::Identifier, Span};
+use folidity_parser::{
+    ast::Identifier,
+    Span,
+};
 
 use crate::contract::ContractDefinition;
 
