@@ -12,7 +12,10 @@ use crate::{
     },
     contract::ContractDefinition,
     global_symbol::SymbolKind,
-    symtable::Scope,
+    symtable::{
+        Scope,
+        SymTable,
+    },
     types::{
         report_type_mismatch,
         ExpectedType,
@@ -98,8 +101,8 @@ pub fn resolve_variable(
                     }),
                 }))
             } else {
-                let var_id = find_var(ident, contract, scope)?;
-                let sym = scope.symbols.vars.get(&var_id).unwrap();
+                let (var_id, table) = find_var(ident, contract, scope)?;
+                let sym = table.vars.get(&var_id).unwrap();
 
                 if &sym.ty != ty {
                     report_type_mismatch(
@@ -119,8 +122,8 @@ pub fn resolve_variable(
             }
         }
         ExpectedType::Dynamic(tys) => {
-            let var_id = find_var(ident, contract, scope)?;
-            let sym = scope.symbols.vars.get(&var_id).unwrap();
+            let (var_id, table) = find_var(ident, contract, scope)?;
+            let sym = table.vars.get(&var_id).unwrap();
 
             if !tys.contains(&sym.ty) {
                 contract.diagnostics.push(Report::type_error(
@@ -147,14 +150,14 @@ pub fn resolve_variable(
 }
 
 fn find_var<'a>(
-    ident: &'a Identifier,
-    contract: &'a mut ContractDefinition,
+    ident: &Identifier,
+    contract: &mut ContractDefinition,
     scope: &'a mut Scope,
-) -> Result<usize, ()> {
-    let Some(v) = scope.find_var(&ident.name) else {
+) -> Result<(usize, &'a SymTable), ()> {
+    let Some(v) = scope.find_var_index(&ident.name) else {
         contract.diagnostics.push(Report::semantic_error(
             ident.loc.clone(),
-            String::from("Variable is not declared"),
+            String::from("Variable is not declared."),
         ));
         return Err(());
     };
