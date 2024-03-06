@@ -59,7 +59,7 @@ pub fn resolve_integer(
                     }))
                 }
                 a_ty => {
-                    report_type_mismatch(&expected_ty, a_ty, &loc, contract);
+                    report_type_mismatch(&[expected_ty.clone()], a_ty, &loc, contract);
                     Err(())
                 }
             }
@@ -115,7 +115,7 @@ pub fn resolve_float(
                     }))
                 }
                 a_ty => {
-                    report_type_mismatch(&expected_ty, a_ty, &loc, contract);
+                    report_type_mismatch(&[expected_ty.clone()], a_ty, &loc, contract);
                     Err(())
                 }
             }

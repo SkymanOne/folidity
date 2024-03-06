@@ -413,13 +413,20 @@ fn detect_state_cycle(contract: &mut ContractDefinition) {
 
 /// Push diagnostic error about the type mismatch.
 pub(super) fn report_type_mismatch(
-    expected: &ExpectedType,
+    expected: &[ExpectedType],
     actual: &TypeVariant,
     loc: &Span,
     contract: &mut ContractDefinition,
 ) {
+    let expected = expected
+        .iter()
+        .fold(String::new(), |acc, x| format!("{}, {}", acc, x));
     contract.diagnostics.push(Report::type_error(
         loc.clone(),
-        format!("Mismatched types: expected {}, got {}", expected, actual),
+        format!(
+            "Mismatched types: expected {}, got {}",
+            expected.trim_start_matches(", "),
+            actual
+        ),
     ));
 }

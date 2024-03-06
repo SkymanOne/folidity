@@ -1,5 +1,3 @@
-use std::process::id;
-
 use folidity_parser::{
     ast::{
         self as parsed_ast,
@@ -112,5 +110,48 @@ fn test_var() {
         assert!(!sym.assigned());
         assert_eq!(&sym.ident, &ident);
         assert_eq!(&sym.ty, &TypeVariant::Int);
+    }
+}
+
+#[test]
+fn test_mul() {
+    let loc = Span { start: 0, end: 0 };
+    let mut contract = ContractDefinition::default();
+    let mut scope = Scope::default();
+    let nums = vec![
+        parsed_ast::Expression::Number(parsed_ast::UnaryExpression {
+            loc: loc.clone(),
+            element: "1".to_string(),
+        }),
+        parsed_ast::Expression::Number(parsed_ast::UnaryExpression {
+            loc: loc.clone(),
+            element: "2".to_string(),
+        }),
+        parsed_ast::Expression::Number(parsed_ast::UnaryExpression {
+            loc: loc.clone(),
+            element: "3".to_string(),
+        }),
+    ];
+
+    let mul_expr = parsed_ast::Expression::Multiply(parsed_ast::BinaryExpression {
+        loc: loc.clone(),
+        left: Box::new(nums[0].clone()),
+        right: Box::new(nums[1].clone()),
+    });
+
+    let resolved_expr = expression(
+        &mul_expr,
+        ExpectedType::Dynamic(vec![]),
+        &mut scope,
+        &mut contract,
+    );
+
+    assert!(resolved_expr.is_ok());
+
+    let resolved_expr = resolved_expr.unwrap();
+
+    if let Expression::Multiply(mul) = resolved_expr {
+        assert_eq!(mul.ty, TypeVariant::Int);
+        assert!(mul.left.is_literal() && mul.right.is_literal());
     }
 }

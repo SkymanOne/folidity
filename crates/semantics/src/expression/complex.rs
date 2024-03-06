@@ -106,7 +106,7 @@ pub fn resolve_variable(
 
                 if &sym.ty != ty {
                     report_type_mismatch(
-                        &ExpectedType::Concrete(ty.clone()),
+                        &[ExpectedType::Concrete(ty.clone())],
                         &sym.ty,
                         &ident.loc,
                         contract,

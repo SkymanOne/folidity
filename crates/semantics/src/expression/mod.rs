@@ -1,6 +1,7 @@
 mod complex;
 mod literals;
 mod nums;
+mod ops;
 #[cfg(test)]
 mod tests;
 
@@ -32,6 +33,7 @@ use self::{
         resolve_float,
         resolve_integer,
     },
+    ops::resolve_multiply,
 };
 
 /// Resolve parsed expression to a concrete expression.
@@ -42,6 +44,7 @@ pub fn expression(
     contract: &mut ContractDefinition,
 ) -> Result<Expression, ()> {
     match expr {
+        // literals
         parsed_ast::Expression::Number(n) => {
             resolve_integer(&n.element, n.loc.clone(), contract, expected_ty)
         }
@@ -66,10 +69,17 @@ pub fn expression(
         parsed_ast::Expression::List(l) => {
             resolve_lists(&l.element, l.loc.clone(), contract, scope, expected_ty)
         }
-        parsed_ast::Expression::Variable(ident) => {
-            resolve_variable(ident, scope, contract, expected_ty)
+        // operations
+        parsed_ast::Expression::Multiply(b) => {
+            resolve_multiply(
+                &b.left,
+                &b.right,
+                b.loc.clone(),
+                scope,
+                contract,
+                expected_ty,
+            )
         }
-        parsed_ast::Expression::Multiply(_) => todo!(),
         parsed_ast::Expression::Divide(_) => todo!(),
         parsed_ast::Expression::Modulo(_) => todo!(),
         parsed_ast::Expression::Add(_) => todo!(),
@@ -84,6 +94,10 @@ pub fn expression(
         parsed_ast::Expression::Not(_) => todo!(),
         parsed_ast::Expression::Or(_) => todo!(),
         parsed_ast::Expression::And(_) => todo!(),
+        // complex expressions
+        parsed_ast::Expression::Variable(ident) => {
+            resolve_variable(ident, scope, contract, expected_ty)
+        }
         parsed_ast::Expression::FunctionCall(_) => todo!(),
         parsed_ast::Expression::MemberAccess(_) => todo!(),
         parsed_ast::Expression::Pipe(_) => todo!(),

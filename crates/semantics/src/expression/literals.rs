@@ -47,7 +47,7 @@ pub fn resolve_bool(
                     }))
                 }
                 a_ty => {
-                    report_type_mismatch(&expected_ty, a_ty, &loc, contract);
+                    report_type_mismatch(&[expected_ty.clone()], a_ty, &loc, contract);
                     Err(())
                 }
             }
@@ -87,7 +87,7 @@ pub fn resolve_char(
                     }))
                 }
                 a_ty => {
-                    report_type_mismatch(&expected_ty, a_ty, &loc, contract);
+                    report_type_mismatch(&[expected_ty.clone()], a_ty, &loc, contract);
                     Err(())
                 }
             }
@@ -128,7 +128,7 @@ pub fn resolve_string(
                     }))
                 }
                 a_ty => {
-                    report_type_mismatch(&expected_ty, a_ty, &loc, contract);
+                    report_type_mismatch(&[expected_ty.clone()], a_ty, &loc, contract);
                     Err(())
                 }
             }
@@ -175,7 +175,7 @@ pub fn resolve_hex(
                     }))
                 }
                 a_ty => {
-                    report_type_mismatch(&expected_ty, a_ty, &loc, contract);
+                    report_type_mismatch(&[expected_ty.clone()], a_ty, &loc, contract);
                     Err(())
                 }
             }
@@ -217,7 +217,7 @@ pub fn resolve_address(
                     }))
                 }
                 a_ty => {
-                    report_type_mismatch(&expected_ty, a_ty, &loc, contract);
+                    report_type_mismatch(&[expected_ty.clone()], a_ty, &loc, contract);
                     Err(())
                 }
             }
@@ -294,7 +294,7 @@ pub fn resolve_lists(
                 TypeVariant::Set(ty) => derive_expr(ty, loc),
                 TypeVariant::List(ty) => derive_expr(ty, loc),
                 a_ty => {
-                    report_type_mismatch(&expected_ty, a_ty, &loc, contract);
+                    report_type_mismatch(&[expected_ty.clone()], a_ty, &loc, contract);
                     Err(())
                 }
             }

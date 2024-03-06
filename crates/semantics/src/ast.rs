@@ -486,3 +486,19 @@ impl Display for TypeVariant {
         }
     }
 }
+
+impl Expression {
+    pub fn is_literal(&self) -> bool {
+        matches!(
+            self,
+            Expression::Int(_)
+                | Expression::UInt(_)
+                | Expression::Float(_)
+                | Expression::Char(_)
+                | Expression::String(_)
+                | Expression::Hex(_)
+                | Expression::Address(_)
+                | Expression::Boolean(_)
+        )
+    }
+}
