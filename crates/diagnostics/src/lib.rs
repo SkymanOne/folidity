@@ -81,4 +81,14 @@ impl Report {
             message,
         }
     }
+
+    /// Build a report from the functional error.
+    pub fn func_error(loc: Span, message: String) -> Self {
+        Self {
+            loc,
+            error_type: ErrorType::Functional,
+            level: Level::Error,
+            message,
+        }
+    }
 }

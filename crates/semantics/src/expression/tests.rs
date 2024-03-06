@@ -155,3 +155,42 @@ fn test_mul() {
         assert!(mul.left.is_literal() && mul.right.is_literal());
     }
 }
+
+#[test]
+fn test_eval() {
+    let loc = Span { start: 0, end: 0 };
+    let mut contract = ContractDefinition::default();
+    let mut scope = Scope::default();
+    let nums = vec![
+        parsed_ast::Expression::Number(parsed_ast::UnaryExpression {
+            loc: loc.clone(),
+            element: "4".to_string(),
+        }),
+        parsed_ast::Expression::Number(parsed_ast::UnaryExpression {
+            loc: loc.clone(),
+            element: "10".to_string(),
+        }),
+    ];
+
+    let mul_expr = parsed_ast::Expression::Multiply(parsed_ast::BinaryExpression {
+        loc: loc.clone(),
+        left: Box::new(nums[0].clone()),
+        right: Box::new(nums[1].clone()),
+    });
+
+    let resolved_expr = expression(
+        &mul_expr,
+        ExpectedType::Dynamic(vec![]),
+        &mut scope,
+        &mut contract,
+    );
+
+    assert!(resolved_expr.is_ok());
+
+    let resolved_expr = resolved_expr.unwrap();
+    assert!(matches!(resolved_expr, Expression::Int(_)));
+
+    if let Expression::Int(u) = resolved_expr {
+        assert_eq!(u.element, 40.into());
+    }
+}

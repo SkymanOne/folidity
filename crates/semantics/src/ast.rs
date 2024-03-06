@@ -1,6 +1,7 @@
 use std::{
     collections::HashSet,
     fmt::Display,
+    ops::Add,
 };
 
 use derive_node::Node;
@@ -16,7 +17,10 @@ use num_bigint::{
     BigInt,
     BigUint,
 };
-use num_rational::BigRational;
+use num_rational::{
+    BigRational,
+    Ratio,
+};
 
 use crate::{
     global_symbol::SymbolInfo,
@@ -487,6 +491,10 @@ impl Display for TypeVariant {
     }
 }
 
+pub trait TryGetValue<T> {
+    fn try_get(&self) -> Result<T, ()>;
+}
+
 impl Expression {
     pub fn is_literal(&self) -> bool {
         matches!(
@@ -500,5 +508,77 @@ impl Expression {
                 | Expression::Address(_)
                 | Expression::Boolean(_)
         )
+    }
+}
+
+impl TryGetValue<BigInt> for Expression {
+    fn try_get(&self) -> Result<BigInt, ()> {
+        match self {
+            Expression::Int(e) => Ok(e.element.clone()),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryGetValue<BigUint> for Expression {
+    fn try_get(&self) -> Result<BigUint, ()> {
+        match self {
+            Expression::UInt(e) => Ok(e.element.clone()),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryGetValue<Ratio<BigInt>> for Expression {
+    fn try_get(&self) -> Result<Ratio<BigInt>, ()> {
+        match self {
+            Expression::Float(e) => Ok(e.element.clone()),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryGetValue<String> for Expression {
+    fn try_get(&self) -> Result<String, ()> {
+        match self {
+            Expression::String(e) => Ok(e.element.clone()),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryGetValue<char> for Expression {
+    fn try_get(&self) -> Result<char, ()> {
+        match self {
+            Expression::Char(e) => Ok(e.element),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryGetValue<Address> for Expression {
+    fn try_get(&self) -> Result<Address, ()> {
+        match self {
+            Expression::Address(e) => Ok(e.element),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryGetValue<bool> for Expression {
+    fn try_get(&self) -> Result<bool, ()> {
+        match self {
+            Expression::Boolean(e) => Ok(e.element),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryGetValue<Vec<u8>> for Expression {
+    fn try_get(&self) -> Result<Vec<u8>, ()> {
+        match self {
+            Expression::Hex(e) => Ok(e.element.clone()),
+            _ => Err(()),
+        }
     }
 }

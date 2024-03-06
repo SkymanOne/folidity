@@ -20,6 +20,7 @@ use crate::{
 
 use super::{
     dynamic_to_concrete_type,
+    eval::eval_const,
     expression,
 };
 
@@ -47,16 +48,17 @@ pub fn resolve_multiply(
                     let right = Box::new(resolved_right.unwrap());
                     let left = Box::new(resolved_left.unwrap());
 
-                    if right.is_literal() && left.is_literal() {
-                        // todo: resolve it to the number
-                    }
-
-                    Ok(Expression::Multiply(BinaryExpression {
-                        loc,
-                        left,
-                        right,
+                    let expr = Expression::Multiply(BinaryExpression {
+                        loc: loc.clone(),
+                        left: left.clone(),
+                        right: right.clone(),
                         ty: ty.clone(),
-                    }))
+                    });
+                    if right.is_literal() && left.is_literal() {
+                        eval_const(&expr, loc, contract)
+                    } else {
+                        Ok(expr)
+                    }
                 }
                 a_ty => {
                     let expected: Vec<ExpectedType> = allowed_tys

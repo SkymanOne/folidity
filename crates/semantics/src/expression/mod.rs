@@ -1,4 +1,5 @@
 mod complex;
+mod eval;
 mod literals;
 mod nums;
 mod ops;
