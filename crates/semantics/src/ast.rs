@@ -1,7 +1,6 @@
 use std::{
     collections::HashSet,
     fmt::Display,
-    ops::Add,
 };
 
 use derive_node::Node;
@@ -17,10 +16,7 @@ use num_bigint::{
     BigInt,
     BigUint,
 };
-use num_rational::{
-    BigRational,
-    Ratio,
-};
+use num_rational::BigRational;
 
 use crate::{
     global_symbol::SymbolInfo,
@@ -491,6 +487,7 @@ impl Display for TypeVariant {
     }
 }
 
+/// Extracts literal value, `T`, from the expression, if possible.
 pub trait TryGetValue<T> {
     fn try_get(&self) -> Result<T, ()>;
 }
@@ -529,8 +526,8 @@ impl TryGetValue<BigUint> for Expression {
     }
 }
 
-impl TryGetValue<Ratio<BigInt>> for Expression {
-    fn try_get(&self) -> Result<Ratio<BigInt>, ()> {
+impl TryGetValue<BigRational> for Expression {
+    fn try_get(&self) -> Result<BigRational, ()> {
         match self {
             Expression::Float(e) => Ok(e.element.clone()),
             _ => Err(()),

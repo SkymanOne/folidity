@@ -27,6 +27,7 @@ use crate::{
     contract::ContractDefinition,
 };
 
+// TODO: rewrite when casting is supported.
 /// Evaluate constant expression to a literal value.
 /// It assumes that type checking has been done correctly.
 ///
@@ -568,6 +569,9 @@ pub fn eval_const(
     }
 }
 
+/// Calculate expression with the given function `func`.
+/// # Errors
+/// - The operation cannot be performed due to calculation error.
 fn calc<T, U, F>(
     u: &BinaryExpression,
     loc: Span,

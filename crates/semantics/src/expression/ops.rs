@@ -71,7 +71,7 @@ pub fn resolve_multiply(
             }
         }
         ExpectedType::Dynamic(tys) => {
-            let concrete = deduce_type(left, right, &loc, tys, allowed_tys, scope, contract)?;
+            let concrete = coerce_type(left, right, &loc, tys, allowed_tys, scope, contract)?;
             resolve_multiply(left, right, loc, scope, contract, concrete)
         }
         ExpectedType::Empty => {
@@ -91,7 +91,7 @@ pub fn resolve_multiply(
 /// or check the right one.
 /// # Errors
 /// - Expression can not be resolved to any of the allowed types.
-fn deduce_type(
+fn coerce_type(
     left: &parsed_ast::Expression,
     right: &parsed_ast::Expression,
     loc: &Span,
