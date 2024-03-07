@@ -34,7 +34,22 @@ use self::{
         resolve_float,
         resolve_integer,
     },
-    ops::resolve_multiply,
+    ops::{
+        resolve_addition,
+        resolve_and,
+        resolve_division,
+        resolve_equality,
+        resolve_greater,
+        resolve_greater_eq,
+        resolve_inequality,
+        resolve_less,
+        resolve_less_eq,
+        resolve_modulo,
+        resolve_multiply,
+        resolve_not,
+        resolve_or,
+        resolve_subtraction,
+    },
 };
 
 /// Resolve parsed expression to a concrete expression.
@@ -46,29 +61,29 @@ pub fn expression(
 ) -> Result<Expression, ()> {
     match expr {
         // literals
-        parsed_ast::Expression::Number(n) => {
-            resolve_integer(&n.element, n.loc.clone(), contract, expected_ty)
+        parsed_ast::Expression::Number(u) => {
+            resolve_integer(&u.element, u.loc.clone(), contract, expected_ty)
         }
-        parsed_ast::Expression::Float(n) => {
-            resolve_float(&n.element, n.loc.clone(), contract, expected_ty)
+        parsed_ast::Expression::Float(u) => {
+            resolve_float(&u.element, u.loc.clone(), contract, expected_ty)
         }
-        parsed_ast::Expression::Hex(h) => {
-            resolve_hex(&h.element, h.loc.clone(), contract, expected_ty)
+        parsed_ast::Expression::Hex(u) => {
+            resolve_hex(&u.element, u.loc.clone(), contract, expected_ty)
         }
-        parsed_ast::Expression::Char(c) => {
-            resolve_char(c.element, c.loc.clone(), contract, expected_ty)
+        parsed_ast::Expression::Char(u) => {
+            resolve_char(u.element, u.loc.clone(), contract, expected_ty)
         }
-        parsed_ast::Expression::String(s) => {
-            resolve_string(s.element.clone(), s.loc.clone(), contract, expected_ty)
+        parsed_ast::Expression::String(u) => {
+            resolve_string(u.element.clone(), u.loc.clone(), contract, expected_ty)
         }
-        parsed_ast::Expression::Boolean(b) => {
-            resolve_bool(b.element, b.loc.clone(), contract, expected_ty)
+        parsed_ast::Expression::Boolean(u) => {
+            resolve_bool(u.element, u.loc.clone(), contract, expected_ty)
         }
-        parsed_ast::Expression::Address(a) => {
-            resolve_address(&a.element, a.loc.clone(), contract, expected_ty)
+        parsed_ast::Expression::Address(u) => {
+            resolve_address(&u.element, u.loc.clone(), contract, expected_ty)
         }
-        parsed_ast::Expression::List(l) => {
-            resolve_lists(&l.element, l.loc.clone(), contract, scope, expected_ty)
+        parsed_ast::Expression::List(u) => {
+            resolve_lists(&u.element, u.loc.clone(), contract, scope, expected_ty)
         }
         // operations
         parsed_ast::Expression::Multiply(b) => {
@@ -81,20 +96,130 @@ pub fn expression(
                 expected_ty,
             )
         }
-        parsed_ast::Expression::Divide(_) => todo!(),
-        parsed_ast::Expression::Modulo(_) => todo!(),
-        parsed_ast::Expression::Add(_) => todo!(),
-        parsed_ast::Expression::Subtract(_) => todo!(),
-        parsed_ast::Expression::Equal(_) => todo!(),
-        parsed_ast::Expression::NotEqual(_) => todo!(),
-        parsed_ast::Expression::Greater(_) => todo!(),
-        parsed_ast::Expression::Less(_) => todo!(),
-        parsed_ast::Expression::GreaterEq(_) => todo!(),
-        parsed_ast::Expression::LessEq(_) => todo!(),
+        parsed_ast::Expression::Divide(b) => {
+            resolve_division(
+                &b.left,
+                &b.right,
+                b.loc.clone(),
+                scope,
+                contract,
+                expected_ty,
+            )
+        }
+        parsed_ast::Expression::Modulo(b) => {
+            resolve_modulo(
+                &b.left,
+                &b.right,
+                b.loc.clone(),
+                scope,
+                contract,
+                expected_ty,
+            )
+        }
+        parsed_ast::Expression::Add(b) => {
+            resolve_addition(
+                &b.left,
+                &b.right,
+                b.loc.clone(),
+                scope,
+                contract,
+                expected_ty,
+            )
+        }
+        parsed_ast::Expression::Subtract(b) => {
+            resolve_subtraction(
+                &b.left,
+                &b.right,
+                b.loc.clone(),
+                scope,
+                contract,
+                expected_ty,
+            )
+        }
+        parsed_ast::Expression::Equal(b) => {
+            resolve_equality(
+                &b.left,
+                &b.right,
+                b.loc.clone(),
+                scope,
+                contract,
+                expected_ty,
+            )
+        }
+        parsed_ast::Expression::NotEqual(b) => {
+            resolve_inequality(
+                &b.left,
+                &b.right,
+                b.loc.clone(),
+                scope,
+                contract,
+                expected_ty,
+            )
+        }
+        parsed_ast::Expression::Greater(b) => {
+            resolve_greater(
+                &b.left,
+                &b.right,
+                b.loc.clone(),
+                scope,
+                contract,
+                expected_ty,
+            )
+        }
+        parsed_ast::Expression::Less(b) => {
+            resolve_less(
+                &b.left,
+                &b.right,
+                b.loc.clone(),
+                scope,
+                contract,
+                expected_ty,
+            )
+        }
+        parsed_ast::Expression::GreaterEq(b) => {
+            resolve_greater_eq(
+                &b.left,
+                &b.right,
+                b.loc.clone(),
+                scope,
+                contract,
+                expected_ty,
+            )
+        }
+        parsed_ast::Expression::LessEq(b) => {
+            resolve_less_eq(
+                &b.left,
+                &b.right,
+                b.loc.clone(),
+                scope,
+                contract,
+                expected_ty,
+            )
+        }
+        parsed_ast::Expression::And(b) => {
+            resolve_and(
+                &b.left,
+                &b.right,
+                b.loc.clone(),
+                scope,
+                contract,
+                expected_ty,
+            )
+        }
+        parsed_ast::Expression::Or(b) => {
+            resolve_or(
+                &b.left,
+                &b.right,
+                b.loc.clone(),
+                scope,
+                contract,
+                expected_ty,
+            )
+        }
+        parsed_ast::Expression::Not(u) => {
+            resolve_not(&u.element, u.loc.clone(), scope, contract, expected_ty)
+        }
         parsed_ast::Expression::In(_) => todo!(),
-        parsed_ast::Expression::Not(_) => todo!(),
-        parsed_ast::Expression::Or(_) => todo!(),
-        parsed_ast::Expression::And(_) => todo!(),
         // complex expressions
         parsed_ast::Expression::Variable(ident) => {
             resolve_variable(ident, scope, contract, expected_ty)

@@ -9,6 +9,7 @@ use crate::{
         BinaryExpression,
         Expression,
         TypeVariant,
+        UnaryExpression,
     },
     contract::ContractDefinition,
     symtable::Scope,
@@ -78,6 +79,914 @@ pub fn resolve_multiply(
             contract.diagnostics.push(Report::semantic_error(
                 loc.clone(),
                 String::from("Multiplication can only be used in expression."),
+            ));
+            Err(())
+        }
+    }
+}
+
+/// Resolve division.
+pub fn resolve_division(
+    left: &parsed_ast::Expression,
+    right: &parsed_ast::Expression,
+    loc: Span,
+    scope: &mut Scope,
+    contract: &mut ContractDefinition,
+    expected_ty: ExpectedType,
+) -> Result<Expression, ()> {
+    let allowed_tys = &[TypeVariant::Int, TypeVariant::Uint, TypeVariant::Float];
+    match &expected_ty {
+        ExpectedType::Concrete(ty) => {
+            match ty {
+                TypeVariant::Int | TypeVariant::Uint | TypeVariant::Float => {
+                    let resolved_left = expression(left, expected_ty.clone(), scope, contract);
+                    let resolved_right = expression(right, expected_ty.clone(), scope, contract);
+
+                    if resolved_left.is_err() || resolved_right.is_err() {
+                        return Err(());
+                    }
+
+                    let right = Box::new(resolved_right.unwrap());
+                    let left = Box::new(resolved_left.unwrap());
+
+                    let expr = Expression::Divide(BinaryExpression {
+                        loc: loc.clone(),
+                        left: left.clone(),
+                        right: right.clone(),
+                        ty: ty.clone(),
+                    });
+                    if right.is_literal() && left.is_literal() {
+                        eval_const(&expr, loc, contract)
+                    } else {
+                        Ok(expr)
+                    }
+                }
+                a_ty => {
+                    let expected: Vec<ExpectedType> = allowed_tys
+                        .iter()
+                        .map(|ty| ExpectedType::Concrete(ty.clone()))
+                        .collect();
+                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                    Err(())
+                }
+            }
+        }
+        ExpectedType::Dynamic(tys) => {
+            let concrete = coerce_type(left, right, &loc, tys, allowed_tys, scope, contract)?;
+            resolve_division(left, right, loc, scope, contract, concrete)
+        }
+        ExpectedType::Empty => {
+            contract.diagnostics.push(Report::semantic_error(
+                loc.clone(),
+                String::from("Division can only be used in expression."),
+            ));
+            Err(())
+        }
+    }
+}
+
+/// Resolve modulo.
+pub fn resolve_modulo(
+    left: &parsed_ast::Expression,
+    right: &parsed_ast::Expression,
+    loc: Span,
+    scope: &mut Scope,
+    contract: &mut ContractDefinition,
+    expected_ty: ExpectedType,
+) -> Result<Expression, ()> {
+    let allowed_tys = &[TypeVariant::Int, TypeVariant::Uint];
+    match &expected_ty {
+        ExpectedType::Concrete(ty) => {
+            match ty {
+                TypeVariant::Int | TypeVariant::Uint => {
+                    let resolved_left = expression(left, expected_ty.clone(), scope, contract);
+                    let resolved_right = expression(right, expected_ty.clone(), scope, contract);
+
+                    if resolved_left.is_err() || resolved_right.is_err() {
+                        return Err(());
+                    }
+
+                    let right = Box::new(resolved_right.unwrap());
+                    let left = Box::new(resolved_left.unwrap());
+
+                    let expr = Expression::Modulo(BinaryExpression {
+                        loc: loc.clone(),
+                        left: left.clone(),
+                        right: right.clone(),
+                        ty: ty.clone(),
+                    });
+                    if right.is_literal() && left.is_literal() {
+                        eval_const(&expr, loc, contract)
+                    } else {
+                        Ok(expr)
+                    }
+                }
+                a_ty => {
+                    let expected: Vec<ExpectedType> = allowed_tys
+                        .iter()
+                        .map(|ty| ExpectedType::Concrete(ty.clone()))
+                        .collect();
+                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                    Err(())
+                }
+            }
+        }
+        ExpectedType::Dynamic(tys) => {
+            let concrete = coerce_type(left, right, &loc, tys, allowed_tys, scope, contract)?;
+            resolve_modulo(left, right, loc, scope, contract, concrete)
+        }
+        ExpectedType::Empty => {
+            contract.diagnostics.push(Report::semantic_error(
+                loc.clone(),
+                String::from("Modulo can only be used in expression."),
+            ));
+            Err(())
+        }
+    }
+}
+
+/// Resolve addition.
+pub fn resolve_addition(
+    left: &parsed_ast::Expression,
+    right: &parsed_ast::Expression,
+    loc: Span,
+    scope: &mut Scope,
+    contract: &mut ContractDefinition,
+    expected_ty: ExpectedType,
+) -> Result<Expression, ()> {
+    let allowed_tys = &[
+        TypeVariant::Int,
+        TypeVariant::Uint,
+        TypeVariant::Float,
+        TypeVariant::String,
+    ];
+    match &expected_ty {
+        ExpectedType::Concrete(ty) => {
+            match ty {
+                TypeVariant::Int | TypeVariant::Uint | TypeVariant::Float | TypeVariant::String => {
+                    let resolved_left = expression(left, expected_ty.clone(), scope, contract);
+                    let resolved_right = expression(right, expected_ty.clone(), scope, contract);
+
+                    if resolved_left.is_err() || resolved_right.is_err() {
+                        return Err(());
+                    }
+
+                    let right = Box::new(resolved_right.unwrap());
+                    let left = Box::new(resolved_left.unwrap());
+
+                    let expr = Expression::Add(BinaryExpression {
+                        loc: loc.clone(),
+                        left: left.clone(),
+                        right: right.clone(),
+                        ty: ty.clone(),
+                    });
+                    if right.is_literal() && left.is_literal() {
+                        eval_const(&expr, loc, contract)
+                    } else {
+                        Ok(expr)
+                    }
+                }
+                a_ty => {
+                    let expected: Vec<ExpectedType> = allowed_tys
+                        .iter()
+                        .map(|ty| ExpectedType::Concrete(ty.clone()))
+                        .collect();
+                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                    Err(())
+                }
+            }
+        }
+        ExpectedType::Dynamic(tys) => {
+            let concrete = coerce_type(left, right, &loc, tys, allowed_tys, scope, contract)?;
+            resolve_addition(left, right, loc, scope, contract, concrete)
+        }
+        ExpectedType::Empty => {
+            contract.diagnostics.push(Report::semantic_error(
+                loc.clone(),
+                String::from("Addition can only be used in expression."),
+            ));
+            Err(())
+        }
+    }
+}
+
+/// Resolve subtraction.
+pub fn resolve_subtraction(
+    left: &parsed_ast::Expression,
+    right: &parsed_ast::Expression,
+    loc: Span,
+    scope: &mut Scope,
+    contract: &mut ContractDefinition,
+    expected_ty: ExpectedType,
+) -> Result<Expression, ()> {
+    let allowed_tys = &[TypeVariant::Int, TypeVariant::Uint, TypeVariant::Float];
+    match &expected_ty {
+        ExpectedType::Concrete(ty) => {
+            match ty {
+                TypeVariant::Int | TypeVariant::Uint | TypeVariant::Float => {
+                    let resolved_left = expression(left, expected_ty.clone(), scope, contract);
+                    let resolved_right = expression(right, expected_ty.clone(), scope, contract);
+
+                    if resolved_left.is_err() || resolved_right.is_err() {
+                        return Err(());
+                    }
+
+                    let right = Box::new(resolved_right.unwrap());
+                    let left = Box::new(resolved_left.unwrap());
+
+                    let expr = Expression::Subtract(BinaryExpression {
+                        loc: loc.clone(),
+                        left: left.clone(),
+                        right: right.clone(),
+                        ty: ty.clone(),
+                    });
+                    if right.is_literal() && left.is_literal() {
+                        eval_const(&expr, loc, contract)
+                    } else {
+                        Ok(expr)
+                    }
+                }
+                a_ty => {
+                    let expected: Vec<ExpectedType> = allowed_tys
+                        .iter()
+                        .map(|ty| ExpectedType::Concrete(ty.clone()))
+                        .collect();
+                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                    Err(())
+                }
+            }
+        }
+        ExpectedType::Dynamic(tys) => {
+            let concrete = coerce_type(left, right, &loc, tys, allowed_tys, scope, contract)?;
+            resolve_subtraction(left, right, loc, scope, contract, concrete)
+        }
+        ExpectedType::Empty => {
+            contract.diagnostics.push(Report::semantic_error(
+                loc.clone(),
+                String::from("Subtraction can only be used in expression."),
+            ));
+            Err(())
+        }
+    }
+}
+
+/// Resolve equality.
+pub fn resolve_equality(
+    left: &parsed_ast::Expression,
+    right: &parsed_ast::Expression,
+    loc: Span,
+    scope: &mut Scope,
+    contract: &mut ContractDefinition,
+    expected_ty: ExpectedType,
+) -> Result<Expression, ()> {
+    let allowed_tys = &[
+        TypeVariant::Int,
+        TypeVariant::Uint,
+        TypeVariant::Float,
+        TypeVariant::String,
+        TypeVariant::Char,
+        TypeVariant::Hex,
+        TypeVariant::Address,
+        TypeVariant::Bool,
+    ];
+    match &expected_ty {
+        ExpectedType::Concrete(ty) => {
+            match ty {
+                TypeVariant::Bool => {
+                    let concrete =
+                        coerce_type(left, right, &loc, &vec![], allowed_tys, scope, contract)?;
+
+                    let resolved_left = expression(left, concrete.clone(), scope, contract);
+                    let resolved_right = expression(right, concrete.clone(), scope, contract);
+
+                    if resolved_left.is_err() || resolved_right.is_err() {
+                        return Err(());
+                    }
+
+                    let right = Box::new(resolved_right.unwrap());
+                    let left = Box::new(resolved_left.unwrap());
+
+                    let expr = Expression::Equal(BinaryExpression {
+                        loc: loc.clone(),
+                        left: left.clone(),
+                        right: right.clone(),
+                        ty: TypeVariant::Bool,
+                    });
+                    if right.is_literal() && left.is_literal() {
+                        eval_const(&expr, loc, contract)
+                    } else {
+                        Ok(expr)
+                    }
+                }
+                a_ty => {
+                    let expected: Vec<ExpectedType> = allowed_tys
+                        .iter()
+                        .map(|ty| ExpectedType::Concrete(ty.clone()))
+                        .collect();
+                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                    Err(())
+                }
+            }
+        }
+        // we can only resolve to boolean value.
+        ExpectedType::Dynamic(_) => {
+            resolve_equality(
+                left,
+                right,
+                loc,
+                scope,
+                contract,
+                ExpectedType::Concrete(TypeVariant::Bool),
+            )
+        }
+        ExpectedType::Empty => {
+            contract.diagnostics.push(Report::semantic_error(
+                loc.clone(),
+                String::from("Equality can only be used in expression."),
+            ));
+            Err(())
+        }
+    }
+}
+
+/// Resolve inequality.
+pub fn resolve_inequality(
+    left: &parsed_ast::Expression,
+    right: &parsed_ast::Expression,
+    loc: Span,
+    scope: &mut Scope,
+    contract: &mut ContractDefinition,
+    expected_ty: ExpectedType,
+) -> Result<Expression, ()> {
+    let allowed_tys = &[
+        TypeVariant::Int,
+        TypeVariant::Uint,
+        TypeVariant::Float,
+        TypeVariant::String,
+        TypeVariant::Char,
+        TypeVariant::Hex,
+        TypeVariant::Address,
+        TypeVariant::Bool,
+    ];
+    match &expected_ty {
+        ExpectedType::Concrete(ty) => {
+            match ty {
+                TypeVariant::Bool => {
+                    let concrete =
+                        coerce_type(left, right, &loc, &vec![], allowed_tys, scope, contract)?;
+
+                    let resolved_left = expression(left, concrete.clone(), scope, contract);
+                    let resolved_right = expression(right, concrete.clone(), scope, contract);
+
+                    if resolved_left.is_err() || resolved_right.is_err() {
+                        return Err(());
+                    }
+
+                    let right = Box::new(resolved_right.unwrap());
+                    let left = Box::new(resolved_left.unwrap());
+
+                    let expr = Expression::NotEqual(BinaryExpression {
+                        loc: loc.clone(),
+                        left: left.clone(),
+                        right: right.clone(),
+                        ty: TypeVariant::Bool,
+                    });
+                    if right.is_literal() && left.is_literal() {
+                        eval_const(&expr, loc, contract)
+                    } else {
+                        Ok(expr)
+                    }
+                }
+                a_ty => {
+                    let expected: Vec<ExpectedType> = allowed_tys
+                        .iter()
+                        .map(|ty| ExpectedType::Concrete(ty.clone()))
+                        .collect();
+                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                    Err(())
+                }
+            }
+        }
+        // we can only resolve to boolean value.
+        ExpectedType::Dynamic(_) => {
+            resolve_inequality(
+                left,
+                right,
+                loc,
+                scope,
+                contract,
+                ExpectedType::Concrete(TypeVariant::Bool),
+            )
+        }
+        ExpectedType::Empty => {
+            contract.diagnostics.push(Report::semantic_error(
+                loc.clone(),
+                String::from("Inequality can only be used in expression."),
+            ));
+            Err(())
+        }
+    }
+}
+
+/// Resolve greater comparison.
+pub fn resolve_greater(
+    left: &parsed_ast::Expression,
+    right: &parsed_ast::Expression,
+    loc: Span,
+    scope: &mut Scope,
+    contract: &mut ContractDefinition,
+    expected_ty: ExpectedType,
+) -> Result<Expression, ()> {
+    let allowed_tys = &[
+        TypeVariant::Int,
+        TypeVariant::Uint,
+        TypeVariant::Float,
+        TypeVariant::Char,
+    ];
+    match &expected_ty {
+        ExpectedType::Concrete(ty) => {
+            match ty {
+                TypeVariant::Bool => {
+                    let concrete =
+                        coerce_type(left, right, &loc, &vec![], allowed_tys, scope, contract)?;
+
+                    let resolved_left = expression(left, concrete.clone(), scope, contract);
+                    let resolved_right = expression(right, concrete.clone(), scope, contract);
+
+                    if resolved_left.is_err() || resolved_right.is_err() {
+                        return Err(());
+                    }
+
+                    let right = Box::new(resolved_right.unwrap());
+                    let left = Box::new(resolved_left.unwrap());
+
+                    let expr = Expression::Greater(BinaryExpression {
+                        loc: loc.clone(),
+                        left: left.clone(),
+                        right: right.clone(),
+                        ty: TypeVariant::Bool,
+                    });
+                    if right.is_literal() && left.is_literal() {
+                        eval_const(&expr, loc, contract)
+                    } else {
+                        Ok(expr)
+                    }
+                }
+                a_ty => {
+                    let expected: Vec<ExpectedType> = allowed_tys
+                        .iter()
+                        .map(|ty| ExpectedType::Concrete(ty.clone()))
+                        .collect();
+                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                    Err(())
+                }
+            }
+        }
+        // we can only resolve to boolean value.
+        ExpectedType::Dynamic(_) => {
+            resolve_greater(
+                left,
+                right,
+                loc,
+                scope,
+                contract,
+                ExpectedType::Concrete(TypeVariant::Bool),
+            )
+        }
+        ExpectedType::Empty => {
+            contract.diagnostics.push(Report::semantic_error(
+                loc.clone(),
+                String::from("`Greater` comparison can only be used in expression."),
+            ));
+            Err(())
+        }
+    }
+}
+
+/// Resolve less comparison.
+pub fn resolve_less(
+    left: &parsed_ast::Expression,
+    right: &parsed_ast::Expression,
+    loc: Span,
+    scope: &mut Scope,
+    contract: &mut ContractDefinition,
+    expected_ty: ExpectedType,
+) -> Result<Expression, ()> {
+    let allowed_tys = &[
+        TypeVariant::Int,
+        TypeVariant::Uint,
+        TypeVariant::Float,
+        TypeVariant::Char,
+    ];
+    match &expected_ty {
+        ExpectedType::Concrete(ty) => {
+            match ty {
+                TypeVariant::Bool => {
+                    let concrete =
+                        coerce_type(left, right, &loc, &vec![], allowed_tys, scope, contract)?;
+
+                    let resolved_left = expression(left, concrete.clone(), scope, contract);
+                    let resolved_right = expression(right, concrete.clone(), scope, contract);
+
+                    if resolved_left.is_err() || resolved_right.is_err() {
+                        return Err(());
+                    }
+
+                    let right = Box::new(resolved_right.unwrap());
+                    let left = Box::new(resolved_left.unwrap());
+
+                    let expr = Expression::Less(BinaryExpression {
+                        loc: loc.clone(),
+                        left: left.clone(),
+                        right: right.clone(),
+                        ty: TypeVariant::Bool,
+                    });
+                    if right.is_literal() && left.is_literal() {
+                        eval_const(&expr, loc, contract)
+                    } else {
+                        Ok(expr)
+                    }
+                }
+                a_ty => {
+                    let expected: Vec<ExpectedType> = allowed_tys
+                        .iter()
+                        .map(|ty| ExpectedType::Concrete(ty.clone()))
+                        .collect();
+                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                    Err(())
+                }
+            }
+        }
+        // we can only resolve to boolean value.
+        ExpectedType::Dynamic(_) => {
+            resolve_less(
+                left,
+                right,
+                loc,
+                scope,
+                contract,
+                ExpectedType::Concrete(TypeVariant::Bool),
+            )
+        }
+        ExpectedType::Empty => {
+            contract.diagnostics.push(Report::semantic_error(
+                loc.clone(),
+                String::from("`Less` comparison can only be used in expression."),
+            ));
+            Err(())
+        }
+    }
+}
+
+/// Resolve greater or equal comparison.
+pub fn resolve_greater_eq(
+    left: &parsed_ast::Expression,
+    right: &parsed_ast::Expression,
+    loc: Span,
+    scope: &mut Scope,
+    contract: &mut ContractDefinition,
+    expected_ty: ExpectedType,
+) -> Result<Expression, ()> {
+    let allowed_tys = &[
+        TypeVariant::Int,
+        TypeVariant::Uint,
+        TypeVariant::Float,
+        TypeVariant::Char,
+    ];
+    match &expected_ty {
+        ExpectedType::Concrete(ty) => {
+            match ty {
+                TypeVariant::Bool => {
+                    let concrete =
+                        coerce_type(left, right, &loc, &vec![], allowed_tys, scope, contract)?;
+
+                    let resolved_left = expression(left, concrete.clone(), scope, contract);
+                    let resolved_right = expression(right, concrete.clone(), scope, contract);
+
+                    if resolved_left.is_err() || resolved_right.is_err() {
+                        return Err(());
+                    }
+
+                    let right = Box::new(resolved_right.unwrap());
+                    let left = Box::new(resolved_left.unwrap());
+
+                    let expr = Expression::GreaterEq(BinaryExpression {
+                        loc: loc.clone(),
+                        left: left.clone(),
+                        right: right.clone(),
+                        ty: TypeVariant::Bool,
+                    });
+                    if right.is_literal() && left.is_literal() {
+                        eval_const(&expr, loc, contract)
+                    } else {
+                        Ok(expr)
+                    }
+                }
+                a_ty => {
+                    let expected: Vec<ExpectedType> = allowed_tys
+                        .iter()
+                        .map(|ty| ExpectedType::Concrete(ty.clone()))
+                        .collect();
+                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                    Err(())
+                }
+            }
+        }
+        // we can only resolve to boolean value.
+        ExpectedType::Dynamic(_) => {
+            resolve_greater_eq(
+                left,
+                right,
+                loc,
+                scope,
+                contract,
+                ExpectedType::Concrete(TypeVariant::Bool),
+            )
+        }
+        ExpectedType::Empty => {
+            contract.diagnostics.push(Report::semantic_error(
+                loc.clone(),
+                String::from("`GreaterEq` comparison can only be used in expression."),
+            ));
+            Err(())
+        }
+    }
+}
+
+/// Resolve less or equal comparison.
+pub fn resolve_less_eq(
+    left: &parsed_ast::Expression,
+    right: &parsed_ast::Expression,
+    loc: Span,
+    scope: &mut Scope,
+    contract: &mut ContractDefinition,
+    expected_ty: ExpectedType,
+) -> Result<Expression, ()> {
+    let allowed_tys = &[
+        TypeVariant::Int,
+        TypeVariant::Uint,
+        TypeVariant::Float,
+        TypeVariant::Char,
+    ];
+    match &expected_ty {
+        ExpectedType::Concrete(ty) => {
+            match ty {
+                TypeVariant::Bool => {
+                    let concrete =
+                        coerce_type(left, right, &loc, &vec![], allowed_tys, scope, contract)?;
+
+                    let resolved_left = expression(left, concrete.clone(), scope, contract);
+                    let resolved_right = expression(right, concrete.clone(), scope, contract);
+
+                    if resolved_left.is_err() || resolved_right.is_err() {
+                        return Err(());
+                    }
+
+                    let right = Box::new(resolved_right.unwrap());
+                    let left = Box::new(resolved_left.unwrap());
+
+                    let expr = Expression::LessEq(BinaryExpression {
+                        loc: loc.clone(),
+                        left: left.clone(),
+                        right: right.clone(),
+                        ty: TypeVariant::Bool,
+                    });
+                    if right.is_literal() && left.is_literal() {
+                        eval_const(&expr, loc, contract)
+                    } else {
+                        Ok(expr)
+                    }
+                }
+                a_ty => {
+                    let expected: Vec<ExpectedType> = allowed_tys
+                        .iter()
+                        .map(|ty| ExpectedType::Concrete(ty.clone()))
+                        .collect();
+                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                    Err(())
+                }
+            }
+        }
+        // we can only resolve to boolean value.
+        ExpectedType::Dynamic(_) => {
+            resolve_less_eq(
+                left,
+                right,
+                loc,
+                scope,
+                contract,
+                ExpectedType::Concrete(TypeVariant::Bool),
+            )
+        }
+        ExpectedType::Empty => {
+            contract.diagnostics.push(Report::semantic_error(
+                loc.clone(),
+                String::from("`LessEq` comparison can only be used in expression."),
+            ));
+            Err(())
+        }
+    }
+}
+
+/// Resolve boolean conjunction.
+pub fn resolve_and(
+    left: &parsed_ast::Expression,
+    right: &parsed_ast::Expression,
+    loc: Span,
+    scope: &mut Scope,
+    contract: &mut ContractDefinition,
+    expected_ty: ExpectedType,
+) -> Result<Expression, ()> {
+    let allowed_tys = &[TypeVariant::Bool];
+    match &expected_ty {
+        ExpectedType::Concrete(ty) => {
+            match ty {
+                TypeVariant::Bool => {
+                    // we only allow boolean value to be resolved.
+                    let concrete = ExpectedType::Concrete(TypeVariant::Bool);
+
+                    let resolved_left = expression(left, concrete.clone(), scope, contract);
+                    let resolved_right = expression(right, concrete.clone(), scope, contract);
+
+                    if resolved_left.is_err() || resolved_right.is_err() {
+                        return Err(());
+                    }
+
+                    let right = Box::new(resolved_right.unwrap());
+                    let left = Box::new(resolved_left.unwrap());
+
+                    let expr = Expression::And(BinaryExpression {
+                        loc: loc.clone(),
+                        left: left.clone(),
+                        right: right.clone(),
+                        ty: TypeVariant::Bool,
+                    });
+                    if right.is_literal() && left.is_literal() {
+                        eval_const(&expr, loc, contract)
+                    } else {
+                        Ok(expr)
+                    }
+                }
+                a_ty => {
+                    let expected: Vec<ExpectedType> = allowed_tys
+                        .iter()
+                        .map(|ty| ExpectedType::Concrete(ty.clone()))
+                        .collect();
+                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                    Err(())
+                }
+            }
+        }
+        // we can only resolve to boolean value.
+        ExpectedType::Dynamic(_) => {
+            resolve_and(
+                left,
+                right,
+                loc,
+                scope,
+                contract,
+                ExpectedType::Concrete(TypeVariant::Bool),
+            )
+        }
+        ExpectedType::Empty => {
+            contract.diagnostics.push(Report::semantic_error(
+                loc.clone(),
+                String::from("`And` operation can only be used in expression."),
+            ));
+            Err(())
+        }
+    }
+}
+
+/// Resolve boolean disjunction.
+pub fn resolve_or(
+    left: &parsed_ast::Expression,
+    right: &parsed_ast::Expression,
+    loc: Span,
+    scope: &mut Scope,
+    contract: &mut ContractDefinition,
+    expected_ty: ExpectedType,
+) -> Result<Expression, ()> {
+    let allowed_tys = &[TypeVariant::Bool];
+    match &expected_ty {
+        ExpectedType::Concrete(ty) => {
+            match ty {
+                TypeVariant::Bool => {
+                    // we only allow boolean value to be resolved.
+                    let concrete = ExpectedType::Concrete(TypeVariant::Bool);
+
+                    let resolved_left = expression(left, concrete.clone(), scope, contract);
+                    let resolved_right = expression(right, concrete.clone(), scope, contract);
+
+                    if resolved_left.is_err() || resolved_right.is_err() {
+                        return Err(());
+                    }
+
+                    let right = Box::new(resolved_right.unwrap());
+                    let left = Box::new(resolved_left.unwrap());
+
+                    let expr = Expression::Or(BinaryExpression {
+                        loc: loc.clone(),
+                        left: left.clone(),
+                        right: right.clone(),
+                        ty: TypeVariant::Bool,
+                    });
+                    if right.is_literal() && left.is_literal() {
+                        eval_const(&expr, loc, contract)
+                    } else {
+                        Ok(expr)
+                    }
+                }
+                a_ty => {
+                    let expected: Vec<ExpectedType> = allowed_tys
+                        .iter()
+                        .map(|ty| ExpectedType::Concrete(ty.clone()))
+                        .collect();
+                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                    Err(())
+                }
+            }
+        }
+        // we can only resolve to boolean value.
+        ExpectedType::Dynamic(_) => {
+            resolve_or(
+                left,
+                right,
+                loc,
+                scope,
+                contract,
+                ExpectedType::Concrete(TypeVariant::Bool),
+            )
+        }
+        ExpectedType::Empty => {
+            contract.diagnostics.push(Report::semantic_error(
+                loc.clone(),
+                String::from("`Or` operation can only be used in expression."),
+            ));
+            Err(())
+        }
+    }
+}
+
+/// Resolve boolean negation.
+pub fn resolve_not(
+    expr: &parsed_ast::Expression,
+    loc: Span,
+    scope: &mut Scope,
+    contract: &mut ContractDefinition,
+    expected_ty: ExpectedType,
+) -> Result<Expression, ()> {
+    let allowed_tys = &[TypeVariant::Bool];
+    match &expected_ty {
+        ExpectedType::Concrete(ty) => {
+            match ty {
+                TypeVariant::Bool => {
+                    // we only allow boolean value to be resolved.
+                    let concrete = ExpectedType::Concrete(TypeVariant::Bool);
+
+                    let resolved = expression(expr, concrete.clone(), scope, contract);
+
+                    if resolved.is_err() {
+                        return Err(());
+                    }
+
+                    let value = Box::new(resolved.unwrap());
+
+                    let expr = Expression::Not(UnaryExpression {
+                        loc: loc.clone(),
+                        element: value.clone(),
+                        ty: TypeVariant::Bool,
+                    });
+                    if value.is_literal() {
+                        eval_const(&expr, loc, contract)
+                    } else {
+                        Ok(expr)
+                    }
+                }
+                a_ty => {
+                    let expected: Vec<ExpectedType> = allowed_tys
+                        .iter()
+                        .map(|ty| ExpectedType::Concrete(ty.clone()))
+                        .collect();
+                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                    Err(())
+                }
+            }
+        }
+        // we can only resolve to boolean value.
+        ExpectedType::Dynamic(_) => {
+            resolve_not(
+                expr,
+                loc,
+                scope,
+                contract,
+                ExpectedType::Concrete(TypeVariant::Bool),
+            )
+        }
+        ExpectedType::Empty => {
+            contract.diagnostics.push(Report::semantic_error(
+                loc.clone(),
+                String::from("`Negation` operation can only be used in expression."),
             ));
             Err(())
         }
