@@ -50,6 +50,12 @@ pub enum TypeVariant {
     Model(SymbolInfo),
     Enum(SymbolInfo),
     State(SymbolInfo),
+
+    // A placeholder for generics.
+    // Mainly used in for built-in list function
+    // e.g. `map`, `filter`, etc.
+    // which can operate on lists of generic types.
+    Generic,
 }
 
 impl TypeVariant {
@@ -483,6 +489,7 @@ impl Display for TypeVariant {
             TypeVariant::Model(_) => word("model"),
             TypeVariant::Enum(_) => word("enum"),
             TypeVariant::State(_) => word("state"),
+            TypeVariant::Generic => word("generic type"),
         }
     }
 }

@@ -41,6 +41,7 @@ use self::{
         resolve_equality,
         resolve_greater,
         resolve_greater_eq,
+        resolve_in,
         resolve_inequality,
         resolve_less,
         resolve_less_eq,
@@ -219,7 +220,16 @@ pub fn expression(
         parsed_ast::Expression::Not(u) => {
             resolve_not(&u.element, u.loc.clone(), scope, contract, expected_ty)
         }
-        parsed_ast::Expression::In(_) => todo!(),
+        parsed_ast::Expression::In(b) => {
+            resolve_in(
+                &b.left,
+                &b.right,
+                b.loc.clone(),
+                scope,
+                contract,
+                expected_ty,
+            )
+        }
         // complex expressions
         parsed_ast::Expression::Variable(ident) => {
             resolve_variable(ident, scope, contract, expected_ty)

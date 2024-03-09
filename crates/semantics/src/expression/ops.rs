@@ -26,6 +26,10 @@ use super::{
 };
 
 /// Resolve multiplication.
+///
+/// # Errors
+/// - Expected type is different.
+/// - One of expression can not be resolved to any of the allowed types.
 pub fn resolve_multiply(
     left: &parsed_ast::Expression,
     right: &parsed_ast::Expression,
@@ -86,6 +90,10 @@ pub fn resolve_multiply(
 }
 
 /// Resolve division.
+///
+/// # Errors
+/// - Expected type is different.
+/// - One of expression can not be resolved to any of the allowed types.
 pub fn resolve_division(
     left: &parsed_ast::Expression,
     right: &parsed_ast::Expression,
@@ -146,6 +154,10 @@ pub fn resolve_division(
 }
 
 /// Resolve modulo.
+///
+/// # Errors
+/// - Expected type is different.
+/// - One of expression can not be resolved to any of the allowed types.
 pub fn resolve_modulo(
     left: &parsed_ast::Expression,
     right: &parsed_ast::Expression,
@@ -206,6 +218,10 @@ pub fn resolve_modulo(
 }
 
 /// Resolve addition.
+///
+/// # Errors
+/// - Expected type is different.
+/// - One of expression can not be resolved to any of the allowed types.
 pub fn resolve_addition(
     left: &parsed_ast::Expression,
     right: &parsed_ast::Expression,
@@ -271,6 +287,10 @@ pub fn resolve_addition(
 }
 
 /// Resolve subtraction.
+///
+/// # Errors
+/// - Expected type is different.
+/// - One of expression can not be resolved to any of the allowed types.
 pub fn resolve_subtraction(
     left: &parsed_ast::Expression,
     right: &parsed_ast::Expression,
@@ -331,6 +351,10 @@ pub fn resolve_subtraction(
 }
 
 /// Resolve equality.
+///
+/// # Errors
+/// - Expected type is different.
+/// - One of expression can not be resolved to any of the allowed types.
 pub fn resolve_equality(
     left: &parsed_ast::Expression,
     right: &parsed_ast::Expression,
@@ -410,6 +434,10 @@ pub fn resolve_equality(
 }
 
 /// Resolve inequality.
+///
+/// # Errors
+/// - Expected type is different.
+/// - One of expression can not be resolved to any of the allowed types.
 pub fn resolve_inequality(
     left: &parsed_ast::Expression,
     right: &parsed_ast::Expression,
@@ -489,6 +517,10 @@ pub fn resolve_inequality(
 }
 
 /// Resolve greater comparison.
+///
+/// # Errors
+/// - Expected type is different.
+/// - One of expression can not be resolved to any of the allowed types.
 pub fn resolve_greater(
     left: &parsed_ast::Expression,
     right: &parsed_ast::Expression,
@@ -564,6 +596,10 @@ pub fn resolve_greater(
 }
 
 /// Resolve less comparison.
+///
+/// # Errors
+/// - Expected type is different.
+/// - One of expression can not be resolved to any of the allowed types.
 pub fn resolve_less(
     left: &parsed_ast::Expression,
     right: &parsed_ast::Expression,
@@ -639,6 +675,10 @@ pub fn resolve_less(
 }
 
 /// Resolve greater or equal comparison.
+///
+/// # Errors
+/// - Expected type is different.
+/// - One of expression can not be resolved to any of the allowed types.
 pub fn resolve_greater_eq(
     left: &parsed_ast::Expression,
     right: &parsed_ast::Expression,
@@ -714,6 +754,10 @@ pub fn resolve_greater_eq(
 }
 
 /// Resolve less or equal comparison.
+///
+/// # Errors
+/// - Expected type is different.
+/// - One of expression can not be resolved to any of the allowed types.
 pub fn resolve_less_eq(
     left: &parsed_ast::Expression,
     right: &parsed_ast::Expression,
@@ -789,6 +833,10 @@ pub fn resolve_less_eq(
 }
 
 /// Resolve boolean conjunction.
+///
+/// # Errors
+/// - Expected type is different.
+/// - One of expression can not be resolved to any of the allowed types.
 pub fn resolve_and(
     left: &parsed_ast::Expression,
     right: &parsed_ast::Expression,
@@ -859,6 +907,10 @@ pub fn resolve_and(
 }
 
 /// Resolve boolean disjunction.
+///
+/// # Errors
+/// - Expected type is different.
+/// - One of expression can not be resolved to any of the allowed types.
 pub fn resolve_or(
     left: &parsed_ast::Expression,
     right: &parsed_ast::Expression,
@@ -929,6 +981,10 @@ pub fn resolve_or(
 }
 
 /// Resolve boolean negation.
+///
+/// # Errors
+/// - Expected type is different.
+/// - One of expression can not be resolved to any of the allowed types.
 pub fn resolve_not(
     expr: &parsed_ast::Expression,
     loc: Span,
@@ -987,6 +1043,83 @@ pub fn resolve_not(
             contract.diagnostics.push(Report::semantic_error(
                 loc.clone(),
                 String::from("`Negation` operation can only be used in expression."),
+            ));
+            Err(())
+        }
+    }
+}
+
+/// Resolve list inclusion.
+///
+/// # Errors
+/// - Expected type is different.
+/// - One of expression can not be resolved to any of the allowed types.
+pub fn resolve_in(
+    left: &parsed_ast::Expression,
+    right: &parsed_ast::Expression,
+    loc: Span,
+    scope: &mut Scope,
+    contract: &mut ContractDefinition,
+    expected_ty: ExpectedType,
+) -> Result<Expression, ()> {
+    let allowed_tys = &[TypeVariant::Bool];
+    match &expected_ty {
+        ExpectedType::Concrete(ty) => {
+            match ty {
+                TypeVariant::Bool => {
+                    let resolved_right =
+                        expression(right, ExpectedType::Dynamic(vec![]), scope, contract)?;
+
+                    let right_list_ty = match resolved_right.ty() {
+                        TypeVariant::List(ty) => ty.as_ref(),
+                        TypeVariant::Set(ty) => ty.as_ref(),
+                        _ => {
+                            contract.diagnostics.push(Report::type_error(
+                                loc,
+                                String::from("Expected list-like type."),
+                            ));
+                            return Err(());
+                        }
+                    };
+                    let resolved_left = expression(
+                        left,
+                        ExpectedType::Concrete(right_list_ty.clone()),
+                        scope,
+                        contract,
+                    )?;
+
+                    Ok(Expression::In(BinaryExpression {
+                        loc,
+                        left: Box::new(resolved_left),
+                        right: Box::new(resolved_right),
+                        ty: TypeVariant::Bool,
+                    }))
+                }
+                a_ty => {
+                    let expected: Vec<ExpectedType> = allowed_tys
+                        .iter()
+                        .map(|ty| ExpectedType::Concrete(ty.clone()))
+                        .collect();
+                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                    Err(())
+                }
+            }
+        }
+        // we can only resolve to boolean value.
+        ExpectedType::Dynamic(_) => {
+            resolve_in(
+                left,
+                right,
+                loc,
+                scope,
+                contract,
+                ExpectedType::Concrete(TypeVariant::Bool),
+            )
+        }
+        ExpectedType::Empty => {
+            contract.diagnostics.push(Report::semantic_error(
+                loc.clone(),
+                String::from("`Or` operation can only be used in expression."),
             ));
             Err(())
         }
