@@ -179,6 +179,7 @@ impl Expression {
             Expression::Pipe(e) => &e.ty,
             Expression::StructInit(e) => &e.ty,
             Expression::List(e) => &e.ty,
+            Expression::Enum(e) => &e.ty,
         }
     }
 }
