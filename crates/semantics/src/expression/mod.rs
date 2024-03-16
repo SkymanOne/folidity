@@ -23,6 +23,7 @@ use crate::{
 use self::{
     complex::{
         resolve_func_call,
+        resolve_member_access,
         resolve_variable,
     },
     literals::{
@@ -247,7 +248,16 @@ pub fn expression(
                 expected_ty,
             )
         }
-        parsed_ast::Expression::MemberAccess(_) => todo!(),
+        parsed_ast::Expression::MemberAccess(m_a) => {
+            resolve_member_access(
+                &m_a.expr,
+                &m_a.member,
+                m_a.loc.clone(),
+                scope,
+                contract,
+                expected_ty,
+            )
+        }
         parsed_ast::Expression::Pipe(_) => todo!(),
         parsed_ast::Expression::StructInit(_) => todo!(),
     }

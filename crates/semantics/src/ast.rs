@@ -389,6 +389,7 @@ pub enum Expression {
     Char(UnaryExpression<char>),
     Hex(UnaryExpression<Vec<u8>>),
     Address(UnaryExpression<Address>),
+    Enum(UnaryExpression<usize>),
 
     // Maths operations.
     Multiply(BinaryExpression),
@@ -463,8 +464,8 @@ pub struct MemberAccess {
     pub loc: Span,
     /// Expression to access the member from
     pub expr: Box<Expression>,
-    /// List of arguments.
-    pub member: Identifier,
+    /// Member of a struct.
+    pub member: (usize, Span),
     /// Type of an expression.
     pub ty: TypeVariant,
 }

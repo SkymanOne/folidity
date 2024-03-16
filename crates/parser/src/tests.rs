@@ -795,7 +795,7 @@ state ExecuteState(ExecuteModel) from RevealState st [
 ]
 
 state ExecuteState {
-    proposal: String,
+    proposal: string,
     passed: bool
 } from (RevealState rst) st [
     current_block > rst.end_block 
@@ -803,7 +803,7 @@ state ExecuteState {
 
 @init
 @(any)
-fn () init(proposal: String, 
+fn () init(proposal: string, 
           start_block: int, 
           max_size: int, 
           end_block: int) 

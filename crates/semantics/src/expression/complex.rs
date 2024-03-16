@@ -12,10 +12,13 @@ use folidity_parser::{
 
 use crate::{
     ast::{
+        self,
         Expression,
         Function,
         FunctionCall,
         FunctionType,
+        MemberAccess,
+        StateBody,
         TypeVariant,
         UnaryExpression,
     },
@@ -367,6 +370,163 @@ pub fn resolve_func_call(
         args: parsed_args,
         returns: return_ty.clone(),
     }))
+}
+
+/// Resolve member access.
+///
+/// # Note
+/// Currently only variables are supported.
+/// - Check that the var and declaration exist.
+/// - Check that the member exists.
+/// - Check the type match.
+pub fn resolve_member_access(
+    expr: &parsed_ast::Expression,
+    member: &Identifier,
+    loc: Span,
+    scope: &mut Scope,
+    contract: &mut ContractDefinition,
+    expected_ty: ExpectedType,
+) -> Result<Expression, ()> {
+    if let parsed_ast::Expression::Variable(_) = expr {
+        let resolved_expr = expression(expr, ExpectedType::Dynamic(vec![]), scope, contract)?;
+        let ast::Expression::Variable(var) = &resolved_expr else {
+            return Err(());
+        };
+
+        let (mty, pos) = match &var.ty {
+            TypeVariant::State(s) => {
+                let state_decl = &contract.states[s.i];
+                if let Some(body) = &state_decl.body {
+                    let members = match body {
+                        StateBody::Raw(params) => params,
+                        StateBody::Model(s) => &contract.models[s.i].fields,
+                    };
+
+                    if let Some(pos) = members.iter().position(|m| &m.name.name == &member.name) {
+                        let field = &members[pos];
+                        let ty = field.ty.ty.clone();
+                        (ty, pos)
+                    } else {
+                        contract.diagnostics.push(Report::semantic_error(
+                            member.loc.clone(),
+                            String::from("Member does not exist"),
+                        ));
+                        return Err(());
+                    }
+                } else {
+                    contract.diagnostics.push(Report::semantic_error(
+                        loc.clone(),
+                        String::from("This state has no members."),
+                    ));
+                    return Err(());
+                }
+            }
+            TypeVariant::Struct(s) => {
+                let state_decl = &contract.structs[s.i];
+                let members = &state_decl.fields;
+
+                if let Some(pos) = members.iter().position(|m| &m.name.name == &member.name) {
+                    let field = &members[pos];
+                    let ty = field.ty.ty.clone();
+                    (ty, pos)
+                } else {
+                    contract.diagnostics.push(Report::semantic_error(
+                        member.loc.clone(),
+                        String::from("Member does not exist"),
+                    ));
+                    return Err(());
+                }
+            }
+            TypeVariant::Model(s) => {
+                let state_decl = &contract.models[s.i];
+                let members = &state_decl.fields;
+
+                if let Some(pos) = members.iter().position(|m| &m.name.name == &member.name) {
+                    let field = &members[pos];
+                    let ty = field.ty.ty.clone();
+                    (ty, pos)
+                } else {
+                    contract.diagnostics.push(Report::semantic_error(
+                        member.loc.clone(),
+                        String::from("Member does not exist"),
+                    ));
+                    return Err(());
+                }
+            }
+            TypeVariant::Enum(s) => {
+                let state_decl = &contract.enums[s.i];
+                let members: &Vec<&String> = &state_decl.variants.keys().map(|x| x).collect();
+
+                if let Some(pos) = &members.iter().position(|m| *m == &member.name) {
+                    let ty = TypeVariant::Enum(s.clone());
+                    (ty, *pos)
+                } else {
+                    contract.diagnostics.push(Report::semantic_error(
+                        member.loc.clone(),
+                        String::from("Member does not exist"),
+                    ));
+                    return Err(());
+                }
+            }
+            _ => {
+                contract.diagnostics.push(Report::semantic_error(
+                    loc.clone(),
+                    String::from("This type does not support member access."),
+                ));
+                return Err(());
+            }
+        };
+
+        let ty = match &expected_ty {
+            ExpectedType::Concrete(ty) => {
+                if ty != &mty {
+                    report_type_mismatch(
+                        &[ExpectedType::Concrete(ty.clone())],
+                        &mty,
+                        &loc,
+                        contract,
+                    );
+                    return Err(());
+                }
+                mty
+            }
+            ExpectedType::Dynamic(tys) => {
+                if !tys.contains(&mty) {
+                    report_type_mismatch(
+                        &tys.iter()
+                            .map(|t| ExpectedType::Concrete(t.clone()))
+                            .collect::<Vec<ExpectedType>>(),
+                        &mty,
+                        &loc,
+                        contract,
+                    );
+                    return Err(());
+                } else {
+                    mty
+                }
+            }
+            ExpectedType::Empty => {
+                contract.diagnostics.push(Report::semantic_error(
+                    loc,
+                    String::from("Member access can only be used in expressions or statements."),
+                ));
+                return Err(());
+            }
+        };
+
+        Ok(Expression::MemberAccess(MemberAccess {
+            loc: loc.clone(),
+            expr: Box::new(resolved_expr),
+            member: (pos, member.loc.clone()),
+            ty,
+        }))
+    } else {
+        contract.diagnostics.push(Report::semantic_error(
+            loc.clone(),
+            String::from("Non variable access is currently unsupported"),
+        ));
+        Err(())
+    }
 }
 
 fn check_func_return_type(ty: &TypeVariant, return_ty: &TypeVariant) -> bool {
