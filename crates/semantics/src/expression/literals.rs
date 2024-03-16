@@ -260,12 +260,25 @@ pub fn resolve_lists(
     scope: &mut Scope,
     expected_ty: ExpectedType,
 ) -> Result<Expression, ()> {
-    let mut derive_expr = |ty: &TypeVariant, loc: Span| -> Result<Expression, ()> {
+    let mut derive_expr = |ty: &TypeVariant| -> Result<Expression, ()> {
+        let item_ty = if let TypeVariant::Generic(tys) = ty {
+            let expr = expression(
+                &exprs[0],
+                ExpectedType::Dynamic(tys.clone()),
+                scope,
+                contract,
+            )?;
+            expr.ty().clone()
+        } else {
+            ty.clone()
+        };
         let mut error = false;
         let eval_exprs: Vec<Expression> = exprs
             .iter()
             .filter_map(|e| {
-                if let Ok(e) = expression(e, ExpectedType::Concrete(ty.clone()), scope, contract) {
+                if let Ok(e) =
+                    expression(e, ExpectedType::Concrete(item_ty.clone()), scope, contract)
+                {
                     Some(e)
                 } else {
                     error = true;
@@ -276,23 +289,23 @@ pub fn resolve_lists(
 
         if error {
             contract.diagnostics.push(Report::semantic_error(
-                loc,
+                loc.clone(),
                 String::from("List elements appear to be of different types."),
             ));
             Err(())
         } else {
             Ok(Expression::List(UnaryExpression {
-                loc,
+                loc: loc.clone(),
                 element: eval_exprs,
-                ty: TypeVariant::List(Box::new(ty.clone())),
+                ty: TypeVariant::List(Box::new(item_ty.clone())),
             }))
         }
     };
     match &expected_ty {
         ExpectedType::Concrete(ty) => {
             match ty {
-                TypeVariant::Set(ty) => derive_expr(ty, loc),
-                TypeVariant::List(ty) => derive_expr(ty, loc),
+                TypeVariant::Set(ty) => derive_expr(ty),
+                TypeVariant::List(ty) => derive_expr(ty),
                 a_ty => {
                     report_type_mismatch(&[expected_ty.clone()], a_ty, &loc, contract);
                     Err(())

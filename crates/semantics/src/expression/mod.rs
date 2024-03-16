@@ -21,7 +21,10 @@ use crate::{
 };
 
 use self::{
-    complex::resolve_variable,
+    complex::{
+        resolve_func_call,
+        resolve_variable,
+    },
     literals::{
         resolve_address,
         resolve_bool,
@@ -234,7 +237,16 @@ pub fn expression(
         parsed_ast::Expression::Variable(ident) => {
             resolve_variable(ident, scope, contract, expected_ty)
         }
-        parsed_ast::Expression::FunctionCall(_) => todo!(),
+        parsed_ast::Expression::FunctionCall(f_call) => {
+            resolve_func_call(
+                &f_call.name,
+                &f_call.args,
+                f_call.loc.clone(),
+                scope,
+                contract,
+                expected_ty,
+            )
+        }
         parsed_ast::Expression::MemberAccess(_) => todo!(),
         parsed_ast::Expression::Pipe(_) => todo!(),
         parsed_ast::Expression::StructInit(_) => todo!(),

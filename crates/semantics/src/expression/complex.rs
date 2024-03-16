@@ -1,11 +1,20 @@
 //! Resolve complex expressions.
 
 use folidity_diagnostics::Report;
-use folidity_parser::ast::Identifier;
+use folidity_parser::{
+    ast::{
+        self as parsed_ast,
+        Identifier,
+        Type,
+    },
+    Span,
+};
 
 use crate::{
     ast::{
         Expression,
+        Function,
+        FunctionCall,
         FunctionType,
         TypeVariant,
         UnaryExpression,
@@ -21,6 +30,8 @@ use crate::{
         ExpectedType,
     },
 };
+
+use super::expression;
 
 /// Resolve variable to a AST expression.
 ///
@@ -147,6 +158,242 @@ pub fn resolve_variable(
             Err(())
         }
     }
+}
+
+/// Resolves function call to a concrete ASP expression.
+///
+/// # Notes
+/// - We first resolve the the arguments iteratively and check for any errors.
+/// - We then pattern match the function return type with the expected one.
+///     - If it is a concrete one, then we simple check for equality.
+///     - If it is a dynamic one, then we ensure check that the generic allowed types
+///       intersect or contained.
+///     - If it is empty, then the return types is ignored and we use whatever it is.
+///
+/// # Errors
+/// - Function is not defined
+/// - Number of arguments mismatch
+/// - Argument types mismatch
+/// - Return types mismatch
+pub fn resolve_func_call(
+    ident: &Identifier,
+    args: &Vec<parsed_ast::Expression>,
+    loc: Span,
+    scope: &mut Scope,
+    contract: &mut ContractDefinition,
+    expected_ty: ExpectedType,
+) -> Result<Expression, ()> {
+    let func = find_func(ident, contract)?;
+    if func.params.len() != args.len() {
+        contract.diagnostics.push(Report::semantic_error(
+            loc.clone(),
+            String::from("Function call has invalid number of arguments."),
+        ));
+        return Err(());
+    }
+
+    let mut error_args = false;
+
+    let parsed_args: Vec<Expression> = args
+        .iter()
+        .zip(func.params.iter().map(|p| p.1))
+        .filter_map(|(e, p)| {
+            // if the param is generic, then we convert it to the dynamic expected type.
+            let arg_expected_ty = match &p.ty.ty {
+                TypeVariant::Generic(tys) => ExpectedType::Dynamic(tys.clone()),
+                a_ty => ExpectedType::Concrete(a_ty.clone()),
+            };
+            if let Ok(res_arg) = expression(e, arg_expected_ty, scope, contract) {
+                Some(res_arg)
+            } else {
+                error_args = true;
+                None
+            }
+        })
+        .collect();
+
+    if error_args {
+        contract.diagnostics.push(Report::semantic_error(
+            loc.clone(),
+            String::from("Functional call has invalid arguments."),
+        ));
+    }
+    let return_ty = match &expected_ty {
+        ExpectedType::Concrete(ty) => {
+            let mut error_return_ty = false;
+
+            if check_func_return_type(ty, func.return_ty.ty()) {
+                contract.diagnostics.push(Report::type_error(
+                    loc.clone(),
+                    String::from("Functional's return type mismatched the expected one."),
+                ));
+                error_return_ty = true;
+            }
+
+            if error_args || error_return_ty {
+                return Err(());
+            }
+
+            ty.clone()
+        }
+        ExpectedType::Dynamic(tys) => {
+            match func.return_ty.ty() {
+                // if the function type is generic, then we check that there is intersection of
+                // generic types, and we return generic types with the intersection
+                // of allowed types.
+                TypeVariant::Generic(allowed_tys) => {
+                    let filtered_tys: Vec<TypeVariant> = allowed_tys
+                        .iter()
+                        .filter_map(|t| {
+                            if tys.contains(t) {
+                                Some(t.clone())
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+                    if filtered_tys.is_empty() {
+                        contract.diagnostics.push(Report::type_error(
+                            loc.clone(),
+                            String::from("Functional's return type cannot be derived."),
+                        ));
+                        return Err(());
+                    }
+                    TypeVariant::Generic(filtered_tys)
+                }
+                // same as for generic, but encapsulated inside list type.
+                // If the list type is concrete, then we return the concrete type.
+                TypeVariant::List(l_ty) => {
+                    let list_tys: Vec<TypeVariant> = tys
+                        .iter()
+                        .filter_map(|t| {
+                            if let TypeVariant::List(l) = t {
+                                Some(l.as_ref().clone())
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+
+                    match l_ty.as_ref() {
+                        TypeVariant::Generic(g_tys) => {
+                            let filtered_tys = list_tys
+                                .iter()
+                                .filter_map(|t| {
+                                    if g_tys.contains(t) {
+                                        Some(t.clone())
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect();
+                            let g_ty = TypeVariant::Generic(filtered_tys);
+                            TypeVariant::List(Box::new(g_ty))
+                        }
+                        c_ty => {
+                            if list_tys.contains(c_ty) {
+                                TypeVariant::List(Box::new(c_ty.clone()))
+                            } else {
+                                contract.diagnostics.push(Report::type_error(
+                                    loc.clone(),
+                                    String::from(
+                                        "Functional's return list type cannot be derived.",
+                                    ),
+                                ));
+                                return Err(());
+                            }
+                        }
+                    }
+                }
+                // same as for generic, but encapsulated inside set type.
+                // If the list type is concrete, then we return the concrete type.
+                TypeVariant::Set(l_ty) => {
+                    let list_tys: Vec<TypeVariant> = tys
+                        .iter()
+                        .filter_map(|t| {
+                            if let TypeVariant::Set(l) = t {
+                                Some(l.as_ref().clone())
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+
+                    match l_ty.as_ref() {
+                        TypeVariant::Generic(g_tys) => {
+                            let filtered_tys = list_tys
+                                .iter()
+                                .filter_map(|t| {
+                                    if g_tys.contains(t) {
+                                        Some(t.clone())
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect();
+                            let g_ty = TypeVariant::Generic(filtered_tys);
+                            TypeVariant::Set(Box::new(g_ty))
+                        }
+                        c_ty => {
+                            if list_tys.contains(c_ty) {
+                                TypeVariant::Set(Box::new(c_ty.clone()))
+                            } else {
+                                contract.diagnostics.push(Report::type_error(
+                                    loc.clone(),
+                                    String::from("Functional's set list type cannot be derived."),
+                                ));
+                                return Err(());
+                            }
+                        }
+                    }
+                }
+                // if function return type, then we check that it is in the list of allowed types.
+                c_ty => {
+                    if tys.contains(c_ty) {
+                        c_ty.clone()
+                    } else {
+                        return Err(());
+                    }
+                }
+            }
+        }
+        // if the expected type is none, we just ignore the return type of the function call.
+        ExpectedType::Empty => func.return_ty.ty().clone(),
+    };
+
+    Ok(Expression::FunctionCall(FunctionCall {
+        loc: loc.clone(),
+        name: ident.clone(),
+        args: parsed_args,
+        returns: return_ty.clone(),
+    }))
+}
+
+fn check_func_return_type(ty: &TypeVariant, return_ty: &TypeVariant) -> bool {
+    if let TypeVariant::List(l_ty) = return_ty {
+        match l_ty.as_ref() {
+            TypeVariant::Generic(allowed_tys) => allowed_tys.contains(ty),
+            a_ty => check_func_return_type(ty, a_ty),
+        }
+    } else if let TypeVariant::Set(l_ty) = return_ty {
+        match l_ty.as_ref() {
+            TypeVariant::Generic(allowed_tys) => allowed_tys.contains(ty),
+            a_ty => check_func_return_type(ty, a_ty),
+        }
+    } else if let TypeVariant::Generic(allowed_tys) = return_ty {
+        allowed_tys.contains(ty)
+    } else {
+        ty == return_ty
+    }
+}
+
+fn find_func(ident: &Identifier, contract: &mut ContractDefinition) -> Result<Function, ()> {
+    let symbol = contract
+        .find_global_symbol(ident, SymbolKind::Function)
+        .ok_or(())?;
+
+    let func = &contract.functions[symbol.i];
+    Ok(func.clone())
 }
 
 fn find_var<'a>(

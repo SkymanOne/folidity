@@ -69,8 +69,17 @@ pub fn resolve_integer(
             // otherwise we resolve to signed int
             // The latter can happen when we have var declaration without the type
             // annotation.
-            let expected = dynamic_to_concrete_type(tys, &[TypeVariant::Int, TypeVariant::Uint]);
-            resolve_integer(number_str, loc, contract, expected)
+            let allowed = [TypeVariant::Int, TypeVariant::Uint];
+            match resolve_expected_type(&allowed, tys) {
+                Ok(expected) => resolve_integer(number_str, loc, contract, expected),
+                Err(_) => {
+                    contract.diagnostics.push(Report::type_error(
+                        loc,
+                        String::from("Could not imply type for this number."),
+                    ));
+                    Err(())
+                }
+            }
         }
         ExpectedType::Empty => {
             contract.diagnostics.push(Report::semantic_error(
@@ -121,8 +130,17 @@ pub fn resolve_float(
             }
         }
         ExpectedType::Dynamic(tys) => {
-            let expected = dynamic_to_concrete_type(tys, &[TypeVariant::Float]);
-            resolve_float(number_str, loc, contract, expected)
+            let allowed = [TypeVariant::Float];
+            match resolve_expected_type(&allowed, tys) {
+                Ok(expected) => resolve_integer(number_str, loc, contract, expected),
+                Err(_) => {
+                    contract.diagnostics.push(Report::type_error(
+                        loc,
+                        String::from("Could not imply type for this number."),
+                    ));
+                    Err(())
+                }
+            }
         }
         ExpectedType::Empty => {
             contract.diagnostics.push(Report::semantic_error(
@@ -132,4 +150,21 @@ pub fn resolve_float(
             Err(())
         }
     }
+}
+
+fn resolve_expected_type(allowed: &[TypeVariant], tys: &[TypeVariant]) -> Result<ExpectedType, ()> {
+    let expected = if tys.is_empty() {
+        dynamic_to_concrete_type(&[], allowed)
+    } else {
+        let filtered: Vec<TypeVariant> = allowed
+            .iter()
+            .filter(|t| tys.contains(t))
+            .cloned()
+            .collect();
+        if filtered.is_empty() {
+            return Err(());
+        }
+        dynamic_to_concrete_type(&filtered, allowed)
+    };
+    Ok(expected)
 }

@@ -55,7 +55,8 @@ pub enum TypeVariant {
     // Mainly used in for built-in list function
     // e.g. `map`, `filter`, etc.
     // which can operate on lists of generic types.
-    Generic,
+    // It hold a list of possible concrete types allowed for this generic.
+    Generic(Vec<TypeVariant>),
 }
 
 impl TypeVariant {
@@ -489,7 +490,7 @@ impl Display for TypeVariant {
             TypeVariant::Model(_) => word("model"),
             TypeVariant::Enum(_) => word("enum"),
             TypeVariant::State(_) => word("state"),
-            TypeVariant::Generic => word("generic type"),
+            TypeVariant::Generic(_) => word("generic type"),
         }
     }
 }
