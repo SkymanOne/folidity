@@ -640,26 +640,23 @@ fn test_structs_enums() -> Result<(), String> {
                             }],
                             mutable: false,
                             ty: None,
-                            value: Some(Expression::StructInit(UnaryExpression {
+                            value: Some(Expression::StructInit(StructInit {
                                 loc: 112..131,
-                                element: StructInit {
-                                    loc: 112..131,
-                                    name: Identifier {
-                                        loc: 112..120,
-                                        name: "MyStruct".to_string(),
-                                    },
-                                    args: vec![
-                                        Expression::Number(UnaryExpression {
-                                            loc: 125..126,
-                                            element: "2".to_string(),
-                                        }),
-                                        Expression::Number(UnaryExpression {
-                                            loc: 128..129,
-                                            element: "3".to_string(),
-                                        }),
-                                    ],
-                                    auto_object: None,
+                                name: Identifier {
+                                    loc: 112..120,
+                                    name: "MyStruct".to_string(),
                                 },
+                                args: vec![
+                                    Expression::Number(UnaryExpression {
+                                        loc: 125..126,
+                                        element: "2".to_string(),
+                                    }),
+                                    Expression::Number(UnaryExpression {
+                                        loc: 128..129,
+                                        element: "3".to_string(),
+                                    }),
+                                ],
+                                auto_object: None,
                             })),
                         }),
                         Statement::Variable(Variable {
@@ -676,20 +673,17 @@ fn test_structs_enums() -> Result<(), String> {
                             ],
                             mutable: false,
                             ty: None,
-                            value: Some(Expression::StructInit(UnaryExpression {
+                            value: Some(Expression::StructInit(StructInit {
                                 loc: 158..178,
-                                element: StructInit {
-                                    loc: 158..178,
-                                    name: Identifier {
-                                        loc: 158..166,
-                                        name: "MyStruct".to_string(),
-                                    },
-                                    args: vec![],
-                                    auto_object: Some(Identifier {
-                                        loc: 173..176,
-                                        name: "obj".to_string(),
-                                    }),
+                                name: Identifier {
+                                    loc: 158..166,
+                                    name: "MyStruct".to_string(),
                                 },
+                                args: vec![],
+                                auto_object: Some(Identifier {
+                                    loc: 173..176,
+                                    name: "obj".to_string(),
+                                }),
                             })),
                         }),
                         Statement::Variable(Variable {

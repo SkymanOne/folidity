@@ -488,3 +488,110 @@ fn member_access() {
     assert_eq!(m_a.ty, TypeVariant::Address);
     assert_eq!(m_a.member, (2, loc.clone()));
 }
+
+#[test]
+fn pipe() {
+    let loc = Span { start: 0, end: 0 };
+    let mut contract = ContractDefinition::default();
+    let mut scope = Scope::default();
+
+    let mut params = IndexMap::new();
+    params.insert(
+        "a".to_string(),
+        Param {
+            loc: loc.clone(),
+            ty: Type {
+                loc: loc.clone(),
+                ty: TypeVariant::List(Box::new(TypeVariant::Int)),
+            },
+            name: Identifier {
+                loc: loc.clone(),
+                name: "a".to_string(),
+            },
+            is_mut: true,
+            recursive: false,
+        },
+    );
+
+    let func_ident = Identifier {
+        loc: loc.clone(),
+        name: "my_func".to_string(),
+    };
+    contract.functions.push(Function::new(
+        loc.clone(),
+        false,
+        FunctionVisibility::Priv,
+        FuncReturnType::Type(Type {
+            loc: loc.clone(),
+            ty: TypeVariant::List(Box::new(TypeVariant::Int)),
+        }),
+        func_ident.clone(),
+        params,
+    ));
+
+    contract.add_global_symbol(
+        &func_ident,
+        GlobalSymbol::Function(SymbolInfo {
+            loc: loc.clone(),
+            i: 0,
+        }),
+    );
+
+    let list = parsed_ast::Expression::List(parsed_ast::UnaryExpression {
+        loc: loc.clone(),
+        element: vec![
+            parsed_ast::Expression::Number(parsed_ast::UnaryExpression {
+                loc: loc.clone(),
+                element: "1".to_string(),
+            }),
+            parsed_ast::Expression::Number(parsed_ast::UnaryExpression {
+                loc: loc.clone(),
+                element: "2".to_string(),
+            }),
+            parsed_ast::Expression::Number(parsed_ast::UnaryExpression {
+                loc: loc.clone(),
+                element: "3".to_string(),
+            }),
+        ],
+    });
+
+    let parsed_call = parsed_ast::Expression::FunctionCall(parsed_ast::FunctionCall {
+        loc: loc.clone(),
+        name: func_ident.clone(),
+        args: vec![],
+    });
+
+    let parsed_pipe = parsed_ast::Expression::Pipe(parsed_ast::BinaryExpression {
+        loc: loc.clone(),
+        left: Box::new(list.clone()),
+        right: Box::new(parsed_call.clone()),
+    });
+
+    let resolved_expr = expression(
+        &parsed_pipe,
+        ExpectedType::Concrete(TypeVariant::List(Box::new(TypeVariant::Int))),
+        &mut scope,
+        &mut contract,
+    );
+
+    assert!(resolved_expr.is_ok(), "Errors: {:#?}", contract.diagnostics);
+
+    let Expression::FunctionCall(func_call) = resolved_expr.unwrap() else {
+        panic!("Expected function resolved");
+    };
+
+    assert_eq!(
+        func_call.args,
+        vec![expression(
+            &list,
+            ExpectedType::Dynamic(vec![]),
+            &mut scope,
+            &mut contract
+        )
+        .unwrap()]
+    );
+    assert_eq!(
+        func_call.returns,
+        TypeVariant::List(Box::new(TypeVariant::Int))
+    );
+}

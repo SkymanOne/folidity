@@ -176,7 +176,6 @@ impl Expression {
             Expression::And(e) => &e.ty,
             Expression::FunctionCall(e) => &e.returns,
             Expression::MemberAccess(e) => &e.ty,
-            Expression::Pipe(e) => &e.ty,
             Expression::StructInit(e) => &e.ty,
             Expression::List(e) => &e.ty,
             Expression::Enum(e) => &e.ty,

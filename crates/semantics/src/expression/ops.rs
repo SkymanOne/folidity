@@ -413,7 +413,14 @@ pub fn resolve_equality(
             }
         }
         // we can only resolve to boolean value.
-        ExpectedType::Dynamic(_) => {
+        ExpectedType::Dynamic(tys) => {
+            if !tys.is_empty() && !tys.contains(&TypeVariant::Bool) {
+                contract.diagnostics.push(Report::type_error(
+                    loc.clone(),
+                    String::from("Expression is not of any allowed types."),
+                ));
+                return Err(());
+            }
             resolve_equality(
                 left,
                 right,
@@ -496,7 +503,14 @@ pub fn resolve_inequality(
             }
         }
         // we can only resolve to boolean value.
-        ExpectedType::Dynamic(_) => {
+        ExpectedType::Dynamic(tys) => {
+            if !tys.is_empty() && !tys.contains(&TypeVariant::Bool) {
+                contract.diagnostics.push(Report::type_error(
+                    loc.clone(),
+                    String::from("Expression is not of any allowed types."),
+                ));
+                return Err(());
+            }
             resolve_inequality(
                 left,
                 right,
@@ -575,7 +589,14 @@ pub fn resolve_greater(
             }
         }
         // we can only resolve to boolean value.
-        ExpectedType::Dynamic(_) => {
+        ExpectedType::Dynamic(tys) => {
+            if !tys.is_empty() && !tys.contains(&TypeVariant::Bool) {
+                contract.diagnostics.push(Report::type_error(
+                    loc.clone(),
+                    String::from("Expression is not of any allowed types."),
+                ));
+                return Err(());
+            }
             resolve_greater(
                 left,
                 right,
@@ -654,7 +675,14 @@ pub fn resolve_less(
             }
         }
         // we can only resolve to boolean value.
-        ExpectedType::Dynamic(_) => {
+        ExpectedType::Dynamic(tys) => {
+            if !tys.is_empty() && !tys.contains(&TypeVariant::Bool) {
+                contract.diagnostics.push(Report::type_error(
+                    loc.clone(),
+                    String::from("Expression is not of any allowed types."),
+                ));
+                return Err(());
+            }
             resolve_less(
                 left,
                 right,
@@ -733,7 +761,14 @@ pub fn resolve_greater_eq(
             }
         }
         // we can only resolve to boolean value.
-        ExpectedType::Dynamic(_) => {
+        ExpectedType::Dynamic(tys) => {
+            if !tys.is_empty() && !tys.contains(&TypeVariant::Bool) {
+                contract.diagnostics.push(Report::type_error(
+                    loc.clone(),
+                    String::from("Expression is not of any allowed types."),
+                ));
+                return Err(());
+            }
             resolve_greater_eq(
                 left,
                 right,
@@ -812,7 +847,14 @@ pub fn resolve_less_eq(
             }
         }
         // we can only resolve to boolean value.
-        ExpectedType::Dynamic(_) => {
+        ExpectedType::Dynamic(tys) => {
+            if !tys.is_empty() && !tys.contains(&TypeVariant::Bool) {
+                contract.diagnostics.push(Report::type_error(
+                    loc.clone(),
+                    String::from("Expression is not of any allowed types."),
+                ));
+                return Err(());
+            }
             resolve_less_eq(
                 left,
                 right,
@@ -886,7 +928,14 @@ pub fn resolve_and(
             }
         }
         // we can only resolve to boolean value.
-        ExpectedType::Dynamic(_) => {
+        ExpectedType::Dynamic(tys) => {
+            if !tys.is_empty() && !tys.contains(&TypeVariant::Bool) {
+                contract.diagnostics.push(Report::type_error(
+                    loc.clone(),
+                    String::from("Expression is not of any allowed types."),
+                ));
+                return Err(());
+            }
             resolve_and(
                 left,
                 right,
@@ -960,7 +1009,14 @@ pub fn resolve_or(
             }
         }
         // we can only resolve to boolean value.
-        ExpectedType::Dynamic(_) => {
+        ExpectedType::Dynamic(tys) => {
+            if !tys.is_empty() && !tys.contains(&TypeVariant::Bool) {
+                contract.diagnostics.push(Report::type_error(
+                    loc.clone(),
+                    String::from("Expression is not of any allowed types."),
+                ));
+                return Err(());
+            }
             resolve_or(
                 left,
                 right,
@@ -1030,7 +1086,14 @@ pub fn resolve_not(
             }
         }
         // we can only resolve to boolean value.
-        ExpectedType::Dynamic(_) => {
+        ExpectedType::Dynamic(tys) => {
+            if !tys.is_empty() && !tys.contains(&TypeVariant::Bool) {
+                contract.diagnostics.push(Report::type_error(
+                    loc.clone(),
+                    String::from("Expression is not of any allowed types."),
+                ));
+                return Err(());
+            }
             resolve_not(
                 expr,
                 loc,
@@ -1106,7 +1169,14 @@ pub fn resolve_in(
             }
         }
         // we can only resolve to boolean value.
-        ExpectedType::Dynamic(_) => {
+        ExpectedType::Dynamic(tys) => {
+            if !tys.is_empty() && !tys.contains(&TypeVariant::Bool) {
+                contract.diagnostics.push(Report::type_error(
+                    loc.clone(),
+                    String::from("Expression is not of any allowed types."),
+                ));
+                return Err(());
+            }
             resolve_in(
                 left,
                 right,

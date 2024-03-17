@@ -441,9 +441,9 @@ Term: ast::Expression = {
         ast::Expression::Variable(i)
     },
 
-    <start:@L> <val:StructInit> <end:@R> => {
+    <val:StructInit> => {
         ast::Expression::StructInit(
-            ast::UnaryExpression::new(start, end, val)
+            val
         )
     },
 

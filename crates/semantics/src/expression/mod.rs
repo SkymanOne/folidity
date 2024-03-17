@@ -24,6 +24,7 @@ use self::{
     complex::{
         resolve_func_call,
         resolve_member_access,
+        resolve_pipe,
         resolve_variable,
     },
     literals::{
@@ -258,7 +259,9 @@ pub fn expression(
                 expected_ty,
             )
         }
-        parsed_ast::Expression::Pipe(_) => todo!(),
+        parsed_ast::Expression::Pipe(b) => {
+            resolve_pipe(&b.left, &b.right, scope, contract, expected_ty)
+        }
         parsed_ast::Expression::StructInit(_) => todo!(),
     }
 }

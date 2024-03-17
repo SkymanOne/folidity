@@ -337,7 +337,7 @@ pub enum Expression {
     FunctionCall(FunctionCall),
     MemberAccess(MemberAccess),
     Pipe(BinaryExpression),
-    StructInit(UnaryExpression<StructInit>),
+    StructInit(StructInit),
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]
@@ -388,6 +388,41 @@ impl<T> UnaryExpression<T> {
         Self {
             loc: Span { start, end },
             element,
+        }
+    }
+}
+
+impl Expression {
+    pub fn loc(&self) -> &Span {
+        match self {
+            Expression::Variable(i) => &i.loc,
+            Expression::Number(u) => &u.loc,
+            Expression::Boolean(u) => &u.loc,
+            Expression::Float(u) => &u.loc,
+            Expression::String(u) => &u.loc,
+            Expression::Char(u) => &u.loc,
+            Expression::Hex(u) => &u.loc,
+            Expression::Address(u) => &u.loc,
+            Expression::List(u) => &u.loc,
+            Expression::Multiply(b) => &b.loc,
+            Expression::Divide(b) => &b.loc,
+            Expression::Modulo(b) => &b.loc,
+            Expression::Add(b) => &b.loc,
+            Expression::Subtract(b) => &b.loc,
+            Expression::Equal(b) => &b.loc,
+            Expression::NotEqual(b) => &b.loc,
+            Expression::Greater(b) => &b.loc,
+            Expression::Less(b) => &b.loc,
+            Expression::GreaterEq(b) => &b.loc,
+            Expression::LessEq(b) => &b.loc,
+            Expression::In(b) => &b.loc,
+            Expression::Not(u) => &u.loc,
+            Expression::Or(b) => &b.loc,
+            Expression::And(b) => &b.loc,
+            Expression::FunctionCall(f) => &f.loc,
+            Expression::MemberAccess(m) => &m.loc,
+            Expression::Pipe(b) => &b.loc,
+            Expression::StructInit(s) => &s.loc,
         }
     }
 }
