@@ -14,6 +14,7 @@ use crate::{
         Function,
         FunctionVisibility,
         Param,
+        StructDeclaration,
         Type,
         TypeVariant,
     },
@@ -76,7 +77,7 @@ fn test_list() {
         &mut contract,
     );
 
-    assert!(resolved_expr.is_ok());
+    assert!(resolved_expr.is_ok(), "Errors: {:#?}", contract.diagnostics);
     let expr = resolved_expr.unwrap();
     if let Expression::List(e) = expr {
         assert_eq!(e.ty, TypeVariant::List(Box::new(TypeVariant::Int)));
@@ -111,7 +112,7 @@ fn test_var() {
         &mut contract,
     );
 
-    assert!(resolved_expr.is_ok());
+    assert!(resolved_expr.is_ok(), "Errors: {:#?}", contract.diagnostics);
     let resolved_expr = resolved_expr.unwrap();
     if let Expression::Variable(var) = resolved_expr {
         assert_eq!(var.element, 0);
@@ -156,7 +157,7 @@ fn test_mul() {
         &mut contract,
     );
 
-    assert!(resolved_expr.is_ok());
+    assert!(resolved_expr.is_ok(), "Errors: {:#?}", contract.diagnostics);
 
     let resolved_expr = resolved_expr.unwrap();
 
@@ -195,7 +196,7 @@ fn test_eval() {
         &mut contract,
     );
 
-    assert!(resolved_expr.is_ok());
+    assert!(resolved_expr.is_ok(), "Errors: {:#?}", contract.diagnostics);
 
     let resolved_expr = resolved_expr.unwrap();
     assert!(matches!(resolved_expr, Expression::Int(_)));
@@ -336,7 +337,7 @@ fn test_func() {
         &mut contract,
     );
 
-    assert!(resolved_expr.is_ok());
+    assert!(resolved_expr.is_ok(), "Errors: {:#?}", contract.diagnostics);
 
     let Expression::FunctionCall(func_call) = resolved_expr.unwrap() else {
         panic!("Expected function resolved");
@@ -370,4 +371,120 @@ fn test_func() {
         TypeVariant::List(Box::new(TypeVariant::Int))
     );
     assert_eq!(func_call.args, vec![a, b, c]);
+}
+
+#[test]
+fn member_access() {
+    let loc = Span { start: 0, end: 0 };
+    let mut contract = ContractDefinition::default();
+    let mut scope = Scope::default();
+
+    let a = Param {
+        loc: loc.clone(),
+        ty: Type {
+            loc: loc.clone(),
+            ty: TypeVariant::String,
+        },
+        name: Identifier {
+            loc: loc.clone(),
+            name: "a".to_string(),
+        },
+        is_mut: false,
+        recursive: false,
+    };
+    let b = Param {
+        loc: loc.clone(),
+        ty: Type {
+            loc: loc.clone(),
+            ty: TypeVariant::Int,
+        },
+        name: Identifier {
+            loc: loc.clone(),
+            name: "b".to_string(),
+        },
+        is_mut: false,
+        recursive: false,
+    };
+    let c = Param {
+        loc: loc.clone(),
+        ty: Type {
+            loc: loc.clone(),
+            ty: TypeVariant::Address,
+        },
+        name: Identifier {
+            loc: loc.clone(),
+            name: "c".to_string(),
+        },
+        is_mut: false,
+        recursive: false,
+    };
+    contract.structs.push(StructDeclaration {
+        loc: loc.clone(),
+        name: Identifier {
+            loc: loc.clone(),
+            name: "MyStruct".to_string(),
+        },
+        fields: vec![a.clone(), b.clone(), c.clone()],
+    });
+
+    contract.add_global_symbol(
+        &Identifier {
+            loc: loc.clone(),
+            name: "MyStruct".to_string(),
+        },
+        GlobalSymbol::Struct(SymbolInfo {
+            loc: loc.clone(),
+            i: 0,
+        }),
+    );
+
+    let ident = Identifier {
+        loc: loc.clone(),
+        name: String::from("my_var"),
+    };
+
+    scope.symbols.add(
+        &mut contract,
+        &ident,
+        TypeVariant::Struct(SymbolInfo {
+            loc: loc.clone(),
+            i: 0,
+        }),
+        None,
+        VariableKind::Local,
+    );
+
+    let parsed_var = parsed_ast::Expression::Variable(ident.clone());
+    let expr = parsed_ast::Expression::MemberAccess(parsed_ast::MemberAccess {
+        loc: loc.clone(),
+        expr: Box::new(parsed_var),
+        member: c.name.clone(),
+    });
+
+    let resolved_expr = expression(
+        &expr,
+        ExpectedType::Concrete(TypeVariant::Address),
+        &mut scope,
+        &mut contract,
+    );
+    assert!(resolved_expr.is_ok(), "Errors: {:#?}", contract.diagnostics);
+
+    let Expression::MemberAccess(m_a) = resolved_expr.unwrap() else {
+        panic!("Expected member access");
+    };
+
+    assert!(matches!(m_a.expr.as_ref(), Expression::Variable(_)));
+    let Expression::Variable(var) = m_a.expr.as_ref() else {
+        panic!("Expected var as an expression");
+    };
+    assert_eq!(var.element, 0);
+    assert_eq!(
+        var.ty,
+        TypeVariant::Struct(SymbolInfo {
+            loc: loc.clone(),
+            i: 0
+        })
+    );
+    assert_eq!(m_a.ty, TypeVariant::Address);
+    assert_eq!(m_a.member, (2, loc.clone()));
 }

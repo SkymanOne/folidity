@@ -139,7 +139,7 @@ pub fn resolve_variable(
             let (var_id, table) = find_var(ident, contract, scope)?;
             let sym = table.vars.get(&var_id).unwrap();
 
-            if !tys.contains(&sym.ty) {
+            if !tys.is_empty() && !tys.contains(&sym.ty) {
                 contract.diagnostics.push(Report::type_error(
                     ident.loc.clone(),
                     String::from("Variable is not of any allowed types."),
@@ -402,7 +402,7 @@ pub fn resolve_member_access(
                         StateBody::Model(s) => &contract.models[s.i].fields,
                     };
 
-                    if let Some(pos) = members.iter().position(|m| &m.name.name == &member.name) {
+                    if let Some(pos) = members.iter().position(|m| m.name.name == member.name) {
                         let field = &members[pos];
                         let ty = field.ty.ty.clone();
                         (ty, pos)
@@ -425,7 +425,7 @@ pub fn resolve_member_access(
                 let state_decl = &contract.structs[s.i];
                 let members = &state_decl.fields;
 
-                if let Some(pos) = members.iter().position(|m| &m.name.name == &member.name) {
+                if let Some(pos) = members.iter().position(|m| m.name.name == member.name) {
                     let field = &members[pos];
                     let ty = field.ty.ty.clone();
                     (ty, pos)
@@ -441,7 +441,7 @@ pub fn resolve_member_access(
                 let state_decl = &contract.models[s.i];
                 let members = &state_decl.fields;
 
-                if let Some(pos) = members.iter().position(|m| &m.name.name == &member.name) {
+                if let Some(pos) = members.iter().position(|m| m.name.name == member.name) {
                     let field = &members[pos];
                     let ty = field.ty.ty.clone();
                     (ty, pos)
@@ -455,7 +455,7 @@ pub fn resolve_member_access(
             }
             TypeVariant::Enum(s) => {
                 let state_decl = &contract.enums[s.i];
-                let members: &Vec<&String> = &state_decl.variants.keys().map(|x| x).collect();
+                let members: &Vec<&String> = &state_decl.variants.keys().collect();
 
                 if let Some(pos) = &members.iter().position(|m| *m == &member.name) {
                     let ty = TypeVariant::Enum(s.clone());
