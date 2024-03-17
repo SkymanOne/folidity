@@ -614,36 +614,30 @@ pub fn resolve_struct_init(
             Ok(parsed_args)
         };
 
+    let mut check_types = |tv: TypeVariant, contract: &mut ContractDefinition| -> Result<(), ()> {
+        match &expected_ty {
+            ExpectedType::Empty => {
+                contract.diagnostics.push(Report::type_error(
+                    loc.clone(),
+                    String::from("Initialisation can only happen in variable declaration."),
+                ));
+                Err(())
+            }
+            ExpectedType::Concrete(ty) if ty != &tv => {
+                report_type_mismatch(&[expected_ty.clone()], &tv, &loc, contract);
+                Err(())
+            }
+            ExpectedType::Dynamic(tys) if !tys.contains(&tv) => {
+                report_type_mismatch(&[expected_ty.clone()], &tv, &loc, contract);
+                Err(())
+            }
+            _ => Ok(()),
+        }
+    };
+
     match sym {
         GlobalSymbol::Struct(s) => {
-            match &expected_ty {
-                ExpectedType::Empty => {
-                    contract.diagnostics.push(Report::type_error(
-                        loc.clone(),
-                        String::from("Initialisation can only happen in variable declaration."),
-                    ));
-                    return Err(());
-                }
-                ExpectedType::Concrete(ty) if ty != &TypeVariant::Struct(s.clone()) => {
-                    report_type_mismatch(
-                        &[expected_ty],
-                        &TypeVariant::Struct(s.clone()),
-                        &loc,
-                        contract,
-                    );
-                    return Err(());
-                }
-                ExpectedType::Dynamic(tys) if !tys.contains(&TypeVariant::Struct(s.clone())) => {
-                    report_type_mismatch(
-                        &[expected_ty],
-                        &TypeVariant::Struct(s.clone()),
-                        &loc,
-                        contract,
-                    );
-                    return Err(());
-                }
-                _ => {}
-            };
+            check_types(TypeVariant::Struct(s.clone()), contract)?;
 
             let struct_decl = contract.structs[s.i].clone();
             if struct_decl.fields.len() != args.len() {
@@ -653,7 +647,7 @@ pub fn resolve_struct_init(
                 ));
                 return Err(());
             }
-            let (parsed_args, error_args) = parse_args(&args, &struct_decl.fields, scope, contract);
+            let (parsed_args, error_args) = parse_args(args, &struct_decl.fields, scope, contract);
 
             if error_args {
                 contract.diagnostics.push(Report::type_error(
@@ -674,34 +668,7 @@ pub fn resolve_struct_init(
             }))
         }
         GlobalSymbol::Model(s) => {
-            match &expected_ty {
-                ExpectedType::Empty => {
-                    contract.diagnostics.push(Report::type_error(
-                        loc.clone(),
-                        String::from("Initialisation can only happen in variable declaration."),
-                    ));
-                    return Err(());
-                }
-                ExpectedType::Concrete(ty) if ty != &TypeVariant::Model(s.clone()) => {
-                    report_type_mismatch(
-                        &[expected_ty],
-                        &TypeVariant::Model(s.clone()),
-                        &loc,
-                        contract,
-                    );
-                    return Err(());
-                }
-                ExpectedType::Dynamic(tys) if !tys.contains(&TypeVariant::Model(s.clone())) => {
-                    report_type_mismatch(
-                        &[expected_ty],
-                        &TypeVariant::Model(s.clone()),
-                        &loc,
-                        contract,
-                    );
-                    return Err(());
-                }
-                _ => {}
-            };
+            check_types(TypeVariant::Model(s.clone()), contract)?;
 
             let parsed_args = resolve_model(&s, contract)?;
 
@@ -716,34 +683,7 @@ pub fn resolve_struct_init(
             }))
         }
         GlobalSymbol::State(s) => {
-            match &expected_ty {
-                ExpectedType::Empty => {
-                    contract.diagnostics.push(Report::type_error(
-                        loc.clone(),
-                        String::from("Initialisation can only happen in variable declaration."),
-                    ));
-                    return Err(());
-                }
-                ExpectedType::Concrete(ty) if ty != &TypeVariant::State(s.clone()) => {
-                    report_type_mismatch(
-                        &[expected_ty],
-                        &TypeVariant::State(s.clone()),
-                        &loc,
-                        contract,
-                    );
-                    return Err(());
-                }
-                ExpectedType::Dynamic(tys) if !tys.contains(&TypeVariant::State(s.clone())) => {
-                    report_type_mismatch(
-                        &[expected_ty],
-                        &TypeVariant::State(s.clone()),
-                        &loc,
-                        contract,
-                    );
-                    return Err(());
-                }
-                _ => {}
-            };
+            check_types(TypeVariant::State(s.clone()), contract)?;
 
             let state_decl = contract.states[s.i].clone();
             if state_decl.body.is_none() {
