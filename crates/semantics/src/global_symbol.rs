@@ -29,12 +29,9 @@ pub enum GlobalSymbol {
 impl GlobalSymbol {
     /// Lookup symbol by ident in the contract definition,
     /// and add diagnostic error if not present.
-    pub fn lookup<'a>(
-        contract: &'a mut ContractDefinition,
-        ident: &'a Identifier,
-    ) -> Option<&'a Self> {
+    pub fn lookup(contract: &mut ContractDefinition, ident: &Identifier) -> Option<Self> {
         match contract.declaration_symbols.get(&ident.name) {
-            Some(v) => Some(v),
+            Some(v) => Some(v.clone()),
             None => {
                 contract.diagnostics.push(Report::semantic_error(
                     ident.loc.clone(),

@@ -25,6 +25,7 @@ use self::{
         resolve_func_call,
         resolve_member_access,
         resolve_pipe,
+        resolve_struct_init,
         resolve_variable,
     },
     literals::{
@@ -262,7 +263,17 @@ pub fn expression(
         parsed_ast::Expression::Pipe(b) => {
             resolve_pipe(&b.left, &b.right, scope, contract, expected_ty)
         }
-        parsed_ast::Expression::StructInit(_) => todo!(),
+        parsed_ast::Expression::StructInit(s) => {
+            resolve_struct_init(
+                &s.name,
+                &s.args,
+                &s.auto_object,
+                s.loc.clone(),
+                contract,
+                scope,
+                expected_ty,
+            )
+        }
     }
 }
 

@@ -595,3 +595,127 @@ fn pipe() {
         TypeVariant::List(Box::new(TypeVariant::Int))
     );
 }
+
+#[test]
+fn init_struct() {
+    let loc = Span { start: 0, end: 0 };
+    let mut contract = ContractDefinition::default();
+    let mut scope = Scope::default();
+
+    let a = Param {
+        loc: loc.clone(),
+        ty: Type {
+            loc: loc.clone(),
+            ty: TypeVariant::String,
+        },
+        name: Identifier {
+            loc: loc.clone(),
+            name: "a".to_string(),
+        },
+        is_mut: false,
+        recursive: false,
+    };
+    let b = Param {
+        loc: loc.clone(),
+        ty: Type {
+            loc: loc.clone(),
+            ty: TypeVariant::Uint,
+        },
+        name: Identifier {
+            loc: loc.clone(),
+            name: "b".to_string(),
+        },
+        is_mut: false,
+        recursive: false,
+    };
+    contract.structs.push(StructDeclaration {
+        loc: loc.clone(),
+        name: Identifier {
+            loc: loc.clone(),
+            name: "MyStruct".to_string(),
+        },
+        fields: vec![a.clone(), b.clone()],
+    });
+
+    contract.add_global_symbol(
+        &Identifier {
+            loc: loc.clone(),
+            name: "MyStruct".to_string(),
+        },
+        GlobalSymbol::Struct(SymbolInfo {
+            loc: loc.clone(),
+            i: 0,
+        }),
+    );
+
+    let ident = Identifier {
+        loc: loc.clone(),
+        name: String::from("my_var"),
+    };
+
+    scope.symbols.add(
+        &mut contract,
+        &ident,
+        TypeVariant::Struct(SymbolInfo {
+            loc: loc.clone(),
+            i: 0,
+        }),
+        None,
+        VariableKind::Local,
+    );
+
+    let number = parsed_ast::Expression::Number(parsed_ast::UnaryExpression {
+        loc: loc.clone(),
+        element: "1".to_string(),
+    });
+
+    let string = parsed_ast::Expression::String(parsed_ast::UnaryExpression {
+        loc: loc.clone(),
+        element: "Hello World".to_string(),
+    });
+
+    let parsed_init = parsed_ast::Expression::StructInit(parsed_ast::StructInit {
+        loc: loc.clone(),
+        name: Identifier {
+            loc: loc.clone(),
+            name: "MyStruct".to_string(),
+        },
+        args: vec![string.clone(), number.clone()],
+        auto_object: None,
+    });
+
+    let resolved_expr = expression(
+        &parsed_init,
+        ExpectedType::Concrete(TypeVariant::Struct(SymbolInfo {
+            loc: loc.clone(),
+            i: 0,
+        })),
+        &mut scope,
+        &mut contract,
+    );
+
+    assert!(resolved_expr.is_ok(), "Errors: {:#?}", contract.diagnostics);
+    let Expression::StructInit(init) = resolved_expr.unwrap() else {
+        panic!()
+    };
+    assert_eq!(
+        init.ty,
+        TypeVariant::Struct(SymbolInfo {
+            loc: loc.clone(),
+            i: 0
+        })
+    );
+    let resolved_args: Vec<Expression> = vec![string, number]
+        .iter()
+        .map(|e| {
+            expression(
+                e,
+                ExpectedType::Dynamic(vec![TypeVariant::String, TypeVariant::Uint]),
+                &mut scope,
+                &mut contract,
+            )
+            .unwrap()
+        })
+        .collect();
+    assert_eq!(init.element.args, resolved_args)
+}

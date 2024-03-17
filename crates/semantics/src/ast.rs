@@ -368,7 +368,6 @@ pub struct Iterator {
 
 #[derive(Clone, Debug, PartialEq, Node)]
 pub struct StructInit {
-    pub loc: Span,
     pub name: Identifier,
     pub args: Vec<Expression>,
     /// Autofill fields from partial object

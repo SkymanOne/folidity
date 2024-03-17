@@ -19,12 +19,18 @@ use crate::{
         FunctionCall,
         FunctionType,
         MemberAccess,
+        Param,
         StateBody,
+        StructInit,
         TypeVariant,
         UnaryExpression,
     },
     contract::ContractDefinition,
-    global_symbol::SymbolKind,
+    global_symbol::{
+        GlobalSymbol,
+        SymbolInfo,
+        SymbolKind,
+    },
     symtable::{
         Scope,
         SymTable,
@@ -196,25 +202,16 @@ pub fn resolve_func_call(
         return Err(());
     }
 
-    let mut error_args = false;
-
-    let parsed_args: Vec<Expression> = args
-        .iter()
-        .zip(func.params.iter().map(|p| p.1))
-        .filter_map(|(e, p)| {
-            // if the param is generic, then we convert it to the dynamic expected type.
-            let arg_expected_ty = match &p.ty.ty {
-                TypeVariant::Generic(tys) => ExpectedType::Dynamic(tys.clone()),
-                a_ty => ExpectedType::Concrete(a_ty.clone()),
-            };
-            if let Ok(res_arg) = expression(e, arg_expected_ty, scope, contract) {
-                Some(res_arg)
-            } else {
-                error_args = true;
-                None
-            }
-        })
-        .collect();
+    let (parsed_args, error_args) = parse_args(
+        args,
+        func.params
+            .iter()
+            .map(|p| p.1.clone())
+            .collect::<Vec<Param>>()
+            .as_slice(),
+        scope,
+        contract,
+    );
 
     if error_args {
         contract.diagnostics.push(Report::semantic_error(
@@ -566,6 +563,278 @@ pub fn resolve_pipe(
         scope,
         contract,
     )
+}
+
+/// Resolve initialise of the structure type.
+/// # Note
+/// - Auto-object fill is currently unsupported.
+/// # Errors
+/// - The type of the structure mismatches the expected one.
+/// - Invalid number of type of arguments.
+pub fn resolve_struct_init(
+    ident: &Identifier,
+    args: &Vec<parsed_ast::Expression>,
+    auto_object: &Option<Identifier>,
+    loc: Span,
+    contract: &mut ContractDefinition,
+    scope: &mut Scope,
+    expected_ty: ExpectedType,
+) -> Result<Expression, ()> {
+    if auto_object.is_some() {
+        // todo: implement auto-object
+        contract.diagnostics.push(Report::semantic_error(
+            loc.clone(),
+            String::from("Auto-object is currently unsupported."),
+        ));
+        return Err(());
+    }
+    let Some(sym) = GlobalSymbol::lookup(contract, ident) else {
+        return Err(());
+    };
+
+    let mut resolve_model =
+        |s: &SymbolInfo, contract: &mut ContractDefinition| -> Result<Vec<Expression>, ()> {
+            let model_decl = contract.models[s.i].clone();
+            if model_decl.fields.len() != args.len() {
+                contract.diagnostics.push(Report::semantic_error(
+                    loc.clone(),
+                    String::from("Invalid number of arguments."),
+                ));
+                return Err(());
+            }
+            let (parsed_args, error_args) = parse_args(args, &model_decl.fields, scope, contract);
+
+            if error_args {
+                contract.diagnostics.push(Report::type_error(
+                    loc.clone(),
+                    String::from("Argument types mismatched."),
+                ));
+                return Err(());
+            }
+            Ok(parsed_args)
+        };
+
+    match sym {
+        GlobalSymbol::Struct(s) => {
+            match &expected_ty {
+                ExpectedType::Empty => {
+                    contract.diagnostics.push(Report::type_error(
+                        loc.clone(),
+                        String::from("Initialisation can only happen in variable declaration."),
+                    ));
+                    return Err(());
+                }
+                ExpectedType::Concrete(ty) if ty != &TypeVariant::Struct(s.clone()) => {
+                    report_type_mismatch(
+                        &[expected_ty],
+                        &TypeVariant::Struct(s.clone()),
+                        &loc,
+                        contract,
+                    );
+                    return Err(());
+                }
+                ExpectedType::Dynamic(tys) if !tys.contains(&TypeVariant::Struct(s.clone())) => {
+                    report_type_mismatch(
+                        &[expected_ty],
+                        &TypeVariant::Struct(s.clone()),
+                        &loc,
+                        contract,
+                    );
+                    return Err(());
+                }
+                _ => {}
+            };
+
+            let struct_decl = contract.structs[s.i].clone();
+            if struct_decl.fields.len() != args.len() {
+                contract.diagnostics.push(Report::semantic_error(
+                    loc.clone(),
+                    String::from("Invalid number of arguments."),
+                ));
+                return Err(());
+            }
+            let (parsed_args, error_args) = parse_args(&args, &struct_decl.fields, scope, contract);
+
+            if error_args {
+                contract.diagnostics.push(Report::type_error(
+                    loc.clone(),
+                    String::from("Argument types mismatched."),
+                ));
+                return Err(());
+            }
+
+            Ok(Expression::StructInit(UnaryExpression {
+                loc: loc.clone(),
+                element: StructInit {
+                    name: ident.clone(),
+                    args: parsed_args,
+                    auto_object: None,
+                },
+                ty: TypeVariant::Struct(s.clone()),
+            }))
+        }
+        GlobalSymbol::Model(s) => {
+            match &expected_ty {
+                ExpectedType::Empty => {
+                    contract.diagnostics.push(Report::type_error(
+                        loc.clone(),
+                        String::from("Initialisation can only happen in variable declaration."),
+                    ));
+                    return Err(());
+                }
+                ExpectedType::Concrete(ty) if ty != &TypeVariant::Model(s.clone()) => {
+                    report_type_mismatch(
+                        &[expected_ty],
+                        &TypeVariant::Model(s.clone()),
+                        &loc,
+                        contract,
+                    );
+                    return Err(());
+                }
+                ExpectedType::Dynamic(tys) if !tys.contains(&TypeVariant::Model(s.clone())) => {
+                    report_type_mismatch(
+                        &[expected_ty],
+                        &TypeVariant::Model(s.clone()),
+                        &loc,
+                        contract,
+                    );
+                    return Err(());
+                }
+                _ => {}
+            };
+
+            let parsed_args = resolve_model(&s, contract)?;
+
+            Ok(Expression::StructInit(UnaryExpression {
+                loc: loc.clone(),
+                element: StructInit {
+                    name: ident.clone(),
+                    args: parsed_args,
+                    auto_object: None,
+                },
+                ty: TypeVariant::Model(s.clone()),
+            }))
+        }
+        GlobalSymbol::State(s) => {
+            match &expected_ty {
+                ExpectedType::Empty => {
+                    contract.diagnostics.push(Report::type_error(
+                        loc.clone(),
+                        String::from("Initialisation can only happen in variable declaration."),
+                    ));
+                    return Err(());
+                }
+                ExpectedType::Concrete(ty) if ty != &TypeVariant::State(s.clone()) => {
+                    report_type_mismatch(
+                        &[expected_ty],
+                        &TypeVariant::State(s.clone()),
+                        &loc,
+                        contract,
+                    );
+                    return Err(());
+                }
+                ExpectedType::Dynamic(tys) if !tys.contains(&TypeVariant::State(s.clone())) => {
+                    report_type_mismatch(
+                        &[expected_ty],
+                        &TypeVariant::State(s.clone()),
+                        &loc,
+                        contract,
+                    );
+                    return Err(());
+                }
+                _ => {}
+            };
+
+            let state_decl = contract.states[s.i].clone();
+            if state_decl.body.is_none() {
+                if !args.is_empty() {
+                    contract.diagnostics.push(Report::semantic_error(
+                        loc.clone(),
+                        String::from("This state has no body to initialise."),
+                    ));
+                    return Err(());
+                } else {
+                    return Ok(Expression::StructInit(UnaryExpression {
+                        loc: loc.clone(),
+                        element: StructInit {
+                            name: ident.clone(),
+                            args: vec![],
+                            auto_object: None,
+                        },
+                        ty: TypeVariant::State(s.clone()),
+                    }));
+                };
+            }
+
+            let body = &state_decl.body.unwrap();
+            let parsed_args = match body {
+                StateBody::Raw(fields) => {
+                    if fields.len() != args.len() {
+                        contract.diagnostics.push(Report::semantic_error(
+                            loc.clone(),
+                            String::from("Invalid number of arguments."),
+                        ));
+                        return Err(());
+                    }
+                    let (parsed_args, error_args) = parse_args(&args, fields, scope, contract);
+
+                    if error_args {
+                        contract.diagnostics.push(Report::type_error(
+                            loc.clone(),
+                            String::from("Argument types mismatched."),
+                        ));
+                        return Err(());
+                    }
+                    parsed_args
+                }
+                StateBody::Model(s) => resolve_model(s, contract)?,
+            };
+            Ok(Expression::StructInit(UnaryExpression {
+                loc: loc.clone(),
+                element: StructInit {
+                    name: ident.clone(),
+                    args: parsed_args,
+                    auto_object: None,
+                },
+                ty: TypeVariant::State(s.clone()),
+            }))
+        }
+        GlobalSymbol::Function(_) | GlobalSymbol::Enum(_) => {
+            contract.diagnostics.push(Report::semantic_error(
+                ident.loc.clone(),
+                String::from("Functions, States and Enums be initialised."),
+            ));
+            Err(())
+        }
+    }
+}
+
+fn parse_args(
+    args: &[parsed_ast::Expression],
+    params: &[Param],
+    scope: &mut Scope,
+    contract: &mut ContractDefinition,
+) -> (Vec<Expression>, bool) {
+    let mut error_args = false;
+
+    let parsed_args: Vec<Expression> = args
+        .iter()
+        .zip(params.iter())
+        .filter_map(|(e, p)| {
+            // if the param is generic, then we convert it to the dynamic expected type.
+            let arg_expected_ty = match &p.ty.ty {
+                TypeVariant::Generic(tys) => ExpectedType::Dynamic(tys.clone()),
+                a_ty => ExpectedType::Concrete(a_ty.clone()),
+            };
+            if let Ok(res_arg) = expression(e, arg_expected_ty, scope, contract) {
+                Some(res_arg)
+            } else {
+                error_args = true;
+                None
+            }
+        })
+        .collect();
+    (parsed_args, error_args)
 }
 
 fn check_func_return_type(ty: &TypeVariant, return_ty: &TypeVariant) -> bool {
