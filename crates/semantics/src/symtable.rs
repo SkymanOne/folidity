@@ -40,10 +40,10 @@ pub enum VariableKind {
     Param,
     Local,
     State,
-    /// A user defined type
-    /// (e.g. Struct, Model, Enum, Function)
-    /// which should exist in global namespace.
-    User(usize),
+    // /// A user defined type
+    // /// (e.g. Struct, Model, Enum, Function)
+    // /// which should exist in global namespace.
+    // User(usize),
 }
 
 /// Context of the scope in the symtable.

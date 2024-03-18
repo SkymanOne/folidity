@@ -717,5 +717,5 @@ fn init_struct() {
             .unwrap()
         })
         .collect();
-    assert_eq!(init.element.args, resolved_args)
+    assert_eq!(init.args, resolved_args)
 }

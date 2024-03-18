@@ -5,7 +5,6 @@ use folidity_parser::{
     ast::{
         self as parsed_ast,
         Identifier,
-        Type,
     },
     Span,
 };
@@ -13,7 +12,6 @@ use folidity_parser::{
 use crate::{
     ast::{
         self,
-        BinaryExpression,
         Expression,
         Function,
         FunctionCall,
@@ -614,7 +612,7 @@ pub fn resolve_struct_init(
             Ok(parsed_args)
         };
 
-    let mut check_types = |tv: TypeVariant, contract: &mut ContractDefinition| -> Result<(), ()> {
+    let check_types = |tv: TypeVariant, contract: &mut ContractDefinition| -> Result<(), ()> {
         match &expected_ty {
             ExpectedType::Empty => {
                 contract.diagnostics.push(Report::type_error(
@@ -657,13 +655,11 @@ pub fn resolve_struct_init(
                 return Err(());
             }
 
-            Ok(Expression::StructInit(UnaryExpression {
+            Ok(Expression::StructInit(StructInit {
                 loc: loc.clone(),
-                element: StructInit {
-                    name: ident.clone(),
-                    args: parsed_args,
-                    auto_object: None,
-                },
+                name: ident.clone(),
+                args: parsed_args,
+                auto_object: None,
                 ty: TypeVariant::Struct(s.clone()),
             }))
         }
@@ -672,13 +668,11 @@ pub fn resolve_struct_init(
 
             let parsed_args = resolve_model(&s, contract)?;
 
-            Ok(Expression::StructInit(UnaryExpression {
+            Ok(Expression::StructInit(StructInit {
                 loc: loc.clone(),
-                element: StructInit {
-                    name: ident.clone(),
-                    args: parsed_args,
-                    auto_object: None,
-                },
+                name: ident.clone(),
+                args: parsed_args,
+                auto_object: None,
                 ty: TypeVariant::Model(s.clone()),
             }))
         }
@@ -694,13 +688,11 @@ pub fn resolve_struct_init(
                     ));
                     return Err(());
                 } else {
-                    return Ok(Expression::StructInit(UnaryExpression {
+                    return Ok(Expression::StructInit(StructInit {
                         loc: loc.clone(),
-                        element: StructInit {
-                            name: ident.clone(),
-                            args: vec![],
-                            auto_object: None,
-                        },
+                        name: ident.clone(),
+                        args: vec![],
+                        auto_object: None,
                         ty: TypeVariant::State(s.clone()),
                     }));
                 };
@@ -729,13 +721,11 @@ pub fn resolve_struct_init(
                 }
                 StateBody::Model(s) => resolve_model(s, contract)?,
             };
-            Ok(Expression::StructInit(UnaryExpression {
+            Ok(Expression::StructInit(StructInit {
                 loc: loc.clone(),
-                element: StructInit {
-                    name: ident.clone(),
-                    args: parsed_args,
-                    auto_object: None,
-                },
+                name: ident.clone(),
+                args: parsed_args,
+                auto_object: None,
                 ty: TypeVariant::State(s.clone()),
             }))
         }

@@ -330,7 +330,7 @@ pub struct Variable {
     pub loc: Span,
     pub names: Vec<Identifier>,
     pub mutable: bool,
-    pub ty: Option<Type>,
+    pub ty: TypeVariant,
     pub value: Option<Expression>,
 }
 
@@ -368,11 +368,14 @@ pub struct Iterator {
 
 #[derive(Clone, Debug, PartialEq, Node)]
 pub struct StructInit {
+    pub loc: Span,
     pub name: Identifier,
     pub args: Vec<Expression>,
     /// Autofill fields from partial object
     /// using `..ident` notation.
     pub auto_object: Option<Identifier>,
+    /// Type of an expression.
+    pub ty: TypeVariant,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -413,7 +416,7 @@ pub enum Expression {
 
     FunctionCall(FunctionCall),
     MemberAccess(MemberAccess),
-    StructInit(UnaryExpression<StructInit>),
+    StructInit(StructInit),
 
     List(UnaryExpression<Vec<Expression>>),
 }

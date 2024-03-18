@@ -426,3 +426,21 @@ impl Expression {
         }
     }
 }
+
+impl Statement {
+    pub fn loc(&self) -> &Span {
+        match self {
+            Statement::Variable(v) => &v.loc,
+            Statement::Assign(a) => &a.loc,
+            Statement::IfElse(br) => &br.loc,
+            Statement::ForLoop(l) => &l.loc,
+            Statement::Iterator(i) => &i.loc,
+            Statement::Return(e) => e.loc(),
+            Statement::Expression(e) => e.loc(),
+            Statement::StateTransition(tr) => &tr.loc,
+            Statement::Block(b) => &b.loc,
+            Statement::Skip(s) => s,
+            Statement::Error(s) => s,
+        }
+    }
+}
