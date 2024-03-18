@@ -96,12 +96,13 @@ fn test_var() {
         name: String::from("my_var"),
     };
 
-    scope.symbols.add(
+    scope.tables[scope.current].add(
         &mut contract,
         &ident,
         TypeVariant::Int,
         None,
         VariableKind::Local,
+        true,
     );
 
     let parsed_var = parsed_ast::Expression::Variable(ident.clone());
@@ -443,7 +444,7 @@ fn member_access() {
         name: String::from("my_var"),
     };
 
-    scope.symbols.add(
+    scope.tables[scope.current].add(
         &mut contract,
         &ident,
         TypeVariant::Struct(SymbolInfo {
@@ -452,6 +453,7 @@ fn member_access() {
         }),
         None,
         VariableKind::Local,
+        true,
     );
 
     let parsed_var = parsed_ast::Expression::Variable(ident.clone());
@@ -653,7 +655,7 @@ fn init_struct() {
         name: String::from("my_var"),
     };
 
-    scope.symbols.add(
+    scope.tables[scope.current].add(
         &mut contract,
         &ident,
         TypeVariant::Struct(SymbolInfo {
@@ -662,6 +664,7 @@ fn init_struct() {
         }),
         None,
         VariableKind::Local,
+        true,
     );
 
     let number = parsed_ast::Expression::Number(parsed_ast::UnaryExpression {

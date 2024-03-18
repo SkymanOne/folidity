@@ -799,12 +799,12 @@ fn find_var<'a>(
     contract: &mut ContractDefinition,
     scope: &'a mut Scope,
 ) -> Result<(usize, &'a SymTable), ()> {
-    let Some(v) = scope.find_var_index(&ident.name) else {
+    let Some((v_i, t_i)) = scope.find_var_index(&ident.name) else {
         contract.diagnostics.push(Report::semantic_error(
             ident.loc.clone(),
             String::from("Variable is not declared."),
         ));
         return Err(());
     };
-    Ok(v)
+    Ok((v_i, &scope.tables[t_i]))
 }

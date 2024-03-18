@@ -23,6 +23,8 @@ pub struct VariableSym {
     pub used: bool,
     /// The usage context of the variable.
     pub usage: VariableKind,
+    /// Can the variable be mutated.
+    pub mutable: bool,
 }
 
 impl VariableSym {
@@ -54,6 +56,7 @@ pub enum ScopeContext {
     #[default]
     Global,
     Loop,
+    Block,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -74,6 +77,7 @@ impl SymTable {
         ty: TypeVariant,
         value: Option<Expression>,
         usage: VariableKind,
+        mutable: bool,
     ) {
         let current_id = contract.next_var_id;
         contract.next_var_id += 1;
@@ -86,6 +90,7 @@ impl SymTable {
                 value,
                 usage,
                 used: false,
+                mutable,
             },
         );
 
@@ -93,14 +98,21 @@ impl SymTable {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Scope {
-    /// Parent scope.
-    pub parent: Option<Box<Scope>>,
-    /// Symbols within the current scope.
-    pub symbols: SymTable,
-    /// Child scope.
-    pub child: Option<Box<Scope>>,
+    /// List of scoped symbol tables.
+    pub tables: Vec<SymTable>,
+    /// Index of the current scope.
+    pub current: usize,
+}
+
+impl Default for Scope {
+    fn default() -> Self {
+        Self {
+            tables: vec![SymTable::default()],
+            current: 0,
+        }
+    }
 }
 
 impl Scope {
@@ -108,28 +120,56 @@ impl Scope {
     ///
     /// # Returns
     /// - Index of a symbol in the table if found.
-    /// - Reference to the table where the symbol can be found if any.
-    pub fn find_var_index(&self, name: &str) -> Option<(usize, &SymTable)> {
-        if let Some(i) = self.symbols.names.get(name) {
-            Some((*i, &self.symbols))
-        } else if let Some(scope) = &self.parent {
-            scope.find_var_index(name)
-        } else {
-            None
+    /// - Index of the table where the symbol can be found if any.
+    pub fn find_var_index(&mut self, name: &str) -> Option<(usize, usize)> {
+        let mut table_i = self.current;
+        let mut table = &self.tables[table_i];
+        let mut v_i = table.names.get(name);
+        while table_i > 0 {
+            table_i -= 1;
+            table = &self.tables[table_i];
+            v_i = table.names.get(name);
+            if v_i.is_some() {
+                break;
+            }
         }
+        v_i.map(|i| (*i, table_i))
     }
 
-    /// Attempts to find a symbol with the given symbol in the current or outer scopes.
+    /// Attempts to find a symbol with the given index in the current or outer scopes.
     ///
     /// # Returns
     /// - A reference to the symbol in the table if any
     pub fn find_symbol(&self, index: &usize) -> Option<&VariableSym> {
-        if let Some(s) = self.symbols.vars.get(index) {
-            Some(s)
-        } else if let Some(scope) = &self.parent {
-            scope.find_symbol(index)
-        } else {
-            None
+        let mut table_i = self.current;
+        let mut table = &self.tables[table_i];
+        let mut sym = table.vars.get(index);
+        while table_i > 0 {
+            table_i -= 1;
+            table = &self.tables[table_i];
+            sym = table.vars.get(index);
+            if sym.is_some() {
+                break;
+            }
         }
+        sym
+    }
+
+    /// Pushes the scope context onto the stack.
+    pub fn push_scope(&mut self, context: ScopeContext) {
+        if self.current == self.tables.len() - 1 {
+            let table = SymTable {
+                context,
+                ..Default::default()
+            };
+            self.tables.push(table);
+        }
+        self.current += 1;
+    }
+
+    /// Pop the scope context onto the stack.
+    pub fn pop_scope(&mut self) {
+        self.current = self.current.saturating_sub(1);
+        self.tables.pop();
     }
 }
