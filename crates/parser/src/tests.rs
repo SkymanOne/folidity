@@ -263,7 +263,7 @@ fn test_factorial_tree() -> Result<(), String> {
                         body: Box::new(StatementBlock {
                             loc: 113..170,
                             statements: vec![
-                                Statement::StateTransition(StructInit {
+                                Statement::StateTransition(Expression::StructInit(StructInit {
                                     loc: 128..141,
                                     name: Identifier {
                                         loc: 128..138,
@@ -271,7 +271,7 @@ fn test_factorial_tree() -> Result<(), String> {
                                     },
                                     args: vec![],
                                     auto_object: None,
-                                }),
+                                })),
                                 Statement::Return(Return {
                                     loc: 151..163,
                                     expr: Some(Expression::Variable(Identifier {

@@ -12,6 +12,7 @@ use crate::{
         Function,
         FunctionVisibility,
         Param,
+        StateBound,
         StateParam,
         Type,
         TypeVariant,
@@ -91,25 +92,17 @@ pub fn function_decl(
             ));
         }
 
-        if let Some(ident) = &v.param.ty {
-            if let Some(sym) = GlobalSymbol::lookup(contract, ident) {
-                if let GlobalSymbol::State(s) = sym {
-                    id = s.i;
-                } else {
-                    contract.diagnostics.push(Report::semantic_error(
-                        ident.loc.clone(),
-                        String::from("You can only view states."),
-                    ));
-                    view_error = true;
-                }
+        if let Some(sym) = GlobalSymbol::lookup(contract, &v.param.ty) {
+            if let GlobalSymbol::State(s) = sym {
+                id = s.i;
             } else {
+                contract.diagnostics.push(Report::semantic_error(
+                    ident.loc.clone(),
+                    String::from("You can only view states."),
+                ));
                 view_error = true;
             }
         } else {
-            contract.diagnostics.push(Report::semantic_error(
-                v.loc.clone(),
-                String::from("State name must be specified."),
-            ));
             view_error = true;
         }
 
@@ -136,11 +129,8 @@ pub fn function_decl(
         } else {
             func_vis = FunctionVisibility::View(ViewState {
                 loc: v.loc.clone(),
-                param: StateParam {
-                    loc: v.param.loc.clone(),
-                    ty: id,
-                    name: ident,
-                },
+                ty: id,
+                name: ident,
             })
         }
     } else {
@@ -154,6 +144,17 @@ pub fn function_decl(
             _ => {}
         }
     }
+    let s_bound = if let Some(state_bound) = &func.state_bound {
+        match resolve_func_state_bound(func, state_bound, contract) {
+            Ok(v) => Some(v),
+            Err(_) => {
+                error = true;
+                None
+            }
+        }
+    } else {
+        None
+    };
 
     if error {
         return Err(());
@@ -166,6 +167,7 @@ pub fn function_decl(
         return_ty,
         func.name.clone(),
         params,
+        s_bound,
     );
 
     // todo: resolve access attributes
@@ -282,4 +284,56 @@ fn validate_type(ty: &TypeVariant, contract: &mut ContractDefinition, loc: &Span
         }
         _ => true,
     }
+}
+
+fn resolve_func_state_bound(
+    func: &parsed_ast::FunctionDeclaration,
+    state_bound: &parsed_ast::StateBound,
+    contract: &mut ContractDefinition,
+) -> Result<StateBound, ()> {
+    let mut lookup_param = |param: &parsed_ast::StateParam| -> Result<StateParam, ()> {
+        if let Some(GlobalSymbol::State(sym)) = GlobalSymbol::lookup(contract, &param.ty) {
+            Ok(StateParam {
+                loc: param.loc.clone(),
+                ty: sym.clone(),
+                name: param.name.clone(),
+            })
+        } else {
+            contract.diagnostics.push(Report::semantic_error(
+                param.ty.loc.clone(),
+                String::from("Must be a state."),
+            ));
+            Err(())
+        }
+    };
+    let from_b = if let Some(from) = &state_bound.from {
+        Some(lookup_param(from)?)
+    } else {
+        None
+    };
+
+    let mut error = false;
+    let tos: Vec<StateParam> = state_bound
+        .to
+        .iter()
+        .filter_map(|param| {
+            match lookup_param(param) {
+                Ok(v) => Some(v),
+                Err(_) => {
+                    error = true;
+                    None
+                }
+            }
+        })
+        .collect();
+
+    if error {
+        return Err(());
+    }
+
+    Ok(StateBound {
+        loc: state_bound.loc.clone(),
+        from: from_b,
+        to: tos,
+    })
 }

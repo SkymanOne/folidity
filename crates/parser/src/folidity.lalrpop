@@ -107,7 +107,7 @@ AccessAttr: ast::AccessAttribute = {
 
 
 View: ast::FunctionVisibility = {
-    <start:@L> "view" <param:StateParam>  <end:@R> => {
+    <start:@L> "view" <param:StateParam> <end:@R> => {
         ast::FunctionVisibility::View(
             ast::ViewState::new(start, end, param)
         )
@@ -116,13 +116,10 @@ View: ast::FunctionVisibility = {
 
 StateParam: ast::StateParam = {
     <start:@L> <ty:Identifier> <end:@R> => {
-        ast::StateParam::new(start, end, Some(ty), None)
+        ast::StateParam::new(start, end, ty, None)
     },
     <start:@L> "(" <ty:Identifier> <name_op:Identifier> ")" <end:@R> => {
-        ast::StateParam::new(start, end, Some(ty), Some(name_op))
-    },
-    <start:@L> "()" <end:@R> => {
-        ast::StateParam::new(start, end, None, None)
+        ast::StateParam::new(start, end, ty, Some(name_op))
     }
 }
 
@@ -199,9 +196,14 @@ ListComma<T>: Vec<T> = {
 
 StateBound: ast::StateBound = {
     "when" <start:@L> <from:StateParam> "->" <to:ListComma<StateParam>> <end:@R> => {
-        ast::StateBound::new(start, end, from, to)
+        ast::StateBound::new(start, end, Some(from), to)
+    },
+    "when" <start:@L> "()" "->" <to:ListComma<StateParam>> <end:@R> => {
+        ast::StateBound::new(start, end, None, to)
+    },
+    "when" <start:@L> <from:StateParam> "->" "()" <end:@R> => {
+        ast::StateBound::new(start, end, Some(from), vec![])
     }
-
 }
 
 StBlock: ast::StBlock = {
@@ -316,7 +318,7 @@ Statement: ast::Statement = {
         ast::Statement::Return(ast::Return::new(start, end, e))
     },
     <Expression> ";" => ast::Statement::Expression(<>),
-    "move" <StructInit> ";" => ast::Statement::StateTransition(<>),
+    "move" <Expression> ";" => ast::Statement::StateTransition(<>),
 
     <block:StatementBlock> => ast::Statement::Block(block),
 

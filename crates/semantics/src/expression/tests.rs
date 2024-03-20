@@ -287,6 +287,7 @@ fn test_func() {
         }),
         func_ident.clone(),
         params,
+        None,
     ));
 
     contract.add_global_symbol(
@@ -529,6 +530,7 @@ fn pipe() {
         }),
         func_ident.clone(),
         params,
+        None,
     ));
 
     contract.add_global_symbol(

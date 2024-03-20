@@ -84,7 +84,7 @@ pub struct Mapping {
 pub struct StateParam {
     pub loc: Span,
     /// State type identifier.
-    pub ty: Option<Identifier>,
+    pub ty: Identifier,
     /// Variable name identifier.
     pub name: Option<Identifier>,
 }
@@ -125,7 +125,7 @@ pub enum FuncReturnType {
 pub struct StateBound {
     pub loc: Span,
     /// Original state
-    pub from: StateParam,
+    pub from: Option<StateParam>,
     /// Final state
     pub to: Vec<StateParam>,
 }
@@ -242,7 +242,7 @@ pub enum Statement {
     Iterator(Iterator),
     Return(Return),
     Expression(Expression),
-    StateTransition(StructInit),
+    StateTransition(Expression),
     Skip(Span),
 
     Block(StatementBlock),
@@ -444,7 +444,7 @@ impl Statement {
             Statement::Iterator(i) => &i.loc,
             Statement::Return(e) => &e.loc,
             Statement::Expression(e) => e.loc(),
-            Statement::StateTransition(tr) => &tr.loc,
+            Statement::StateTransition(tr) => tr.loc(),
             Statement::Block(b) => &b.loc,
             Statement::Skip(s) => s,
             Statement::Error(s) => s,

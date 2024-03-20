@@ -10,12 +10,16 @@ use crate::{
         Return,
         Statement,
         StatementBlock,
+        StructInit,
         TypeVariant,
         Variable,
     },
     contract::ContractDefinition,
     expression::expression,
-    global_symbol::GlobalSymbol,
+    global_symbol::{
+        GlobalSymbol,
+        SymbolInfo,
+    },
     symtable::{
         Scope,
         ScopeContext,
@@ -322,8 +326,42 @@ pub fn statement(
 
             Ok(false)
         }
+        parsed_ast::Statement::StateTransition(trans) => {
+            let GlobalSymbol::Function(sym) = &scope.symbol else {
+                contract.diagnostics.push(Report::semantic_error(
+                    trans.loc().clone(),
+                    String::from("State transition can only happen inside a function."),
+                ));
+                return Err(());
+            };
+
+            let func = &contract.functions[sym.i];
+            let Some(bound) = &func.state_bound else {
+                contract.diagnostics.push(Report::semantic_error(
+                    trans.loc().clone(),
+                    String::from("The function does not specify any state transitions."),
+                ));
+                return Err(());
+            };
+
+            let allowed_tys: Vec<TypeVariant> = bound
+                .to
+                .iter()
+                .map(|param| TypeVariant::State(param.ty.clone()))
+                .collect();
+
+            let eval_init = expression(
+                &trans.clone(),
+                ExpectedType::Dynamic(allowed_tys),
+                scope,
+                contract,
+            )?;
+
+            resolved.push(Statement::StateTransition(eval_init));
+
+            Ok(true)
+        }
         parsed_ast::Statement::Expression(_) => todo!(),
-        parsed_ast::Statement::StateTransition(_) => todo!(),
         parsed_ast::Statement::Skip(_) => todo!(),
         parsed_ast::Statement::Error(_) => unimplemented!("Error statement can not be evaluated."),
     }

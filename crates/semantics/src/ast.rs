@@ -121,9 +121,9 @@ pub struct Mapping {
 pub struct StateParam {
     pub loc: Span,
     /// State type identifier.
-    pub ty: usize,
+    pub ty: SymbolInfo,
     /// Variable name identifier.
-    pub name: Identifier,
+    pub name: Option<Identifier>,
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]
@@ -143,7 +143,10 @@ pub struct Param {
 #[derive(Clone, Debug, PartialEq, Node)]
 pub struct ViewState {
     pub loc: Span,
-    pub param: StateParam,
+    /// State type identifier.
+    pub ty: usize,
+    /// Variable name identifier.
+    pub name: Identifier,
 }
 
 #[derive(Clone, Debug, PartialEq, Default)]
@@ -174,7 +177,7 @@ impl FuncReturnType {
 pub struct StateBound {
     pub loc: Span,
     /// Original state
-    pub from: StateParam,
+    pub from: Option<StateParam>,
     /// Final state
     pub to: Vec<StateParam>,
 }
@@ -205,6 +208,8 @@ pub struct Function {
     pub params: IndexMap<String, Param>,
     /// Function logical bounds.
     pub bounds: Vec<Expression>,
+    /// Bounds for the state transition.
+    pub state_bound: Option<StateBound>,
     /// The body of the function.
     pub body: Vec<Statement>,
     /// Symbol table for the function context.
@@ -219,6 +224,7 @@ impl Function {
         return_ty: FuncReturnType,
         name: Identifier,
         params: IndexMap<String, Param>,
+        state_bound: Option<StateBound>,
     ) -> Self {
         Function {
             loc,
@@ -228,6 +234,7 @@ impl Function {
             return_ty,
             name,
             params,
+            state_bound,
             body: Vec::new(),
             bounds: Vec::new(),
             symtable: SymTable::default(),
@@ -320,7 +327,7 @@ pub enum Statement {
     Iterator(Iterator),
     Return(Return),
     Expression(Expression),
-    StateTransition(StructInit),
+    StateTransition(Expression),
 
     Block(StatementBlock),
     Skip(Span),
