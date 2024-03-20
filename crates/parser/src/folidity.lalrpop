@@ -312,7 +312,9 @@ Statement: ast::Statement = {
     <IfElse> => ast::Statement::IfElse(<>),
     <ForLoop> => ast::Statement::ForLoop(<>),
     <Iterator> => ast::Statement::Iterator(<>),
-    "return" <Expression> ";" => ast::Statement::Return(<>),
+    <start:@L> "return" <e:Expression?> <end:@R> ";" => {
+        ast::Statement::Return(ast::Return::new(start, end, e))
+    },
     <Expression> ";" => ast::Statement::Expression(<>),
     "move" <StructInit> ";" => ast::Statement::StateTransition(<>),
 

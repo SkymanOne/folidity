@@ -1,4 +1,7 @@
-use std::fmt::Display;
+use std::{
+    default,
+    fmt::Display,
+};
 
 use folidity_diagnostics::Report;
 use folidity_parser::{
@@ -24,6 +27,12 @@ pub enum GlobalSymbol {
     Enum(SymbolInfo),
     State(SymbolInfo),
     Function(SymbolInfo),
+}
+
+impl Default for GlobalSymbol {
+    fn default() -> Self {
+        GlobalSymbol::Function(Default::default())
+    }
 }
 
 impl GlobalSymbol {
@@ -70,7 +79,7 @@ impl Display for SymbolKind {
 }
 
 /// Global user defined symbol info.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct SymbolInfo {
     /// Locations of the global symbol.
     pub loc: Span,

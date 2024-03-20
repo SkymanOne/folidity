@@ -226,6 +226,13 @@ pub struct StBlock {
     pub expr: Expression,
 }
 
+#[derive(Clone, Debug, PartialEq, Node)]
+pub struct Return {
+    pub loc: Span,
+    /// List of logic expressions
+    pub expr: Option<Expression>,
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
     Variable(Variable),
@@ -233,7 +240,7 @@ pub enum Statement {
     IfElse(IfElse),
     ForLoop(ForLoop),
     Iterator(Iterator),
-    Return(Expression),
+    Return(Return),
     Expression(Expression),
     StateTransition(StructInit),
     Skip(Span),
@@ -435,7 +442,7 @@ impl Statement {
             Statement::IfElse(br) => &br.loc,
             Statement::ForLoop(l) => &l.loc,
             Statement::Iterator(i) => &i.loc,
-            Statement::Return(e) => e.loc(),
+            Statement::Return(e) => &e.loc,
             Statement::Expression(e) => e.loc(),
             Statement::StateTransition(tr) => &tr.loc,
             Statement::Block(b) => &b.loc,

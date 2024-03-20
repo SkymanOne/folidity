@@ -9,6 +9,7 @@ use crate::{
         TypeVariant,
     },
     contract::ContractDefinition,
+    global_symbol::GlobalSymbol,
 };
 
 #[derive(Debug, Clone)]
@@ -42,6 +43,7 @@ pub enum VariableKind {
     Param,
     Local,
     State,
+    Loop,
     // /// A user defined type
     // /// (e.g. Struct, Model, Enum, Function)
     // /// which should exist in global namespace.
@@ -51,7 +53,9 @@ pub enum VariableKind {
 /// Context of the scope in the symtable.
 #[derive(Debug, Clone, Default)]
 pub enum ScopeContext {
+    /// We are inside bound context of some global symbol.
     Bounds,
+    /// Scope is in the function with the given index.
     Function,
     #[default]
     Global,
@@ -104,6 +108,8 @@ pub struct Scope {
     pub tables: Vec<SymTable>,
     /// Index of the current scope.
     pub current: usize,
+    /// What symbol this scope this belongs to.
+    pub symbol: GlobalSymbol,
 }
 
 impl Default for Scope {
@@ -111,6 +117,7 @@ impl Default for Scope {
         Self {
             tables: vec![SymTable::default()],
             current: 0,
+            symbol: Default::default(),
         }
     }
 }
@@ -156,7 +163,7 @@ impl Scope {
     }
 
     /// Pushes the scope context onto the stack.
-    pub fn push_scope(&mut self, context: ScopeContext) {
+    pub fn push(&mut self, context: ScopeContext) {
         if self.current == self.tables.len() - 1 {
             let table = SymTable {
                 context,
@@ -168,7 +175,7 @@ impl Scope {
     }
 
     /// Pop the scope context onto the stack.
-    pub fn pop_scope(&mut self) {
+    pub fn pop(&mut self) {
         self.current = self.current.saturating_sub(1);
         self.tables.pop();
     }

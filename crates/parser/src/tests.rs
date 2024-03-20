@@ -18,6 +18,7 @@ use crate::{
         MemberAccess,
         ModelDeclaration,
         Param,
+        Return,
         Set,
         Source,
         StBlock,
@@ -271,16 +272,20 @@ fn test_factorial_tree() -> Result<(), String> {
                                     args: vec![],
                                     auto_object: None,
                                 }),
-                                Statement::Return(Expression::Variable(Identifier {
-                                    loc: 158..163,
-                                    name: "value".to_string(),
-                                })),
+                                Statement::Return(Return {
+                                    loc: 151..163,
+                                    expr: Some(Expression::Variable(Identifier {
+                                        loc: 158..163,
+                                        name: "value".to_string(),
+                                    })),
+                                }),
                             ],
                         }),
                         else_part: Some(Box::new(Statement::Block(StatementBlock {
                             loc: 176..350,
-                            statements: vec![Statement::Return(Expression::FunctionCall(
-                                FunctionCall {
+                            statements: vec![Statement::Return(Return {
+                                loc: 186..343,
+                                expr: Some(Expression::FunctionCall(FunctionCall {
                                     loc: 193..343,
                                     name: Identifier {
                                         loc: 193..202,
@@ -324,8 +329,8 @@ fn test_factorial_tree() -> Result<(), String> {
                                             })],
                                         })),
                                     })],
-                                },
-                            ))],
+                                })),
+                            })],
                         }))),
                     })],
                 }),
@@ -376,17 +381,20 @@ fn test_factorial_tree() -> Result<(), String> {
                         })),
                     }),
                 }),
-                body: Statement::Return(Expression::FunctionCall(FunctionCall {
-                    loc: 418..434,
-                    name: Identifier {
-                        loc: 418..427,
-                        name: "calculate".to_string(),
-                    },
-                    args: vec![Expression::Variable(Identifier {
-                        loc: 428..433,
-                        name: "value".to_string(),
-                    })],
-                })),
+                body: Statement::Return(Return {
+                    loc: 411..434,
+                    expr: Some(Expression::FunctionCall(FunctionCall {
+                        loc: 418..434,
+                        name: Identifier {
+                            loc: 418..427,
+                            name: "calculate".to_string(),
+                        },
+                        args: vec![Expression::Variable(Identifier {
+                            loc: 428..433,
+                            name: "value".to_string(),
+                        })],
+                    })),
+                }),
             })),
         ],
     };

@@ -304,6 +304,13 @@ pub struct StBlock {
     pub expr: Expression,
 }
 
+#[derive(Clone, Debug, PartialEq, Node)]
+pub struct Return {
+    pub loc: Span,
+    /// List of logic expressions
+    pub expr: Option<Expression>,
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
     Variable(Variable),
@@ -311,11 +318,12 @@ pub enum Statement {
     IfElse(IfElse),
     ForLoop(ForLoop),
     Iterator(Iterator),
-    Return(Expression),
+    Return(Return),
     Expression(Expression),
     StateTransition(StructInit),
 
     Block(StatementBlock),
+    Skip(Span),
     Error(Span),
 }
 
@@ -345,17 +353,17 @@ pub struct Assign {
 pub struct IfElse {
     pub loc: Span,
     pub condition: Expression,
-    pub body: Box<StatementBlock>,
-    pub else_part: Option<Box<Statement>>,
+    pub body: Vec<Statement>,
+    pub else_part: Vec<Statement>,
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]
 pub struct ForLoop {
     pub loc: Span,
-    pub var: Variable,
+    pub var: Box<Statement>,
     pub condition: Expression,
     pub incrementer: Expression,
-    pub body: Box<StatementBlock>,
+    pub body: Vec<Statement>,
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]
@@ -363,7 +371,7 @@ pub struct Iterator {
     pub loc: Span,
     pub names: Vec<Identifier>,
     pub list: Expression,
-    pub body: Box<StatementBlock>,
+    pub body: Vec<Statement>,
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]

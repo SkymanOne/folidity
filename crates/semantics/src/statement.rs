@@ -4,12 +4,18 @@ use folidity_parser::ast as parsed_ast;
 use crate::{
     ast::{
         Assign,
+        ForLoop,
+        IfElse,
+        Iterator,
+        Return,
         Statement,
         StatementBlock,
+        TypeVariant,
         Variable,
     },
     contract::ContractDefinition,
     expression::expression,
+    global_symbol::GlobalSymbol,
     symtable::{
         Scope,
         ScopeContext,
@@ -128,11 +134,11 @@ pub fn statement(
 
             let mut resolved_parts = Vec::new();
 
-            scope.push_scope(ScopeContext::Block);
+            scope.push(ScopeContext::Block);
 
             for b_stmt in &block.statements {
                 if !reachable {
-                    contract.diagnostics.push(Report::semantic_error(
+                    contract.diagnostics.push(Report::semantic_warning(
                         b_stmt.loc().clone(),
                         String::from("Unreachable statement."),
                     ));
@@ -141,19 +147,181 @@ pub fn statement(
                 reachable = statement(b_stmt, &mut resolved_parts, scope, contract)?;
             }
 
-            scope.pop_scope();
+            scope.pop();
 
             resolved.push(Statement::Block(StatementBlock {
                 loc: block.loc.clone(),
                 statements: resolved_parts,
             }));
 
-            Ok(true)
+            Ok(reachable)
         }
-        parsed_ast::Statement::IfElse(_) => todo!(),
-        parsed_ast::Statement::ForLoop(_) => todo!(),
-        parsed_ast::Statement::Iterator(_) => todo!(),
-        parsed_ast::Statement::Return(_) => todo!(),
+        parsed_ast::Statement::IfElse(branch) => {
+            let eval_cond = expression(
+                &branch.condition,
+                ExpectedType::Concrete(TypeVariant::Bool),
+                scope,
+                contract,
+            )?;
+
+            scope.push(ScopeContext::Block);
+            let mut body_stmts = Vec::new();
+            let mut reachable_block = statement(
+                &parsed_ast::Statement::Block(*branch.body.clone()),
+                &mut body_stmts,
+                scope,
+                contract,
+            )?;
+            scope.pop();
+
+            let mut other_stmts = Vec::new();
+            if let Some(else_block) = &branch.else_part {
+                reachable_block |= statement(else_block, &mut other_stmts, scope, contract)?;
+            } else {
+                reachable_block = true;
+            }
+
+            resolved.push(Statement::IfElse(IfElse {
+                loc: branch.loc.clone(),
+                condition: eval_cond,
+                body: body_stmts,
+                else_part: other_stmts,
+            }));
+
+            Ok(reachable_block)
+        }
+        parsed_ast::Statement::ForLoop(for_loop) => {
+            scope.push(ScopeContext::Loop);
+
+            let mut body = Vec::new();
+            let mut reachable;
+            statement(
+                &parsed_ast::Statement::Variable(for_loop.var.clone()),
+                &mut body,
+                scope,
+                contract,
+            )?;
+            let eval_cond = expression(
+                &for_loop.condition,
+                ExpectedType::Concrete(TypeVariant::Bool),
+                scope,
+                contract,
+            )?;
+            let eval_incr =
+                expression(&for_loop.incrementer, ExpectedType::Empty, scope, contract)?;
+
+            if for_loop.body.statements.is_empty() {
+                reachable = true;
+            } else {
+                reachable = statement(
+                    &parsed_ast::Statement::Block(*for_loop.body.clone()),
+                    &mut body,
+                    scope,
+                    contract,
+                )?;
+            }
+
+            if body.iter().any(|s| matches!(&s, Statement::Skip(_))) {
+                reachable = true;
+            }
+
+            scope.pop();
+
+            resolved.push(Statement::ForLoop(ForLoop {
+                loc: for_loop.loc.clone(),
+                var: Box::new(body[0].clone()),
+                condition: eval_cond,
+                incrementer: eval_incr,
+                body,
+            }));
+
+            Ok(reachable)
+        }
+        parsed_ast::Statement::Iterator(it) => {
+            scope.push(ScopeContext::Loop);
+            let mut body = Vec::new();
+            let list_expr = expression(&it.list, ExpectedType::Dynamic(vec![]), scope, contract)?;
+            // todo: destructure field in the iterator
+            if it.names.len() != 1 {
+                contract.diagnostics.push(Report::semantic_error(
+                    it.loc.clone(),
+                    String::from("Destructor in iterators are currently unsupported."),
+                ));
+                return Err(());
+            }
+            for ident in &it.names {
+                scope.tables[scope.current].add(
+                    contract,
+                    ident,
+                    list_expr.ty().clone(),
+                    None,
+                    VariableKind::Loop,
+                    false,
+                );
+            }
+
+            let reachable = statement(
+                &parsed_ast::Statement::Block(*it.body.clone()),
+                &mut body,
+                scope,
+                contract,
+            )?;
+
+            scope.pop();
+
+            resolved.push(Statement::Iterator(Iterator {
+                loc: it.loc.clone(),
+                names: it.names.clone(),
+                list: list_expr,
+                body,
+            }));
+
+            Ok(reachable)
+        }
+        parsed_ast::Statement::Return(ret) => {
+            let GlobalSymbol::Function(sym) = &scope.symbol else {
+                contract.diagnostics.push(Report::semantic_error(
+                    ret.loc.clone(),
+                    String::from("Return can only be used inside a function."),
+                ));
+                return Err(());
+            };
+
+            let func = &contract.functions[sym.i];
+            let ret_ty = func.return_ty.ty();
+            match (ret_ty, &ret.expr) {
+                (TypeVariant::Unit, None) => {
+                    resolved.push(Statement::Return(Return {
+                        loc: ret.loc.clone(),
+                        expr: None,
+                    }))
+                }
+                (TypeVariant::Unit, Some(_)) => {
+                    contract.diagnostics.push(Report::semantic_error(
+                        ret.loc.clone(),
+                        String::from("Function does not expect any value to return."),
+                    ));
+                    return Err(());
+                }
+                (_, None) => {
+                    contract.diagnostics.push(Report::semantic_error(
+                        ret.loc.clone(),
+                        String::from("Function expects a value to return."),
+                    ));
+                    return Err(());
+                }
+                (ty, Some(e)) => {
+                    let resolved_expr =
+                        expression(e, ExpectedType::Concrete(ty.clone()), scope, contract)?;
+                    resolved.push(Statement::Return(Return {
+                        loc: ret.loc.clone(),
+                        expr: Some(resolved_expr),
+                    }))
+                }
+            }
+
+            Ok(false)
+        }
         parsed_ast::Statement::Expression(_) => todo!(),
         parsed_ast::Statement::StateTransition(_) => todo!(),
         parsed_ast::Statement::Skip(_) => todo!(),
