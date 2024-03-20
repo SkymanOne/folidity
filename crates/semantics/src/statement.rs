@@ -10,16 +10,12 @@ use crate::{
         Return,
         Statement,
         StatementBlock,
-        StructInit,
         TypeVariant,
         Variable,
     },
     contract::ContractDefinition,
     expression::expression,
-    global_symbol::{
-        GlobalSymbol,
-        SymbolInfo,
-    },
+    global_symbol::GlobalSymbol,
     symtable::{
         Scope,
         ScopeContext,
@@ -361,8 +357,30 @@ pub fn statement(
 
             Ok(true)
         }
-        parsed_ast::Statement::Expression(_) => todo!(),
-        parsed_ast::Statement::Skip(_) => todo!(),
+        parsed_ast::Statement::Skip(loc) => {
+            let mut i = scope.current;
+            while i > 0 {
+                if matches!(scope.tables[i].context, ScopeContext::Loop) {
+                    resolved.push(Statement::Skip(loc.clone()));
+                    return Ok(false);
+                }
+                i -= 1;
+            }
+
+            contract.diagnostics.push(Report::semantic_error(
+                loc.clone(),
+                String::from("`skip` can only be used inside loops and iterators"),
+            ));
+
+            Err(())
+        }
+        parsed_ast::Statement::Expression(expr) => {
+            let resolved_expr = expression(expr, ExpectedType::Empty, scope, contract)?;
+
+            resolved.push(Statement::Expression(resolved_expr));
+
+            Ok(true)
+        }
         parsed_ast::Statement::Error(_) => unimplemented!("Error statement can not be evaluated."),
     }
 }

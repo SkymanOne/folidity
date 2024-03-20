@@ -145,7 +145,7 @@ pub fn function_decl(
         }
     }
     let s_bound = if let Some(state_bound) = &func.state_bound {
-        match resolve_func_state_bound(func, state_bound, contract) {
+        match resolve_func_state_bound(state_bound, contract) {
             Ok(v) => Some(v),
             Err(_) => {
                 error = true;
@@ -287,7 +287,6 @@ fn validate_type(ty: &TypeVariant, contract: &mut ContractDefinition, loc: &Span
 }
 
 fn resolve_func_state_bound(
-    func: &parsed_ast::FunctionDeclaration,
     state_bound: &parsed_ast::StateBound,
     contract: &mut ContractDefinition,
 ) -> Result<StateBound, ()> {

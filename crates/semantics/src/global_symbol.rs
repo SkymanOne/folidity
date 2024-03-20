@@ -1,7 +1,4 @@
-use std::{
-    default,
-    fmt::Display,
-};
+use std::fmt::Display;
 
 use folidity_diagnostics::Report;
 use folidity_parser::{
