@@ -791,10 +791,10 @@ fn find_func(ident: &Identifier, contract: &mut ContractDefinition) -> Result<Fu
     Ok(func.clone())
 }
 
-fn find_var<'a>(
+fn find_var(
     ident: &Identifier,
     contract: &mut ContractDefinition,
-    scope: &'a mut Scope,
+    scope: &mut Scope,
 ) -> Result<usize, ()> {
     let Some((v_i, _)) = scope.find_var_index(&ident.name) else {
         contract.diagnostics.push(Report::semantic_error(

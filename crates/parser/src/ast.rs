@@ -14,6 +14,13 @@ pub struct Identifier {
     pub name: String,
 }
 
+impl Identifier {
+    /// Check if the identifier is particular variable.
+    pub fn is(&self, name: &str) -> bool {
+        self.name == name
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Declaration {
     FunDeclaration(Box<FunctionDeclaration>),

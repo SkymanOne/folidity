@@ -38,7 +38,6 @@ impl VariableSym {
 /// A kind of a variable used.
 #[derive(Debug, Clone)]
 pub enum VariableKind {
-    Return,
     Destructor,
     Param,
     Local,
@@ -51,8 +50,14 @@ pub enum VariableKind {
 }
 
 /// Context of the scope in the symtable.
-#[derive(Debug, Clone, Default)]
+/// Typical structure would be:
+/// `AccessAttributes` -> `FunctionParams` -> `Bounds`  -> `FunctionBody` -> ...
+#[derive(Debug, Clone, Default, PartialEq)]
 pub enum ScopeContext {
+    /// Access attributes
+    AccessAttributes,
+    /// Scope for the function params.
+    FunctionParams,
     /// We are inside bound context of some global symbol.
     Bounds,
     /// Scope is in the function with the given index.
@@ -96,9 +101,12 @@ impl Default for Scope {
 }
 
 impl Scope {
-    pub fn new(sym: &GlobalSymbol) -> Self {
+    pub fn new(sym: &GlobalSymbol, context: ScopeContext) -> Self {
         Self {
-            tables: vec![SymTable::default()],
+            tables: vec![SymTable {
+                names: HashMap::new(),
+                context,
+            }],
             current: 0,
             symbol: sym.clone(),
             vars: Default::default(),
@@ -145,12 +153,38 @@ impl Scope {
     pub fn find_var_index(&mut self, name: &str) -> Option<(usize, usize)> {
         let mut table_i = self.current;
         let mut table = &self.tables[table_i];
+
+        // we need to decide which scope we are allowed traverse depending on the context of the
+        // current scope.
+        let whilelists = match &table.context {
+            // if we are inside bound context, we can only traverse params, access attributes,
+            // return param, and state bounds.
+            ScopeContext::Bounds => {
+                vec![
+                    ScopeContext::Bounds,
+                    ScopeContext::FunctionParams,
+                    ScopeContext::AccessAttributes,
+                ]
+            }
+            // if we inside loop, block or function body, then we can traverse them and function
+            // params.
+            ScopeContext::FunctionBody | ScopeContext::Block | ScopeContext::Loop => {
+                vec![
+                    ScopeContext::FunctionParams,
+                    ScopeContext::FunctionBody,
+                    ScopeContext::Block,
+                    ScopeContext::Loop,
+                ]
+            }
+            _ => vec![],
+        };
+
         let mut v_i = table.names.get(name);
         while table_i > 0 {
             table_i -= 1;
             table = &self.tables[table_i];
             v_i = table.names.get(name);
-            if v_i.is_some() {
+            if v_i.is_some() && whilelists.contains(&table.context) {
                 break;
             }
         }

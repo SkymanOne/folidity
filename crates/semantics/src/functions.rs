@@ -8,6 +8,7 @@ use indexmap::IndexMap;
 
 use crate::{
     ast::{
+        Expression,
         FuncReturnType,
         Function,
         FunctionVisibility,
@@ -19,6 +20,7 @@ use crate::{
         ViewState,
     },
     contract::ContractDefinition,
+    expression::expression,
     global_symbol::{
         GlobalSymbol,
         SymbolInfo,
@@ -26,9 +28,13 @@ use crate::{
     statement::statement,
     symtable::{
         Scope,
+        ScopeContext,
         VariableKind,
     },
-    types::map_type,
+    types::{
+        map_type,
+        ExpectedType,
+    },
 };
 
 /// Parses the function declaration without the body.
@@ -161,11 +167,73 @@ pub fn function_decl(
         None
     };
 
+    // todo: resolve access attributes
+    // need to implement expression resolution first
+    // to resolve members to concrete types.
+
+    let sym = GlobalSymbol::Function(SymbolInfo {
+        loc: func.loc.clone(),
+        i: function_no,
+    });
+
+    let mut scope = Scope::new(&sym, ScopeContext::AccessAttributes);
+    scope.add(
+        &Identifier {
+            loc: func.loc.clone(),
+            name: "any".to_string(),
+        },
+        TypeVariant::Address,
+        None,
+        VariableKind::State,
+        false,
+        scope.current,
+        contract,
+    );
+    if let Some(bounds) = &s_bound {
+        if let Some(from) = &bounds.from {
+            if let Some(var) = &from.name {
+                scope.add(
+                    var,
+                    TypeVariant::State(from.ty.clone()),
+                    None,
+                    VariableKind::State,
+                    false,
+                    scope.current,
+                    contract,
+                );
+            }
+        }
+    }
+
+    let access_attributes: Vec<Expression> = func
+        .access_attributes
+        .iter()
+        .flat_map(|attr| &attr.members)
+        .filter_map(|expr| {
+            match expression(
+                expr,
+                ExpectedType::Dynamic(vec![
+                    TypeVariant::Address,
+                    TypeVariant::Set(Box::new(TypeVariant::Address)),
+                    TypeVariant::List(Box::new(TypeVariant::Address)),
+                ]),
+                &mut scope,
+                contract,
+            ) {
+                Ok(v) => Some(v),
+                Err(_) => {
+                    error = true;
+                    None
+                }
+            }
+        })
+        .collect();
+
     if error {
         return Err(());
     }
 
-    let decl = Function::new(
+    let mut decl = Function::new(
         func.loc.clone(),
         func.is_init,
         func_vis,
@@ -175,28 +243,33 @@ pub fn function_decl(
         s_bound,
     );
 
-    // todo: resolve access attributes
-    // need to implement expression resolution first
-    // to resolve members to concrete types.
+    decl.scope = scope;
+    decl.access_attributes = access_attributes;
 
-    contract.declaration_symbols.insert(
-        decl.name.name.clone(),
-        GlobalSymbol::Function(SymbolInfo {
-            loc: decl.loc.clone(),
-            i: function_no,
-        }),
-    );
+    contract
+        .declaration_symbols
+        .insert(decl.name.name.clone(), sym);
     contract.functions.push(decl);
 
     Ok(function_no)
 }
 
+/// Resolve function body.
+/// - Creates a scope and add parameters there.
+/// - Traverses statement tree and adds resolved statements to the body list.
+/// - Check for reachability
+/// # Errors
+/// - No `return` is provided if expected.
+/// - Errors during parsing of statements.
 pub fn resolve_func_body(
     func_decl: &parsed_ast::FunctionDeclaration,
     func_sym: &SymbolInfo,
     contract: &mut ContractDefinition,
 ) -> Result<(), ()> {
-    let mut scope = Scope::new(&GlobalSymbol::Function(func_sym.clone()));
+    let mut scope = Scope::default();
+    std::mem::swap(&mut scope, &mut contract.functions[func_sym.i].scope);
+    scope.push(ScopeContext::FunctionParams);
+
     let mut resolved_stmts = Vec::new();
 
     // add params to the scope.
@@ -213,6 +286,8 @@ pub fn resolve_func_body(
         );
     }
 
+    scope.push(ScopeContext::FunctionBody);
+
     // if the return type is not `()` then we expect the function body to contain `return`
     // statement. i.e. it should be unreachable after the last statement,
     let return_required = !matches!(func_decl.return_ty.ty(), parsed_ast::TypeVariant::Unit);
@@ -228,7 +303,13 @@ pub fn resolve_func_body(
         ));
     }
 
+    // pop function body scope
+    scope.pop();
+    // pop function params scope
+    scope.pop();
+
     contract.functions[func_sym.i].body = resolved_stmts;
+    std::mem::swap(&mut scope, &mut contract.functions[func_sym.i].scope);
 
     Ok(())
 }

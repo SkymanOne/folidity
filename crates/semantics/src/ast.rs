@@ -20,7 +20,7 @@ use num_rational::BigRational;
 
 use crate::{
     global_symbol::SymbolInfo,
-    symtable::SymTable,
+    symtable::Scope,
 };
 use algonaut_core::Address;
 
@@ -182,13 +182,6 @@ pub struct StateBound {
     pub to: Vec<StateParam>,
 }
 
-#[derive(Clone, Debug, PartialEq, Node)]
-pub struct AccessAttribute {
-    pub loc: Span,
-    /// Members delimited by `|`
-    pub members: Vec<Expression>,
-}
-
 #[derive(Clone, Debug)]
 pub struct Function {
     /// Location span of the function.
@@ -197,7 +190,7 @@ pub struct Function {
     /// Marked with `@init`
     pub is_init: bool,
     /// Access attribute `@(a | b | c)`
-    pub access_attributes: Vec<AccessAttribute>,
+    pub access_attributes: Vec<Expression>,
     /// Visibility of the function.
     pub vis: FunctionVisibility,
     /// Function return type declaration.
@@ -212,8 +205,8 @@ pub struct Function {
     pub state_bound: Option<StateBound>,
     /// The body of the function.
     pub body: Vec<Statement>,
-    /// Symbol table for the function context.
-    pub symtable: SymTable,
+    /// Scope table for the function context.
+    pub scope: Scope,
 }
 
 impl Function {
@@ -237,7 +230,7 @@ impl Function {
             state_bound,
             body: Vec::new(),
             bounds: Vec::new(),
-            symtable: SymTable::default(),
+            scope: Scope::default(),
         }
     }
 }
@@ -531,6 +524,17 @@ impl Expression {
                 | Expression::Address(_)
                 | Expression::Boolean(_)
         )
+    }
+
+    /// Check if the expression is a wildcard `any` variable.
+    pub fn is_access_wildcard(&self, scope: &Scope) -> bool {
+        if let Expression::Variable(var) = self {
+            scope
+                .find_symbol(&var.element)
+                .map_or(false, |s| s.ident.is("any"))
+        } else {
+            false
+        }
     }
 }
 

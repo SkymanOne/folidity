@@ -830,7 +830,7 @@ fn () join() when (BeginState s) -> BeginState {
     };
 }
 
-@(voters)
+@(s.voters)
 fn () start_voting() when (BeginState s) -> VotingState {
     let commits = Set();
     move VotingState : {
@@ -839,7 +839,7 @@ fn () start_voting() when (BeginState s) -> VotingState {
     };
 }
 
-@(voters)
+@(s.voters)
 fn () commit(h: hex) when (VotingState s) -> VotingState {
     let caller = caller();
     let { commits, params } = s;
