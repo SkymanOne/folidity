@@ -23,6 +23,11 @@ use crate::{
         GlobalSymbol,
         SymbolInfo,
     },
+    statement::statement,
+    symtable::{
+        Scope,
+        VariableKind,
+    },
     types::map_type,
 };
 
@@ -184,6 +189,48 @@ pub fn function_decl(
     contract.functions.push(decl);
 
     Ok(function_no)
+}
+
+pub fn resolve_func_body(
+    func_decl: &parsed_ast::FunctionDeclaration,
+    func_sym: &SymbolInfo,
+    contract: &mut ContractDefinition,
+) -> Result<(), ()> {
+    let mut scope = Scope::new(&GlobalSymbol::Function(func_sym.clone()));
+    let mut resolved_stmts = Vec::new();
+
+    // add params to the scope.
+    for param in &func_decl.params {
+        let ty = map_type(contract, &param.ty)?;
+        scope.add(
+            &param.name,
+            ty.ty,
+            None,
+            VariableKind::Param,
+            param.is_mut,
+            scope.current,
+            contract,
+        );
+    }
+
+    // if the return type is not `()` then we expect the function body to contain `return`
+    // statement. i.e. it should be unreachable after the last statement,
+    let return_required = !matches!(func_decl.return_ty.ty(), parsed_ast::TypeVariant::Unit);
+    let reachable = statement(&func_decl.body, &mut resolved_stmts, &mut scope, contract)?;
+
+    if reachable && return_required {
+        contract.diagnostics.push(Report::semantic_error(
+            func_decl.loc.clone(),
+            format!(
+                "Expected function to return a value of type {:?}",
+                func_decl.return_ty.ty()
+            ),
+        ));
+    }
+
+    contract.functions[func_sym.i].body = resolved_stmts;
+
+    Ok(())
 }
 
 /// Resolve function parameters.

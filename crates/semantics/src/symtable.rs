@@ -56,33 +56,66 @@ pub enum ScopeContext {
     /// We are inside bound context of some global symbol.
     Bounds,
     /// Scope is in the function with the given index.
-    Function,
     #[default]
-    Global,
+    FunctionBody,
     Loop,
     Block,
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct SymTable {
-    /// Indexed map of variables
-    pub vars: IndexMap<usize, VariableSym>,
     /// Variable names in the current scope.
     pub names: HashMap<String, usize>,
     // Context of variables in the given scope.
     pub context: ScopeContext,
 }
 
-impl SymTable {
+impl SymTable {}
+
+#[derive(Debug, Clone)]
+pub struct Scope {
+    /// Indexed map of variables
+    pub vars: IndexMap<usize, VariableSym>,
+    /// List of scoped symbol tables.
+    pub tables: Vec<SymTable>,
+    /// Index of the current scope.
+    pub current: usize,
+    /// What symbol this scope this belongs to.
+    pub symbol: GlobalSymbol,
+}
+
+impl Default for Scope {
+    fn default() -> Self {
+        Self {
+            vars: IndexMap::new(),
+            tables: vec![SymTable::default()],
+            current: 0,
+            symbol: GlobalSymbol::default(),
+        }
+    }
+}
+
+impl Scope {
+    pub fn new(sym: &GlobalSymbol) -> Self {
+        Self {
+            tables: vec![SymTable::default()],
+            current: 0,
+            symbol: sym.clone(),
+            vars: Default::default(),
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
     pub fn add(
         &mut self,
-        contract: &mut ContractDefinition,
         ident: &Identifier,
         ty: TypeVariant,
         value: Option<Expression>,
         usage: VariableKind,
         mutable: bool,
-    ) {
+        table_pos: usize,
+        contract: &mut ContractDefinition,
+    ) -> usize {
         let current_id = contract.next_var_id;
         contract.next_var_id += 1;
 
@@ -98,31 +131,12 @@ impl SymTable {
             },
         );
 
-        self.names.insert(ident.name.clone(), current_id);
+        self.tables[table_pos]
+            .names
+            .insert(ident.name.clone(), current_id);
+        current_id
     }
-}
 
-#[derive(Debug, Clone)]
-pub struct Scope {
-    /// List of scoped symbol tables.
-    pub tables: Vec<SymTable>,
-    /// Index of the current scope.
-    pub current: usize,
-    /// What symbol this scope this belongs to.
-    pub symbol: GlobalSymbol,
-}
-
-impl Default for Scope {
-    fn default() -> Self {
-        Self {
-            tables: vec![SymTable::default()],
-            current: 0,
-            symbol: Default::default(),
-        }
-    }
-}
-
-impl Scope {
     /// Attempts to find an index of a symbol in the current or outer scopes.
     ///
     /// # Returns
@@ -148,18 +162,7 @@ impl Scope {
     /// # Returns
     /// - A reference to the symbol in the table if any
     pub fn find_symbol(&self, index: &usize) -> Option<&VariableSym> {
-        let mut table_i = self.current;
-        let mut table = &self.tables[table_i];
-        let mut sym = table.vars.get(index);
-        while table_i > 0 {
-            table_i -= 1;
-            table = &self.tables[table_i];
-            sym = table.vars.get(index);
-            if sym.is_some() {
-                break;
-            }
-        }
-        sym
+        self.vars.get(index)
     }
 
     /// Pushes the scope context onto the stack.

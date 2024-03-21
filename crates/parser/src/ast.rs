@@ -121,6 +121,16 @@ pub enum FuncReturnType {
     ParamType(Param),
 }
 
+impl FuncReturnType {
+    /// Return [`TypeVariant`] of a function return type.
+    pub fn ty(&self) -> &TypeVariant {
+        match self {
+            FuncReturnType::Type(ty) => &ty.ty,
+            FuncReturnType::ParamType(pty) => &pty.ty.ty,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Node)]
 pub struct StateBound {
     pub loc: Span,

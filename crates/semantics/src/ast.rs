@@ -344,6 +344,7 @@ pub struct StatementBlock {
 pub struct Variable {
     pub loc: Span,
     pub names: Vec<Identifier>,
+    pub pos: usize,
     pub mutable: bool,
     pub ty: TypeVariant,
     pub value: Option<Expression>,

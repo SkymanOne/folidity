@@ -29,10 +29,7 @@ use crate::{
         SymbolInfo,
         SymbolKind,
     },
-    symtable::{
-        Scope,
-        SymTable,
-    },
+    symtable::Scope,
     types::{
         report_type_mismatch,
         ExpectedType,
@@ -120,8 +117,8 @@ pub fn resolve_variable(
                     }),
                 }))
             } else {
-                let (var_id, table) = find_var(ident, contract, scope)?;
-                let sym = table.vars.get(&var_id).unwrap();
+                let var_id = find_var(ident, contract, scope)?;
+                let sym = scope.find_symbol(&var_id).unwrap();
 
                 if &sym.ty != ty {
                     report_type_mismatch(
@@ -141,8 +138,8 @@ pub fn resolve_variable(
             }
         }
         ExpectedType::Dynamic(tys) => {
-            let (var_id, table) = find_var(ident, contract, scope)?;
-            let sym = table.vars.get(&var_id).unwrap();
+            let var_id = find_var(ident, contract, scope)?;
+            let sym = scope.find_symbol(&var_id).unwrap();
 
             if !tys.is_empty() && !tys.contains(&sym.ty) {
                 contract.diagnostics.push(Report::type_error(
@@ -798,13 +795,13 @@ fn find_var<'a>(
     ident: &Identifier,
     contract: &mut ContractDefinition,
     scope: &'a mut Scope,
-) -> Result<(usize, &'a SymTable), ()> {
-    let Some((v_i, t_i)) = scope.find_var_index(&ident.name) else {
+) -> Result<usize, ()> {
+    let Some((v_i, _)) = scope.find_var_index(&ident.name) else {
         contract.diagnostics.push(Report::semantic_error(
             ident.loc.clone(),
             String::from("Variable is not declared."),
         ));
         return Err(());
     };
-    Ok((v_i, &scope.tables[t_i]))
+    Ok(v_i)
 }

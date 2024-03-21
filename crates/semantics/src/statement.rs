@@ -73,17 +73,19 @@ pub fn statement(
                 return Err(());
             }
 
-            scope.tables[scope.current].add(
-                contract,
+            let pos = scope.add(
                 &var.names[0].clone(),
                 ty.clone(),
                 expr.clone(),
                 VariableKind::Local,
                 var.mutable,
+                scope.current,
+                contract,
             );
 
             resolved.push(Statement::Variable(Variable {
                 loc: stmt.loc().clone(),
+                pos,
                 names: var.names.clone(),
                 mutable: var.mutable,
                 ty,
@@ -92,15 +94,15 @@ pub fn statement(
             Ok(true)
         }
         parsed_ast::Statement::Assign(a) => {
-            let Some((v_i, t_i)) = scope.find_var_index(&a.name.name) else {
+            let Some((v_i, _)) = scope.find_var_index(&a.name.name) else {
                 contract.diagnostics.push(Report::semantic_error(
                     a.name.loc.clone(),
                     String::from("Cannot find the variable"),
                 ));
                 return Err(());
             };
-            let table = &scope.tables[t_i];
-            let mut sym = table.vars.get(&v_i).unwrap().clone();
+            // let table = &scope.tables[t_i];
+            let mut sym = scope.find_symbol(&v_i).unwrap().clone();
 
             if !sym.mutable {
                 contract.diagnostics.push(Report::semantic_error(
@@ -120,7 +122,7 @@ pub fn statement(
             )?;
 
             sym.value = Some(resolved_value.clone());
-            scope.tables[t_i].vars.insert(v_i, sym);
+            scope.vars.insert(v_i, sym);
 
             resolved.push(Statement::Assign(Assign {
                 loc: a.loc.clone(),
@@ -250,13 +252,14 @@ pub fn statement(
                 return Err(());
             }
             for ident in &it.names {
-                scope.tables[scope.current].add(
-                    contract,
+                scope.add(
                     ident,
                     list_expr.ty().clone(),
                     None,
                     VariableKind::Loop,
                     false,
+                    scope.current,
+                    contract,
                 );
             }
 
