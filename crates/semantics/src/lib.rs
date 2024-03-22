@@ -28,6 +28,8 @@ pub fn resolve_semantics(source: &Source) -> ContractDefinition {
 
     check_inheritance(&mut definition, &delay);
 
+    // todo: add built-in function to environment.
+
     // we can now resolve functions and create scopes.
     definition.resolve_functions(source, &mut delay);
 

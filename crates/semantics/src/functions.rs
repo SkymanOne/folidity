@@ -225,6 +225,20 @@ pub fn function_decl(
         })
         .collect();
 
+    if let Some(any) = access_attributes
+        .iter()
+        .find(|x| x.is_access_wildcard(&scope))
+    {
+        if access_attributes.len() > 1 {
+            contract.diagnostics.push(Report::semantic_error(
+                any.loc().clone(),
+                String::from("Wildcard `any` cannot be used with other members."),
+            ));
+
+            error = true;
+        }
+    }
+
     if error {
         return Err(());
     }
