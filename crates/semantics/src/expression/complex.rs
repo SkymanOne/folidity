@@ -705,7 +705,7 @@ pub fn resolve_struct_init(
                         ));
                         return Err(());
                     }
-                    let (parsed_args, error_args) = parse_args(&args, fields, scope, contract);
+                    let (parsed_args, error_args) = parse_args(args, fields, scope, contract);
 
                     if error_args {
                         contract.diagnostics.push(Report::type_error(

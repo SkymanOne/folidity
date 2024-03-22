@@ -167,10 +167,6 @@ pub fn function_decl(
         None
     };
 
-    // todo: resolve access attributes
-    // need to implement expression resolution first
-    // to resolve members to concrete types.
-
     let sym = GlobalSymbol::Function(SymbolInfo {
         loc: func.loc.clone(),
         i: function_no,
@@ -263,11 +259,11 @@ pub fn function_decl(
 /// - Errors during parsing of statements.
 pub fn resolve_func_body(
     func_decl: &parsed_ast::FunctionDeclaration,
-    func_sym: &SymbolInfo,
+    func_i: usize,
     contract: &mut ContractDefinition,
 ) -> Result<(), ()> {
     let mut scope = Scope::default();
-    std::mem::swap(&mut scope, &mut contract.functions[func_sym.i].scope);
+    std::mem::swap(&mut scope, &mut contract.functions[func_i].scope);
     scope.push(ScopeContext::FunctionParams);
 
     let mut resolved_stmts = Vec::new();
@@ -308,8 +304,8 @@ pub fn resolve_func_body(
     // pop function params scope
     scope.pop();
 
-    contract.functions[func_sym.i].body = resolved_stmts;
-    std::mem::swap(&mut scope, &mut contract.functions[func_sym.i].scope);
+    contract.functions[func_i].body = resolved_stmts;
+    std::mem::swap(&mut scope, &mut contract.functions[func_i].scope);
 
     Ok(())
 }

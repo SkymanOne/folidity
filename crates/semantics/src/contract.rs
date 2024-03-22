@@ -11,14 +11,17 @@ use folidity_parser::{
 };
 use indexmap::IndexMap;
 
-use crate::ast::{
-    EnumDeclaration,
-    Function,
-    ModelDeclaration,
-    Param,
-    StateBody,
-    StateDeclaration,
-    StructDeclaration,
+use crate::{
+    ast::{
+        EnumDeclaration,
+        Function,
+        ModelDeclaration,
+        Param,
+        StateBody,
+        StateDeclaration,
+        StructDeclaration,
+    },
+    functions::resolve_func_body,
 };
 
 use crate::{
@@ -122,8 +125,9 @@ impl ContractDefinition {
             }
         }
 
-        // todo: resolve bodies
-        // for f in delayed_bodies {}
+        for f in &delayed_bodies {
+            let _ = resolve_func_body(&f.decl, f.i, self);
+        }
     }
 
     /// Resolves fields during the second pass.
