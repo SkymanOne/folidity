@@ -43,6 +43,7 @@ pub enum VariableKind {
     Local,
     State,
     Loop,
+    Return,
     // /// A user defined type
     // /// (e.g. Struct, Model, Enum, Function)
     // /// which should exist in global namespace.

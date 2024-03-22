@@ -46,13 +46,6 @@ pub struct DelayedDeclarations {
     pub structs: Vec<DelayedDeclaration<parsed_ast::StructDeclaration>>,
     pub models: Vec<DelayedDeclaration<parsed_ast::ModelDeclaration>>,
     pub states: Vec<DelayedDeclaration<parsed_ast::StateDeclaration>>,
-}
-
-/// Delayed declarations for later resolution of bounds (i.e. `st` blocks).
-#[derive(Debug)]
-pub struct DelayedBounds {
-    pub models: Vec<DelayedDeclaration<parsed_ast::ModelDeclaration>>,
-    pub states: Vec<DelayedDeclaration<parsed_ast::StateDeclaration>>,
     pub functions: Vec<DelayedDeclaration<parsed_ast::FunctionDeclaration>>,
 }
 
@@ -315,7 +308,7 @@ pub fn check_inheritance(contract: &mut ContractDefinition, delay: &DelayedDecla
             if let Some(symbol) = GlobalSymbol::lookup(contract, ident) {
                 match symbol {
                     GlobalSymbol::State(s) => {
-                        contract.states[state.i].from = Some((s.i, var.clone()))
+                        contract.states[state.i].from = Some((s, var.clone()))
                     }
                     _ => {
                         contract.diagnostics.push(Report::semantic_error(
@@ -375,7 +368,7 @@ fn detect_state_cycle(contract: &mut ContractDefinition) {
     for edge in contract
         .states
         .iter()
-        .filter_map(|m| m.from.as_ref().map(|x| x.0))
+        .filter_map(|m| m.from.as_ref().map(|x| x.0.i))
         .enumerate()
     {
         edges.insert(edge);

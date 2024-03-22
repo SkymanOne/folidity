@@ -35,7 +35,6 @@ use crate::{
         find_user_type_recursion,
         map_type,
         validate_fields,
-        DelayedBounds,
         DelayedDeclaration,
         DelayedDeclarations,
     },
@@ -79,6 +78,7 @@ impl ContractDefinition {
             structs: Vec::new(),
             models: Vec::new(),
             states: Vec::new(),
+            functions: Vec::new(),
         };
 
         for item in &tree.declarations {
@@ -102,10 +102,7 @@ impl ContractDefinition {
 
     /// Resolve function signatures
     /// and adds it to the global symbol table.
-    pub fn resolve_functions(&mut self, tree: &Source, delayed_bounds: &mut DelayedBounds) {
-        let mut delayed_bodies: Vec<DelayedDeclaration<parsed_ast::FunctionDeclaration>> =
-            Vec::new();
-
+    pub fn resolve_functions(&mut self, tree: &Source, delayed_decls: &mut DelayedDeclarations) {
         for f in tree.declarations.iter().filter_map(|d| {
             match d {
                 parsed_ast::Declaration::FunDeclaration(func) => Some(func),
@@ -113,19 +110,14 @@ impl ContractDefinition {
             }
         }) {
             if let Ok(id) = function_decl(f, self) {
-                delayed_bodies.push(DelayedDeclaration {
+                delayed_decls.functions.push(DelayedDeclaration {
                     i: id,
                     decl: *f.clone(),
                 });
-
-                delayed_bounds.functions.push(DelayedDeclaration {
-                    decl: *f.clone(),
-                    i: id,
-                })
             }
         }
 
-        for f in &delayed_bodies {
+        for f in &delayed_decls.functions {
             let _ = resolve_func_body(&f.decl, f.i, self);
         }
     }

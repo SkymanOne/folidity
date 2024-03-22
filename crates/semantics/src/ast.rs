@@ -290,7 +290,7 @@ pub struct StateDeclaration {
     pub body: Option<StateBody>,
     /// From which state we can transition.
     /// e.g `StateA st`
-    pub from: Option<(usize, Option<Identifier>)>,
+    pub from: Option<(SymbolInfo, Option<Identifier>)>,
     /// Model logical bounds.
     pub bounds: Vec<Expression>,
     /// Is the parent state recursive.

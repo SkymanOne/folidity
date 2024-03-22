@@ -301,8 +301,6 @@ pub fn resolve_func_body(
 
     // pop function body scope
     scope.pop();
-    // pop function params scope
-    scope.pop();
 
     contract.functions[func_i].body = resolved_stmts;
     std::mem::swap(&mut scope, &mut contract.functions[func_i].scope);

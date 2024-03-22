@@ -1,8 +1,10 @@
+use bounds::resolve_bounds;
 use contract::ContractDefinition;
 use folidity_parser::ast::Source;
 use types::check_inheritance;
 
 mod ast;
+mod bounds;
 mod contract;
 mod expression;
 mod functions;
@@ -21,10 +23,16 @@ mod tests;
 /// [`ContractDefinition`] may contain errors stored in the `diagnostics` field.
 pub fn resolve_semantics(source: &Source) -> ContractDefinition {
     let mut definition = ContractDefinition::default();
-    let delay = definition.resolve_declarations(source);
+    let mut delay = definition.resolve_declarations(source);
     definition.resolve_fields(&delay);
 
     check_inheritance(&mut definition, &delay);
+
+    // we can now resolve functions and create scopes.
+    definition.resolve_functions(source, &mut delay);
+
+    // now we can resolve model bounds on all declarations.
+    resolve_bounds(&mut definition, &delay);
 
     definition
 }
