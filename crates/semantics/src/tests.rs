@@ -71,16 +71,32 @@ fn bool start(init: int) when () -> (StartState s)
     let d = s"Hello World";
 
     move StartState : { a, b, c, d };
-    do_something(0.0);
+    loops(0.0);
+    conditionals(false, 5);
     return true;
 }
 
-fn () do_something(value: float) {
+fn () loops(value: float) {
     for (let mut i = 0; i < 10; i + 1) {
         let mut value = value + 123.0;
     }
+    let some_list = [-3, 4, 5];
+
+    for (n in some_list) {
+        let calc = n * 2;
+    }
 }
 
+fn () conditionals(cond: bool, value: int) {
+    let scoped = -10;
+    if cond {
+        let a = scoped + 3;
+    } else if value > 1 {
+        let b = scoped + 4;
+    } else {
+        let c = scoped + 5;
+    }
+}
 "#;
 
 #[test]
@@ -94,6 +110,7 @@ fn test_function() {
     assert_eq!(contract.diagnostics.len(), 0, "{:#?}", contract.diagnostics);
     assert_eq!(contract.models.len(), 2);
     assert_eq!(contract.states.len(), 2);
+    assert_eq!(contract.functions.len(), 3);
     assert_eq!(contract.structs.len(), 0);
 
     let model = contract

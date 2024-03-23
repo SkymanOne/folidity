@@ -256,10 +256,13 @@ pub fn statement(
                 ));
                 return Err(());
             }
+            let (TypeVariant::List(ty) | TypeVariant::Set(ty)) = list_expr.ty() else {
+                return Err(());
+            };
             for ident in &it.names {
                 scope.add(
                     ident,
-                    list_expr.ty().clone(),
+                    *ty.clone(),
                     None,
                     VariableKind::Loop,
                     false,
