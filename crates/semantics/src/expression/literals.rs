@@ -46,8 +46,8 @@ pub fn resolve_bool(
                         ty: TypeVariant::Bool,
                     }))
                 }
-                a_ty => {
-                    report_type_mismatch(&[expected_ty.clone()], a_ty, &loc, contract);
+                _ => {
+                    report_type_mismatch(&expected_ty, &[TypeVariant::Bool], &loc, contract);
                     Err(())
                 }
             }
@@ -86,8 +86,8 @@ pub fn resolve_char(
                         ty: TypeVariant::Char,
                     }))
                 }
-                a_ty => {
-                    report_type_mismatch(&[expected_ty.clone()], a_ty, &loc, contract);
+                _ => {
+                    report_type_mismatch(&expected_ty, &[TypeVariant::Char], &loc, contract);
                     Err(())
                 }
             }
@@ -127,8 +127,8 @@ pub fn resolve_string(
                         ty: TypeVariant::String,
                     }))
                 }
-                a_ty => {
-                    report_type_mismatch(&[expected_ty.clone()], a_ty, &loc, contract);
+                _ => {
+                    report_type_mismatch(&expected_ty, &[TypeVariant::String], &loc, contract);
                     Err(())
                 }
             }
@@ -174,8 +174,8 @@ pub fn resolve_hex(
                         ty: TypeVariant::Hex,
                     }))
                 }
-                a_ty => {
-                    report_type_mismatch(&[expected_ty.clone()], a_ty, &loc, contract);
+                _ => {
+                    report_type_mismatch(&expected_ty, &[TypeVariant::Hex], &loc, contract);
                     Err(())
                 }
             }
@@ -209,15 +209,20 @@ pub fn resolve_address(
         ExpectedType::Concrete(ty) => {
             match ty {
                 TypeVariant::Address => {
-                    let address = Address::from_str(value).map_err(|_| {})?;
+                    let address = Address::from_str(value).map_err(|_| {
+                        contract.diagnostics.push(Report::semantic_error(
+                            loc.clone(),
+                            "This is not a valid address".to_string(),
+                        ));
+                    })?;
                     Ok(Expression::Address(UnaryExpression {
                         loc,
                         element: address,
                         ty: TypeVariant::Address,
                     }))
                 }
-                a_ty => {
-                    report_type_mismatch(&[expected_ty.clone()], a_ty, &loc, contract);
+                _ => {
+                    report_type_mismatch(&expected_ty, &[TypeVariant::Address], &loc, contract);
                     Err(())
                 }
             }
@@ -306,8 +311,16 @@ pub fn resolve_lists(
             match ty {
                 TypeVariant::Set(ty) => derive_expr(ty),
                 TypeVariant::List(ty) => derive_expr(ty),
-                a_ty => {
-                    report_type_mismatch(&[expected_ty.clone()], a_ty, &loc, contract);
+                _ => {
+                    report_type_mismatch(
+                        &expected_ty,
+                        &[
+                            TypeVariant::Set(Box::default()),
+                            TypeVariant::List(Box::default()),
+                        ],
+                        &loc,
+                        contract,
+                    );
                     Err(())
                 }
             }
@@ -326,9 +339,9 @@ pub fn resolve_lists(
                     return Err(());
                 }
                 let expr = expression(&exprs[0], ExpectedType::Dynamic(vec![]), scope, contract)?;
-                let exprt_ty =
+                let exprs_ty =
                     ExpectedType::Concrete(TypeVariant::List(Box::new(expr.ty().clone())));
-                resolve_lists(exprs, loc, contract, scope, exprt_ty)
+                resolve_lists(exprs, loc, contract, scope, exprs_ty)
             } else {
                 // we need to manually inspect the type.
                 let allowed_tys: Vec<TypeVariant> = tys

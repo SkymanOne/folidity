@@ -483,9 +483,7 @@ Term: ast::Expression = {
         )
     },
     <start:@L> <val:string> <end:@R> => {
-        ast::Expression::String(
-            ast::UnaryExpression::new(start, end, val.to_string())
-        )
+        ast::Expression::new_string(start, end, val)
     },
     <start:@L> <val:char_token> <end:@R> => {
         ast::Expression::Char(
@@ -493,14 +491,10 @@ Term: ast::Expression = {
         )
     },
     <start:@L> <val:hex> <end:@R> => {
-        ast::Expression::Hex(
-            ast::UnaryExpression::new(start, end, val.to_string())
-        )
+        ast::Expression::new_hex(start, end, val)
     },
     <start:@L> <val:address> <end:@R> => {
-        ast::Expression::Address(
-            ast::UnaryExpression::new(start, end, val.to_string())
-        )
+        ast::Expression::new_address(start, end, val)
     },
 
 
@@ -552,7 +546,7 @@ extern {
         char_token => Token::Char(<char>),
         string => Token::String(<&'input str>),
         address => Token::Address(<&'input str>),
-        hex => Token::String(<&'input str>),
+        hex => Token::Hex(<&'input str>),
         ident => Token::Identifier(<&'input str>),
         "true" => Token::True,
         "false" => Token::False,

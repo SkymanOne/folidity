@@ -364,6 +364,32 @@ pub enum Expression {
     StructInit(StructInit),
 }
 
+impl Expression {
+    pub fn new_address(start: usize, end: usize, value: &str) -> Self {
+        let reg = regex::Regex::new(r#"(a\")([a-zA-Z0-9]+)(\")"#).unwrap();
+        let Some((_, [_, address, _])) = reg.captures(value).map(|caps| caps.extract()) else {
+            panic!()
+        };
+        Expression::Address(UnaryExpression::new(start, end, address.to_string()))
+    }
+
+    pub fn new_hex(start: usize, end: usize, value: &str) -> Self {
+        let reg = regex::Regex::new(r#"(hex\")([a-zA-Z0-9]+)(\")"#).unwrap();
+        let Some((_, [_, hex, _])) = reg.captures(value).map(|caps| caps.extract()) else {
+            panic!()
+        };
+        Expression::Hex(UnaryExpression::new(start, end, hex.to_string()))
+    }
+
+    pub fn new_string(start: usize, end: usize, value: &str) -> Self {
+        let reg = regex::Regex::new(r#"(s\")([\w\W][^"]*)(\")"#).unwrap();
+        let Some((_, [_, string, _])) = reg.captures(value).map(|caps| caps.extract()) else {
+            panic!()
+        };
+        Expression::String(UnaryExpression::new(start, end, string.to_string()))
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Node)]
 pub struct FunctionCall {
     /// Location of the parent expression.

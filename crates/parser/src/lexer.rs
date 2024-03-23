@@ -47,17 +47,17 @@ pub type Spanned<Tok, Loc> = (Loc, Tok, Loc);
 #[logos(error = LogosError)]
 pub enum Token<'input> {
     // Type values
-    #[regex("[0-9]+", |lex| lex.slice(), priority = 2)]
+    #[regex("-?[0-9]+", |lex| lex.slice(), priority = 2)]
     Number(&'input str),
-    #[regex("([0-9]*[.])?[0-9]+", |lex| lex.slice(), priority = 1)]
+    #[regex("-?([0-9]*[.])?[0-9]+", |lex| lex.slice(), priority = 1)]
     Float(&'input str),
     #[regex("\'[a-zA-Z]\'", |lex| lex.slice().parse().ok())]
     Char(char),
-    #[regex("\"[a-zA-Z]+\"", |lex| lex.slice())]
+    #[regex(r#"s\"[\w\W][^"]*\""#, |lex| lex.slice())]
     String(&'input str),
-    #[regex("hex\"[a-zA-Z]+\"", |lex| lex.slice())]
+    #[regex("hex\"[a-zA-Z0-9]+\"", |lex| lex.slice())]
     Hex(&'input str),
-    #[regex("a\"[a-zA-Z]+\"", |lex| lex.slice())]
+    #[regex("a\"[a-zA-Z0-9]+\"", |lex| lex.slice())]
     Address(&'input str),
     #[regex("[_a-zA-Z][_0-9a-zA-Z]*", |lex| lex.slice())]
     Identifier(&'input str),

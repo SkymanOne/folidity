@@ -9,7 +9,10 @@ use crate::{
         TypeVariant,
     },
     contract::ContractDefinition,
-    expression::expression,
+    expression::{
+        expression,
+        resolve_nested_fields,
+    },
     global_symbol::{
         GlobalSymbol,
         SymbolInfo,
@@ -38,19 +41,23 @@ pub fn resolve_bounds(contract: &mut ContractDefinition, delay: &DelayedDeclarat
             }),
             ScopeContext::Bounds,
         );
-        if let Some(parent_i) = &contract.models[model_delay.i].parent {
-            let parent = contract.models[*parent_i].clone();
-            parent.fields.iter().for_each(|p| {
-                scope.add(
-                    &p.name,
-                    p.ty.ty.clone(),
-                    None,
-                    VariableKind::Local,
-                    false,
-                    scope.current,
-                    contract,
-                );
-            });
+        let mut fields = Vec::new();
+        let parent_sym = contract.models[model_delay.i].parent.clone();
+        resolve_nested_fields(&parent_sym, &mut fields, contract);
+        let model_fields = contract.models[model_delay.i].fields.clone();
+
+        fields.extend(model_fields);
+
+        for f in fields {
+            scope.add(
+                &f.name,
+                f.ty.ty.clone(),
+                None,
+                VariableKind::Local,
+                false,
+                scope.current,
+                contract,
+            );
         }
 
         let Ok(bounds) = resolve_bound_exprs(&st.expr, &mut scope, contract) else {

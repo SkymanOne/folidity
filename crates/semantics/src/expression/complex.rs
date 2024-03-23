@@ -36,7 +36,10 @@ use crate::{
     },
 };
 
-use super::expression;
+use super::{
+    expression,
+    resolve_nested_fields,
+};
 
 /// Resolve variable to a AST expression.
 ///
@@ -121,12 +124,7 @@ pub fn resolve_variable(
                 let sym = scope.find_symbol(&var_id).unwrap();
 
                 if &sym.ty != ty {
-                    report_type_mismatch(
-                        &[ExpectedType::Concrete(ty.clone())],
-                        &sym.ty,
-                        &ident.loc,
-                        contract,
-                    );
+                    report_type_mismatch(&expected_ty, &[sym.ty.clone()], &ident.loc, contract);
                     return Err(());
                 }
 
@@ -480,26 +478,14 @@ pub fn resolve_member_access(
         let ty = match &expected_ty {
             ExpectedType::Concrete(ty) => {
                 if ty != &mty {
-                    report_type_mismatch(
-                        &[ExpectedType::Concrete(ty.clone())],
-                        &mty,
-                        &loc,
-                        contract,
-                    );
+                    report_type_mismatch(&expected_ty, &[mty], &loc, contract);
                     return Err(());
                 }
                 mty
             }
             ExpectedType::Dynamic(tys) => {
                 if !tys.contains(&mty) {
-                    report_type_mismatch(
-                        &tys.iter()
-                            .map(|t| ExpectedType::Concrete(t.clone()))
-                            .collect::<Vec<ExpectedType>>(),
-                        &mty,
-                        &loc,
-                        contract,
-                    );
+                    report_type_mismatch(&expected_ty, &[mty], &loc, contract);
                     return Err(());
                 } else {
                     mty
@@ -587,27 +573,35 @@ pub fn resolve_struct_init(
         return Err(());
     };
 
-    let mut resolve_model =
-        |s: &SymbolInfo, contract: &mut ContractDefinition| -> Result<Vec<Expression>, ()> {
-            let model_decl = contract.models[s.i].clone();
-            if model_decl.fields.len() != args.len() {
-                contract.diagnostics.push(Report::semantic_error(
-                    loc.clone(),
-                    String::from("Invalid number of arguments."),
-                ));
-                return Err(());
-            }
-            let (parsed_args, error_args) = parse_args(args, &model_decl.fields, scope, contract);
+    let mut resolve_model = |s: &SymbolInfo,
+                             contract: &mut ContractDefinition|
+     -> Result<(Vec<Expression>, Option<SymbolInfo>), ()> {
+        let model_decl = contract.models[s.i].clone();
+        let mut fields = Vec::new();
+        let parent = model_decl.parent;
 
-            if error_args {
-                contract.diagnostics.push(Report::type_error(
-                    loc.clone(),
-                    String::from("Argument types mismatched."),
-                ));
-                return Err(());
-            }
-            Ok(parsed_args)
-        };
+        resolve_nested_fields(&parent, &mut fields, contract);
+
+        fields.extend(model_decl.fields);
+
+        if fields.len() != args.len() {
+            contract.diagnostics.push(Report::semantic_error(
+                loc.clone(),
+                String::from("Invalid number of arguments."),
+            ));
+            return Err(());
+        }
+        let (parsed_args, error_args) = parse_args(args, &fields, scope, contract);
+
+        if error_args {
+            contract.diagnostics.push(Report::type_error(
+                loc.clone(),
+                String::from("Argument mismatched."),
+            ));
+            return Err(());
+        }
+        Ok((parsed_args, parent))
+    };
 
     let check_types = |tv: TypeVariant, contract: &mut ContractDefinition| -> Result<(), ()> {
         match &expected_ty {
@@ -619,11 +613,11 @@ pub fn resolve_struct_init(
                 Err(())
             }
             ExpectedType::Concrete(ty) if ty != &tv => {
-                report_type_mismatch(&[expected_ty.clone()], &tv, &loc, contract);
+                report_type_mismatch(&expected_ty, &[tv], &loc, contract);
                 Err(())
             }
             ExpectedType::Dynamic(tys) if !tys.contains(&tv) => {
-                report_type_mismatch(&[expected_ty.clone()], &tv, &loc, contract);
+                report_type_mismatch(&expected_ty, &[tv], &loc, contract);
                 Err(())
             }
             _ => Ok(()),
@@ -657,19 +651,21 @@ pub fn resolve_struct_init(
                 name: ident.clone(),
                 args: parsed_args,
                 auto_object: None,
+                parent: None,
                 ty: TypeVariant::Struct(s.clone()),
             }))
         }
         GlobalSymbol::Model(s) => {
             check_types(TypeVariant::Model(s.clone()), contract)?;
 
-            let parsed_args = resolve_model(&s, contract)?;
+            let (parsed_args, parent) = resolve_model(&s, contract)?;
 
             Ok(Expression::StructInit(StructInit {
                 loc: loc.clone(),
                 name: ident.clone(),
                 args: parsed_args,
                 auto_object: None,
+                parent,
                 ty: TypeVariant::Model(s.clone()),
             }))
         }
@@ -690,13 +686,14 @@ pub fn resolve_struct_init(
                         name: ident.clone(),
                         args: vec![],
                         auto_object: None,
+                        parent: None,
                         ty: TypeVariant::State(s.clone()),
                     }));
                 };
             }
 
             let body = &state_decl.body.unwrap();
-            let parsed_args = match body {
+            let (parsed_args, parent) = match body {
                 StateBody::Raw(fields) => {
                     if fields.len() != args.len() {
                         contract.diagnostics.push(Report::semantic_error(
@@ -714,7 +711,7 @@ pub fn resolve_struct_init(
                         ));
                         return Err(());
                     }
-                    parsed_args
+                    (parsed_args, None)
                 }
                 StateBody::Model(s) => resolve_model(s, contract)?,
             };
@@ -723,6 +720,7 @@ pub fn resolve_struct_init(
                 name: ident.clone(),
                 args: parsed_args,
                 auto_object: None,
+                parent,
                 ty: TypeVariant::State(s.clone()),
             }))
         }
@@ -743,7 +741,6 @@ fn parse_args(
     contract: &mut ContractDefinition,
 ) -> (Vec<Expression>, bool) {
     let mut error_args = false;
-
     let parsed_args: Vec<Expression> = args
         .iter()
         .zip(params.iter())
@@ -799,7 +796,7 @@ fn find_var(
     let Some((v_i, _)) = scope.find_var_index(&ident.name) else {
         contract.diagnostics.push(Report::semantic_error(
             ident.loc.clone(),
-            String::from("Variable is not declared."),
+            format!("`{}`: Variable is not declared.", ident.name),
         ));
         return Err(());
     };

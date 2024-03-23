@@ -7,6 +7,7 @@ use num_bigint::{
     BigUint,
 };
 use num_rational::BigRational;
+use num_traits::Zero;
 
 use crate::{
     ast::{
@@ -58,8 +59,8 @@ pub fn resolve_integer(
                         ty: TypeVariant::Uint,
                     }))
                 }
-                a_ty => {
-                    report_type_mismatch(&[expected_ty.clone()], a_ty, &loc, contract);
+                _ => {
+                    report_type_mismatch(&expected_ty, &[TypeVariant::Int], &loc, contract);
                     Err(())
                 }
             }
@@ -111,20 +112,38 @@ pub fn resolve_float(
                     } else {
                         number_str.to_string()
                     };
-                    let number = BigRational::from_str(&number_str).map_err(|_| {
+
+                    let Some((integer, frac)) = number_str.split_once('.') else {
                         contract.diagnostics.push(Report::semantic_error(
                             loc.clone(),
-                            String::from("Error parsing real number"),
+                            String::from("Error splitting float number into parts."),
                         ));
-                    })?;
+                        return Err(());
+                    };
+                    let len = frac.len() as u32;
+                    let denominator = BigInt::from_str("10").unwrap().pow(len);
+                    let zero_index = frac.chars().position(|c| c != '0').unwrap_or(usize::MAX);
+                    let number = if integer == "0" {
+                        if zero_index < usize::MAX {
+                            BigRational::new(
+                                BigInt::from_str(&frac[zero_index..]).unwrap(),
+                                denominator,
+                            )
+                        } else {
+                            BigRational::from(BigInt::zero())
+                        }
+                    } else {
+                        let total_int = format!("{}{}", integer, frac);
+                        BigRational::new(BigInt::from_str(&total_int).unwrap(), denominator)
+                    };
                     Ok(Expression::Float(UnaryExpression {
                         loc,
                         element: number,
                         ty: TypeVariant::Float,
                     }))
                 }
-                a_ty => {
-                    report_type_mismatch(&[expected_ty.clone()], a_ty, &loc, contract);
+                _ => {
+                    report_type_mismatch(&expected_ty, &[TypeVariant::Float], &loc, contract);
                     Err(())
                 }
             }

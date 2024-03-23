@@ -72,6 +72,19 @@ fn comment_token() {
     assert_eq!(tokens.next(), Some((6, Token::Identifier("ident"), 11)))
 }
 
+#[test]
+fn strings() {
+    let input = "s\"Hello World\" a\"ABC\" hex\"ABC\"";
+    let mut errors = Vec::new();
+    let mut tokens = Lexer::new(input, &mut errors);
+    assert_eq!(
+        tokens.next(),
+        Some((0, Token::String("s\"Hello World\""), 14))
+    );
+    assert_eq!(tokens.next(), Some((15, Token::Address("a\"ABC\""), 21)));
+    assert_eq!(tokens.next(), Some((22, Token::Hex("hex\"ABC\""), 30)));
+}
+
 fn unwrap_tree(src: &str) -> Result<Source, String> {
     parse(src).map_err(|errs| {
         errs.iter()

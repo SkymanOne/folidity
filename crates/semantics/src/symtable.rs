@@ -157,7 +157,7 @@ impl Scope {
 
         // we need to decide which scope we are allowed traverse depending on the context of the
         // current scope.
-        let whilelists = match &table.context {
+        let whitelists = match &table.context {
             // if we are inside bound context, we can only traverse params, access attributes,
             // return param, and state bounds.
             ScopeContext::Bounds => {
@@ -181,11 +181,11 @@ impl Scope {
         };
 
         let mut v_i = table.names.get(name);
-        while table_i > 0 {
+        while table_i > 0 && v_i.is_none() {
             table_i -= 1;
             table = &self.tables[table_i];
             v_i = table.names.get(name);
-            if v_i.is_some() && whilelists.contains(&table.context) {
+            if v_i.is_some() && whitelists.contains(&table.context) {
                 break;
             }
         }

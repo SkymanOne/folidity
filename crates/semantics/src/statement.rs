@@ -192,6 +192,7 @@ pub fn statement(
 
             Ok(reachable_block)
         }
+        // todo: restrict mutation outside loop signature
         parsed_ast::Statement::ForLoop(for_loop) => {
             scope.push(ScopeContext::Loop);
 
@@ -209,8 +210,12 @@ pub fn statement(
                 scope,
                 contract,
             )?;
-            let eval_incr =
-                expression(&for_loop.incrementer, ExpectedType::Empty, scope, contract)?;
+            let eval_incr = expression(
+                &for_loop.incrementer,
+                ExpectedType::Concrete(TypeVariant::Int),
+                scope,
+                contract,
+            )?;
 
             if for_loop.body.statements.is_empty() {
                 reachable = true;

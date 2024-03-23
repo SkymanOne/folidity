@@ -65,12 +65,8 @@ pub fn resolve_multiply(
                         Ok(expr)
                     }
                 }
-                a_ty => {
-                    let expected: Vec<ExpectedType> = allowed_tys
-                        .iter()
-                        .map(|ty| ExpectedType::Concrete(ty.clone()))
-                        .collect();
-                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                _ => {
+                    report_type_mismatch(&expected_ty, allowed_tys, &loc, contract);
                     Err(())
                 }
             }
@@ -129,12 +125,8 @@ pub fn resolve_division(
                         Ok(expr)
                     }
                 }
-                a_ty => {
-                    let expected: Vec<ExpectedType> = allowed_tys
-                        .iter()
-                        .map(|ty| ExpectedType::Concrete(ty.clone()))
-                        .collect();
-                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                _ => {
+                    report_type_mismatch(&expected_ty, allowed_tys, &loc, contract);
                     Err(())
                 }
             }
@@ -193,12 +185,8 @@ pub fn resolve_modulo(
                         Ok(expr)
                     }
                 }
-                a_ty => {
-                    let expected: Vec<ExpectedType> = allowed_tys
-                        .iter()
-                        .map(|ty| ExpectedType::Concrete(ty.clone()))
-                        .collect();
-                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                _ => {
+                    report_type_mismatch(&expected_ty, allowed_tys, &loc, contract);
                     Err(())
                 }
             }
@@ -262,12 +250,8 @@ pub fn resolve_addition(
                         Ok(expr)
                     }
                 }
-                a_ty => {
-                    let expected: Vec<ExpectedType> = allowed_tys
-                        .iter()
-                        .map(|ty| ExpectedType::Concrete(ty.clone()))
-                        .collect();
-                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                _ => {
+                    report_type_mismatch(&expected_ty, allowed_tys, &loc, contract);
                     Err(())
                 }
             }
@@ -326,12 +310,8 @@ pub fn resolve_subtraction(
                         Ok(expr)
                     }
                 }
-                a_ty => {
-                    let expected: Vec<ExpectedType> = allowed_tys
-                        .iter()
-                        .map(|ty| ExpectedType::Concrete(ty.clone()))
-                        .collect();
-                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                _ => {
+                    report_type_mismatch(&expected_ty, allowed_tys, &loc, contract);
                     Err(())
                 }
             }
@@ -402,12 +382,8 @@ pub fn resolve_equality(
                         Ok(expr)
                     }
                 }
-                a_ty => {
-                    let expected: Vec<ExpectedType> = allowed_tys
-                        .iter()
-                        .map(|ty| ExpectedType::Concrete(ty.clone()))
-                        .collect();
-                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                _ => {
+                    report_type_mismatch(&expected_ty, allowed_tys, &loc, contract);
                     Err(())
                 }
             }
@@ -492,12 +468,8 @@ pub fn resolve_inequality(
                         Ok(expr)
                     }
                 }
-                a_ty => {
-                    let expected: Vec<ExpectedType> = allowed_tys
-                        .iter()
-                        .map(|ty| ExpectedType::Concrete(ty.clone()))
-                        .collect();
-                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                _ => {
+                    report_type_mismatch(&expected_ty, allowed_tys, &loc, contract);
                     Err(())
                 }
             }
@@ -578,12 +550,8 @@ pub fn resolve_greater(
                         Ok(expr)
                     }
                 }
-                a_ty => {
-                    let expected: Vec<ExpectedType> = allowed_tys
-                        .iter()
-                        .map(|ty| ExpectedType::Concrete(ty.clone()))
-                        .collect();
-                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                _ => {
+                    report_type_mismatch(&expected_ty, allowed_tys, &loc, contract);
                     Err(())
                 }
             }
@@ -664,12 +632,8 @@ pub fn resolve_less(
                         Ok(expr)
                     }
                 }
-                a_ty => {
-                    let expected: Vec<ExpectedType> = allowed_tys
-                        .iter()
-                        .map(|ty| ExpectedType::Concrete(ty.clone()))
-                        .collect();
-                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                _ => {
+                    report_type_mismatch(&expected_ty, allowed_tys, &loc, contract);
                     Err(())
                 }
             }
@@ -750,12 +714,8 @@ pub fn resolve_greater_eq(
                         Ok(expr)
                     }
                 }
-                a_ty => {
-                    let expected: Vec<ExpectedType> = allowed_tys
-                        .iter()
-                        .map(|ty| ExpectedType::Concrete(ty.clone()))
-                        .collect();
-                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                _ => {
+                    report_type_mismatch(&expected_ty, allowed_tys, &loc, contract);
                     Err(())
                 }
             }
@@ -836,12 +796,8 @@ pub fn resolve_less_eq(
                         Ok(expr)
                     }
                 }
-                a_ty => {
-                    let expected: Vec<ExpectedType> = allowed_tys
-                        .iter()
-                        .map(|ty| ExpectedType::Concrete(ty.clone()))
-                        .collect();
-                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                _ => {
+                    report_type_mismatch(&expected_ty, allowed_tys, &loc, contract);
                     Err(())
                 }
             }
@@ -917,12 +873,8 @@ pub fn resolve_and(
                         Ok(expr)
                     }
                 }
-                a_ty => {
-                    let expected: Vec<ExpectedType> = allowed_tys
-                        .iter()
-                        .map(|ty| ExpectedType::Concrete(ty.clone()))
-                        .collect();
-                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                _ => {
+                    report_type_mismatch(&expected_ty, allowed_tys, &loc, contract);
                     Err(())
                 }
             }
@@ -998,12 +950,8 @@ pub fn resolve_or(
                         Ok(expr)
                     }
                 }
-                a_ty => {
-                    let expected: Vec<ExpectedType> = allowed_tys
-                        .iter()
-                        .map(|ty| ExpectedType::Concrete(ty.clone()))
-                        .collect();
-                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                _ => {
+                    report_type_mismatch(&expected_ty, allowed_tys, &loc, contract);
                     Err(())
                 }
             }
@@ -1075,12 +1023,8 @@ pub fn resolve_not(
                         Ok(expr)
                     }
                 }
-                a_ty => {
-                    let expected: Vec<ExpectedType> = allowed_tys
-                        .iter()
-                        .map(|ty| ExpectedType::Concrete(ty.clone()))
-                        .collect();
-                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                _ => {
+                    report_type_mismatch(&expected_ty, allowed_tys, &loc, contract);
                     Err(())
                 }
             }
@@ -1158,12 +1102,8 @@ pub fn resolve_in(
                         ty: TypeVariant::Bool,
                     }))
                 }
-                a_ty => {
-                    let expected: Vec<ExpectedType> = allowed_tys
-                        .iter()
-                        .map(|ty| ExpectedType::Concrete(ty.clone()))
-                        .collect();
-                    report_type_mismatch(expected.as_slice(), a_ty, &loc, contract);
+                _ => {
+                    report_type_mismatch(&expected_ty, allowed_tys, &loc, contract);
                     Err(())
                 }
             }

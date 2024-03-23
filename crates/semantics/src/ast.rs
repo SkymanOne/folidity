@@ -1,7 +1,4 @@
-use std::{
-    collections::HashSet,
-    fmt::Display,
-};
+use std::collections::HashSet;
 
 use derive_node::Node;
 use folidity_parser::{
@@ -19,6 +16,7 @@ use num_bigint::{
 use num_rational::BigRational;
 
 use crate::{
+    contract::ContractDefinition,
     global_symbol::SymbolInfo,
     symtable::Scope,
 };
@@ -265,7 +263,7 @@ pub struct ModelDeclaration {
     pub fields: Vec<Param>,
     /// A parent model from which fields are inherited.
     /// Identified as a index in the global symbol table.
-    pub parent: Option<usize>,
+    pub parent: Option<SymbolInfo>,
     /// Model logical bounds.
     pub bounds: Vec<Expression>,
     /// Is the parent model recursive.
@@ -383,6 +381,8 @@ pub struct StructInit {
     /// Autofill fields from partial object
     /// using `..ident` notation.
     pub auto_object: Option<Identifier>,
+
+    pub parent: Option<SymbolInfo>,
     /// Type of an expression.
     pub ty: TypeVariant,
 }
@@ -480,9 +480,9 @@ pub struct MemberAccess {
     pub ty: TypeVariant,
 }
 
-impl Display for TypeVariant {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut word = |s: &str| -> std::fmt::Result { write!(f, "{s}") };
+impl TypeVariant {
+    pub fn display(&self, contract: &ContractDefinition) -> String {
+        let word = |s: &str| -> String { s.to_string() };
         match self {
             TypeVariant::Int => word("int"),
             TypeVariant::Uint => word("uint"),
@@ -493,15 +493,26 @@ impl Display for TypeVariant {
             TypeVariant::Address => word("address"),
             TypeVariant::Unit => word("unit"),
             TypeVariant::Bool => word("bool"),
-            TypeVariant::Set(_) => word("set"),
-            TypeVariant::List(_) => word("list"),
-            TypeVariant::Mapping(_) => word("mapping"),
-            TypeVariant::Function(_) => word("function"),
-            TypeVariant::Struct(_) => word("struct"),
-            TypeVariant::Model(_) => word("model"),
-            TypeVariant::Enum(_) => word("enum"),
-            TypeVariant::State(_) => word("state"),
-            TypeVariant::Generic(_) => word("generic type"),
+            TypeVariant::Set(ty) => format!("set<{}>", ty.display(contract)),
+            TypeVariant::List(ty) => format!("list<{}>", ty.display(contract)),
+            TypeVariant::Mapping(m) => {
+                format!(
+                    "set<{} -> {}>",
+                    m.from_ty.display(contract),
+                    m.to_ty.display(contract)
+                )
+            }
+            TypeVariant::Function(s) => format!("function -> {}", s.returns.display(contract)),
+            TypeVariant::Struct(s) => format!("struct {}", &contract.structs[s.i].name.name),
+            TypeVariant::Model(s) => format!("model {}", &contract.models[s.i].name.name),
+            TypeVariant::Enum(s) => format!("enum {}", &contract.enums[s.i].name.name),
+            TypeVariant::State(s) => format!("state {}", &contract.states[s.i].name.name),
+            TypeVariant::Generic(tys) => {
+                let s: String = tys.iter().fold(String::new(), |acc, x| {
+                    format!("{} {}", acc, x.display(contract))
+                });
+                s.trim().to_string()
+            }
         }
     }
 }

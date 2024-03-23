@@ -13,9 +13,11 @@ use folidity_parser::ast::{
 use crate::{
     ast::{
         Expression,
+        Param,
         TypeVariant,
     },
     contract::ContractDefinition,
+    global_symbol::SymbolInfo,
     symtable::Scope,
     types::ExpectedType,
 };
@@ -285,5 +287,18 @@ pub fn dynamic_to_concrete_type(tys: &[TypeVariant], allowed: &[TypeVariant]) ->
         ExpectedType::Concrete(ty.clone())
     } else {
         ExpectedType::Concrete(allowed[0].clone())
+    }
+}
+
+pub fn resolve_nested_fields(
+    s: &Option<SymbolInfo>,
+    fields: &mut Vec<Param>,
+    contract: &mut ContractDefinition,
+) {
+    if let Some(parent_sym) = s {
+        let parent_decl_fields = contract.models[parent_sym.i].fields.clone();
+        let grand_parent = contract.models[parent_sym.i].parent.clone();
+        resolve_nested_fields(&grand_parent, fields, contract);
+        fields.extend(parent_decl_fields);
     }
 }

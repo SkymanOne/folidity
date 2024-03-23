@@ -127,11 +127,13 @@ impl ContractDefinition {
     /// - Detect any cycles and report them.
     /// - Ensure that no fields have types of any state or model.
     pub fn resolve_fields(&mut self, delay: &DelayedDeclarations) {
-        // Update fields of the models and structs together.
-        for (s, m) in delay.structs.iter().zip(delay.models.iter()) {
+        // Update fields of the models and struct.
+        for s in &delay.structs {
             let s_fields = self.analyze_fields(&s.decl.fields, &s.decl.name);
             self.structs[s.i].fields = s_fields;
+        }
 
+        for m in &delay.models {
             let m_fields = self.analyze_fields(&m.decl.fields, &m.decl.name);
             self.models[m.i].fields = m_fields;
         }
@@ -181,11 +183,14 @@ impl ContractDefinition {
             return analyzed_fields;
         }
 
+        let mut duplicates = Vec::new();
         for field in fields {
-            let duplicates: Vec<&parsed_ast::Param> = fields
+            if analyzed_fields
                 .iter()
-                .filter(|f| f.name.name == field.name.name)
-                .collect();
+                .any(|f| f.name.name == field.name.name)
+            {
+                duplicates.push(field)
+            }
             if !duplicates.is_empty() {
                 let start = duplicates
                     .iter()

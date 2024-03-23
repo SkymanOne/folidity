@@ -1,7 +1,4 @@
-use std::{
-    collections::HashSet,
-    fmt::Display,
-};
+use std::collections::HashSet;
 
 use crate::{
     ast::{
@@ -61,16 +58,16 @@ pub enum ExpectedType {
     Dynamic(Vec<TypeVariant>),
 }
 
-impl Display for ExpectedType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl ExpectedType {
+    fn display(&self, contract: &ContractDefinition) -> String {
         match self {
-            ExpectedType::Empty => f.write_str("nothing"),
-            ExpectedType::Concrete(ty) => write!(f, "{}", ty),
+            ExpectedType::Empty => "nothing".to_string(),
+            ExpectedType::Concrete(ty) => ty.display(contract),
             ExpectedType::Dynamic(tys) => {
-                let args = tys
-                    .iter()
-                    .fold(String::new(), |acc, x| format!("{}, {}", acc, x));
-                f.write_str(args.trim_start_matches(", "))
+                let args = tys.iter().fold(String::new(), |acc, x| {
+                    format!("{}, {}", acc, x.display(contract))
+                });
+                args.trim_start_matches(", ").to_string()
             }
         }
     }
@@ -89,7 +86,7 @@ pub fn map_type(contract: &mut ContractDefinition, ty: &parsed_ast::Type) -> Res
         parsed_ast::TypeVariant::String => TypeVariant::String,
         parsed_ast::TypeVariant::Hex => TypeVariant::Hex,
         parsed_ast::TypeVariant::Address => TypeVariant::Address,
-        parsed_ast::TypeVariant::Unit => TypeVariant::Address,
+        parsed_ast::TypeVariant::Unit => TypeVariant::Unit,
         parsed_ast::TypeVariant::Bool => TypeVariant::Bool,
         parsed_ast::TypeVariant::Set(s) => {
             let set_ty = map_type(contract, &s.ty)?;
@@ -291,7 +288,7 @@ pub fn check_inheritance(contract: &mut ContractDefinition, delay: &DelayedDecla
         if let Some(ident) = &model.decl.parent {
             if let Some(symbol) = GlobalSymbol::lookup(contract, ident) {
                 match symbol {
-                    GlobalSymbol::Model(s) => contract.models[model.i].parent = Some(s.i),
+                    GlobalSymbol::Model(s) => contract.models[model.i].parent = Some(s.clone()),
                     _ => {
                         contract.diagnostics.push(Report::semantic_error(
                             ident.loc.clone(),
@@ -328,13 +325,18 @@ pub fn check_inheritance(contract: &mut ContractDefinition, delay: &DelayedDecla
 /// Detect cyclic model inheritances.
 fn detect_model_cycle(contract: &mut ContractDefinition) {
     let mut edges = HashSet::new();
-    for edge in contract.models.iter().filter_map(|m| m.parent).enumerate() {
+    for edge in contract
+        .models
+        .iter()
+        .enumerate()
+        .filter_map(|(i, m)| m.parent.as_ref().map(|s| (s.i, i)))
+    {
         edges.insert(edge);
     }
     let graph: FieldGraph = Graph::from_edges(edges);
     let tarjan = tarjan_scc(&graph);
     let mut nodes = HashSet::new();
-    for node in tarjan.iter().flatten() {
+    for node in tarjan.iter().filter(|nodes| nodes.len() > 1).flatten() {
         nodes.insert(node);
     }
 
@@ -406,20 +408,20 @@ fn detect_state_cycle(contract: &mut ContractDefinition) {
 
 /// Push diagnostic error about the type mismatch.
 pub(super) fn report_type_mismatch(
-    expected: &[ExpectedType],
-    actual: &TypeVariant,
+    expected: &ExpectedType,
+    actual: &[TypeVariant],
     loc: &Span,
     contract: &mut ContractDefinition,
 ) {
-    let expected = expected
-        .iter()
-        .fold(String::new(), |acc, x| format!("{}, {}", acc, x));
+    let actual = actual.iter().fold(String::new(), |acc, x| {
+        format!("{}, {}", acc, x.display(contract))
+    });
     contract.diagnostics.push(Report::type_error(
         loc.clone(),
         format!(
-            "Mismatched types: expected {}, got {}",
-            expected.trim_start_matches(", "),
-            actual
+            "Mismatched types: expected to resolve to {}, but expression can only resolve to {}",
+            expected.display(contract),
+            actual.trim_start_matches(", ")
         ),
     ));
 }
