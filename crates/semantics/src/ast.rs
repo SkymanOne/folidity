@@ -142,7 +142,7 @@ pub struct Param {
 pub struct ViewState {
     pub loc: Span,
     /// State type identifier.
-    pub ty: usize,
+    pub ty: SymbolInfo,
     /// Variable name identifier.
     pub name: Identifier,
 }

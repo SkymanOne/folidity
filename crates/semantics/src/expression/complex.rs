@@ -834,7 +834,10 @@ fn find_var(
     let Some((v_i, _)) = scope.find_var_index(&ident.name) else {
         contract.diagnostics.push(Report::semantic_error(
             ident.loc.clone(),
-            format!("`{}`: Variable is not declared.", ident.name),
+            format!(
+                "`{}`: Variable is not declared or inaccessible.",
+                ident.name
+            ),
         ));
         return Err(());
     };

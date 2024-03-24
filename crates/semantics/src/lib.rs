@@ -1,6 +1,7 @@
 use bounds::resolve_bounds;
 use contract::ContractDefinition;
 use folidity_parser::ast::Source;
+use functions::resolve_func_body;
 use types::check_inheritance;
 
 mod ast;
@@ -35,6 +36,10 @@ pub fn resolve_semantics(source: &Source) -> ContractDefinition {
 
     // now we can resolve model bounds on all declarations.
     resolve_bounds(&mut definition, &delay);
+
+    for f in &delay.functions {
+        let _ = resolve_func_body(&f.decl, f.i, &mut definition);
+    }
 
     definition
 }

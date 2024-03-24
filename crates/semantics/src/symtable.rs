@@ -36,31 +36,24 @@ impl VariableSym {
 }
 
 /// A kind of a variable used.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum VariableKind {
     Destructor,
     Param,
     Local,
-    State,
+    FromState,
+    ToState,
     Loop,
     Return,
-    // /// A user defined type
-    // /// (e.g. Struct, Model, Enum, Function)
-    // /// which should exist in global namespace.
-    // User(usize),
 }
 
 /// Context of the scope in the symtable.
 /// Typical structure would be:
-/// `AccessAttributes` -> `FunctionParams` -> `Bounds`  -> `FunctionBody` -> ...
+/// `FunctionParams` -> `Bounds` -> `FunctionBody` -> ...
 #[derive(Debug, Clone, Default, PartialEq)]
 pub enum ScopeContext {
-    /// Access attributes
-    AccessAttributes,
-    /// Scope for the function params.
-    FunctionParams,
-    /// We are inside bound context of some global symbol.
-    Bounds,
+    /// We are inside context of declaration of the symbol and its bounds.
+    DeclarationBounds,
     /// Scope is in the function with the given index.
     #[default]
     FunctionBody,
@@ -155,29 +148,31 @@ impl Scope {
         let mut table_i = self.current;
         let mut table = &self.tables[table_i];
 
-        // we need to decide which scope we are allowed traverse depending on the context of the
-        // current scope.
+        // we need to decide which variables we are allowed traverse depending on the context of
+        // the current scope.
         let whitelists = match &table.context {
             // if we are inside bound context, we can only traverse params, access attributes,
             // return param, and state bounds.
-            ScopeContext::Bounds => {
+            ScopeContext::DeclarationBounds => {
                 vec![
-                    ScopeContext::Bounds,
-                    ScopeContext::FunctionParams,
-                    ScopeContext::AccessAttributes,
+                    VariableKind::Local,
+                    VariableKind::Param,
+                    VariableKind::ToState,
+                    VariableKind::FromState,
+                    VariableKind::Return,
                 ]
             }
-            // if we inside loop, block or function body, then we can traverse them and function
-            // params.
+            // if we inside loop, block or function body, then we can traverse them, function
+            // params, and initial state bound.
             ScopeContext::FunctionBody | ScopeContext::Block | ScopeContext::Loop => {
                 vec![
-                    ScopeContext::FunctionParams,
-                    ScopeContext::FunctionBody,
-                    ScopeContext::Block,
-                    ScopeContext::Loop,
+                    VariableKind::FromState,
+                    VariableKind::Param,
+                    VariableKind::Local,
+                    VariableKind::Loop,
+                    VariableKind::Destructor,
                 ]
             }
-            _ => vec![],
         };
 
         let mut v_i = table.names.get(name);
@@ -185,11 +180,19 @@ impl Scope {
             table_i -= 1;
             table = &self.tables[table_i];
             v_i = table.names.get(name);
-            if v_i.is_some() && whitelists.contains(&table.context) {
-                break;
-            }
         }
-        v_i.map(|i| (*i, table_i))
+
+        if let Some(i) = v_i {
+            let var = self.vars.get(i).unwrap();
+            // we only want to return variable that can be access by current scope.
+            if whitelists.contains(&var.usage) {
+                Some((*i, table_i))
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     }
 
     /// Attempts to find a symbol with the given index in the current or outer scopes.
