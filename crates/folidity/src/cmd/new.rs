@@ -46,14 +46,14 @@ impl NewCommand {
             create_dir(&out_dir).map(|_| anyhow::anyhow!("Cannot create project directory."))?;
         }
 
-        let contract_content = include_str!("../../../../examples/counter/counter.fol");
-        let readme_content = include_str!("../../../../examples/counter/README.md");
+        let contract_content = include_bytes!("../../../../examples/counter/counter.fol");
+        let readme_content = include_bytes!("../../../../examples/counter/README.md");
 
         let mut contract_file = File::create(Path::new(&out_dir).join("counter.fol"))?;
-        contract_file.write_all(contract_content.to_string().as_bytes())?;
+        contract_file.write_all(contract_content)?;
 
         let mut readme_file = File::create(Path::new(&out_dir).join("README.md"))?;
-        readme_file.write_all(readme_content.to_string().as_bytes())?;
+        readme_file.write_all(readme_content)?;
 
         Ok(())
     }
