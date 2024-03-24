@@ -77,6 +77,7 @@ st [
     move StartState : { a, b, c, d };
     loops(0.0);
     conditionals(false, 5);
+    move_state();
     return true;
 }
 
@@ -101,6 +102,16 @@ fn () conditionals(cond: bool, value: int) {
         let c = scoped + 5;
     }
 }
+
+fn () move_state() when () -> (StartState s) {
+    let a = a"2FMLYJHYQWRHMFKRHKTKX5UNB5DGO65U57O3YVLWUJWKRE4YYJYC2CWWBY";
+    let b = [1, 2, 3];
+    let c = -5;
+    let d = s"Hello World";
+
+    let m = MyModel : { a, b, c, d };
+    move StartState : { m };
+}
 "#;
 
 #[test]
@@ -114,7 +125,7 @@ fn test_function() {
     assert_eq!(contract.diagnostics.len(), 0, "{:#?}", contract.diagnostics);
     assert_eq!(contract.models.len(), 2);
     assert_eq!(contract.states.len(), 2);
-    assert_eq!(contract.functions.len(), 3);
+    assert_eq!(contract.functions.len(), 4);
     assert_eq!(contract.structs.len(), 0);
 
     let model = contract

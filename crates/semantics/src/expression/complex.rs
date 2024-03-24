@@ -585,8 +585,9 @@ pub fn resolve_struct_init(
         return Err(());
     };
 
-    let mut resolve_model = |s: &SymbolInfo,
-                             contract: &mut ContractDefinition|
+    let resolve_model = |s: &SymbolInfo,
+                         scope: &mut Scope,
+                         contract: &mut ContractDefinition|
      -> Result<(Vec<Expression>, Option<SymbolInfo>), ()> {
         let model_decl = contract.models[s.i].clone();
         let mut fields = Vec::new();
@@ -670,7 +671,7 @@ pub fn resolve_struct_init(
         GlobalSymbol::Model(s) => {
             check_types(TypeVariant::Model(s.clone()), contract)?;
 
-            let (parsed_args, parent) = resolve_model(&s, contract)?;
+            let (parsed_args, parent) = resolve_model(&s, scope, contract)?;
 
             Ok(Expression::StructInit(StructInit {
                 loc: loc.clone(),
@@ -725,7 +726,32 @@ pub fn resolve_struct_init(
                     }
                     (parsed_args, None)
                 }
-                StateBody::Model(s) => resolve_model(s, contract)?,
+                StateBody::Model(s) => {
+                    // todo: support destructuring of fields.
+                    // if we have a single argument, then it is probably a model var.
+                    if args.len() == 1 {
+                        let attempted_expr = expression(
+                            &args[0],
+                            ExpectedType::Concrete(TypeVariant::Model(s.clone())),
+                            scope,
+                            contract,
+                        );
+                        if let Ok(Expression::Variable(var)) = attempted_expr {
+                            return Ok(Expression::StructInit(StructInit {
+                                loc: loc.clone(),
+                                name: ident.clone(),
+                                args: vec![],
+                                auto_object: Some(var.element),
+                                parent: None,
+                                ty: TypeVariant::State(s.clone()),
+                            }));
+                        } else {
+                            resolve_model(s, scope, contract)?
+                        }
+                    } else {
+                        resolve_model(s, scope, contract)?
+                    }
+                }
             };
             Ok(Expression::StructInit(StructInit {
                 loc: loc.clone(),

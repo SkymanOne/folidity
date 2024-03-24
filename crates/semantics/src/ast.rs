@@ -380,7 +380,8 @@ pub struct StructInit {
     pub args: Vec<Expression>,
     /// Autofill fields from partial object
     /// using `..ident` notation.
-    pub auto_object: Option<Identifier>,
+    /// or state init.
+    pub auto_object: Option<usize>,
 
     pub parent: Option<SymbolInfo>,
     /// Type of an expression.
