@@ -28,10 +28,13 @@ use crate::{
 };
 
 /// Resolve parsed statement to an evaluated one.
+/// # Returns
+/// `(reachable, mutating)`
 pub fn statement(
     stmt: &parsed_ast::Statement,
     resolved: &mut Vec<Statement>,
     scope: &mut Scope,
+    mutating: &mut bool,
     contract: &mut ContractDefinition,
 ) -> Result<bool, ()> {
     match stmt {
@@ -146,7 +149,10 @@ pub fn statement(
                     ));
                     return Err(());
                 }
-                reachable = statement(b_stmt, &mut resolved_parts, scope, contract)?;
+                let mut local_mut = false;
+                reachable =
+                    statement(b_stmt, &mut resolved_parts, scope, &mut local_mut, contract)?;
+                *mutating |= local_mut;
             }
 
             scope.pop();
@@ -168,17 +174,25 @@ pub fn statement(
 
             scope.push(ScopeContext::Block);
             let mut body_stmts = Vec::new();
+            let mut local_mut = false;
             let mut reachable_block = statement(
                 &parsed_ast::Statement::Block(*branch.body.clone()),
                 &mut body_stmts,
                 scope,
+                &mut local_mut,
                 contract,
             )?;
             scope.pop();
 
             let mut other_stmts = Vec::new();
             if let Some(else_block) = &branch.else_part {
-                reachable_block |= statement(else_block, &mut other_stmts, scope, contract)?;
+                reachable_block |= statement(
+                    else_block,
+                    &mut other_stmts,
+                    scope,
+                    &mut local_mut,
+                    contract,
+                )?;
             } else {
                 reachable_block = true;
             }
@@ -189,6 +203,8 @@ pub fn statement(
                 body: body_stmts,
                 else_part: other_stmts,
             }));
+
+            *mutating |= local_mut;
 
             Ok(reachable_block)
         }
@@ -202,6 +218,7 @@ pub fn statement(
                 &parsed_ast::Statement::Variable(for_loop.var.clone()),
                 &mut body,
                 scope,
+                mutating,
                 contract,
             )?;
             let eval_cond = expression(
@@ -224,6 +241,7 @@ pub fn statement(
                     &parsed_ast::Statement::Block(*for_loop.body.clone()),
                     &mut body,
                     scope,
+                    mutating,
                     contract,
                 )?;
             }
@@ -275,6 +293,7 @@ pub fn statement(
                 &parsed_ast::Statement::Block(*it.body.clone()),
                 &mut body,
                 scope,
+                mutating,
                 contract,
             )?;
 
@@ -365,6 +384,7 @@ pub fn statement(
             )?;
 
             resolved.push(Statement::StateTransition(eval_init));
+            *mutating = true;
 
             Ok(true)
         }

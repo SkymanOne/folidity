@@ -301,15 +301,49 @@ pub fn resolve_func_body(
     // if the return type is not `()` then we expect the function body to contain `return`
     // statement. i.e. it should be unreachable after the last statement,
     let return_required = !matches!(func_decl.return_ty.ty(), parsed_ast::TypeVariant::Unit);
-    let reachable = statement(&func_decl.body, &mut resolved_stmts, &mut scope, contract)?;
+    let mut transition_required = false;
+    if let Some(state_bound) = &func_decl.state_bound {
+        if !state_bound.to.is_empty() {
+            transition_required = true;
+        }
+    }
+    let mut mutating = false;
+    let reachable = statement(
+        &func_decl.body,
+        &mut resolved_stmts,
+        &mut scope,
+        &mut mutating,
+        contract,
+    )?;
 
     if reachable && return_required {
         contract.diagnostics.push(Report::semantic_error(
             func_decl.loc.clone(),
             format!(
-                "Expected function to return a value of type {:?}",
-                func_decl.return_ty.ty()
+                "Expected function to return a value of type {}",
+                contract.functions[func_i].return_ty.ty().display(contract)
             ),
+        ));
+    }
+
+    if !mutating && transition_required {
+        let bounds = func_decl.state_bound.as_ref().unwrap();
+        let states: String = bounds
+            .to
+            .iter()
+            .fold(String::new(), |init, s| format!("{} {}", &init, &s.ty.name))
+            .trim()
+            .to_string();
+        contract.diagnostics.push(Report::semantic_error(
+            bounds.loc.clone(),
+            format!("Expected function to transition to states [{}]", states),
+        ));
+    }
+
+    if mutating && !transition_required {
+        contract.diagnostics.push(Report::semantic_error(
+            func_decl.loc.clone(),
+            String::from("Function is not supposed to perform a state transition."),
         ));
     }
 
