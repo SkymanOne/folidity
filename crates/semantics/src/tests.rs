@@ -96,6 +96,8 @@ fn () loops(value: float) {
 
 fn () conditionals(cond: bool, value: int) {
     let scoped = -10;
+    let mut s = s"Hello";
+    s = s + s" " + s"World";
     if cond {
         let a = scoped + 3;
     } else if value > 1 {
