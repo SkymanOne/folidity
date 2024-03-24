@@ -2,7 +2,6 @@ use anyhow::Result;
 use std::{
     ffi::OsString,
     fs::{
-        self,
         create_dir,
         File,
     },
