@@ -63,7 +63,11 @@ state SecondState(MyModel)
 
 @init
 @(any)
-fn bool start(init: int) when () -> (StartState s) 
+fn (r: bool) start(init: int) when () -> (StartState s) 
+st [
+    r == true,
+    s.c < 10
+]
 {
     let a = a"2FMLYJHYQWRHMFKRHKTKX5UNB5DGO65U57O3YVLWUJWKRE4YYJYC2CWWBY";
     let b = [1, 2, 3];
@@ -123,7 +127,7 @@ fn test_function() {
 
     let func = &contract.functions[0];
     let vars: Vec<&VariableSym> = func.scope.vars.values().collect();
-    assert_eq!(vars.len(), 6);
+    assert_eq!(vars.len(), 8, "{:#?}", vars);
 
     assert_eq!(func.return_ty.ty(), &TypeVariant::Bool);
     assert_eq!(func.params.len(), 1);
