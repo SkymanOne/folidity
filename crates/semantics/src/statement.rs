@@ -212,11 +212,11 @@ pub fn statement(
         parsed_ast::Statement::ForLoop(for_loop) => {
             scope.push(ScopeContext::Loop);
 
-            let mut body = Vec::new();
+            let mut loop_stmts = Vec::new();
             let mut reachable;
             statement(
                 &parsed_ast::Statement::Variable(for_loop.var.clone()),
-                &mut body,
+                &mut loop_stmts,
                 scope,
                 mutating,
                 contract,
@@ -239,14 +239,25 @@ pub fn statement(
             } else {
                 reachable = statement(
                     &parsed_ast::Statement::Block(*for_loop.body.clone()),
-                    &mut body,
+                    &mut loop_stmts,
                     scope,
                     mutating,
                     contract,
                 )?;
             }
 
-            if body.iter().any(|s| matches!(&s, Statement::Skip(_))) {
+            let Statement::Variable(var) = loop_stmts[0].clone() else {
+                unreachable!()
+            };
+            let Statement::Block(body) = loop_stmts[1].clone() else {
+                unreachable!()
+            };
+
+            if body
+                .statements
+                .iter()
+                .any(|s| matches!(&s, Statement::Skip(_)))
+            {
                 reachable = true;
             }
 
@@ -254,10 +265,10 @@ pub fn statement(
 
             resolved.push(Statement::ForLoop(ForLoop {
                 loc: for_loop.loc.clone(),
-                var: Box::new(body[0].clone()),
+                var,
                 condition: eval_cond,
                 incrementer: eval_incr,
-                body,
+                body: body.statements,
             }));
 
             Ok(reachable)
@@ -289,7 +300,7 @@ pub fn statement(
                 );
             }
 
-            let reachable = statement(
+            statement(
                 &parsed_ast::Statement::Block(*it.body.clone()),
                 &mut body,
                 scope,
@@ -306,7 +317,7 @@ pub fn statement(
                 body,
             }));
 
-            Ok(reachable)
+            Ok(true)
         }
         parsed_ast::Statement::Return(ret) => {
             let GlobalSymbol::Function(sym) = &scope.symbol else {

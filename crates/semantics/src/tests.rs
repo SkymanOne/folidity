@@ -85,6 +85,7 @@ st [
 fn () loops(value: float) {
     for (let mut i = 0; i < 10; i + 1) {
         let value = value + 123.0;
+        skip;
     }
     let some_list = [-3, 4, 5];
 

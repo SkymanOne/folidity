@@ -359,7 +359,7 @@ pub struct IfElse {
 #[derive(Clone, Debug, PartialEq, Node)]
 pub struct ForLoop {
     pub loc: Span,
-    pub var: Box<Statement>,
+    pub var: Variable,
     pub condition: Expression,
     pub incrementer: Expression,
     pub body: Vec<Statement>,
