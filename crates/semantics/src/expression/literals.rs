@@ -162,10 +162,10 @@ pub fn resolve_hex(
         ExpectedType::Concrete(ty) => {
             match ty {
                 TypeVariant::Hex => {
-                    let bytes = hex::decode(value).map_err(|_| {
+                    let bytes = hex::decode(value).map_err(|e| {
                         contract.diagnostics.push(Report::semantic_error(
                             loc.clone(),
-                            String::from("Value is not a valid hex string."),
+                            format!("{} is not a valid hex string. Error: {}", value, e),
                         ));
                     })?;
                     Ok(Expression::Hex(UnaryExpression {

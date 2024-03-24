@@ -70,6 +70,7 @@ st [
 ]
 {
     let a = a"2FMLYJHYQWRHMFKRHKTKX5UNB5DGO65U57O3YVLWUJWKRE4YYJYC2CWWBY";
+    let h = hex"1234";
     let b = [1, 2, 3];
     let c = -5;
     let d = s"Hello World";
@@ -138,7 +139,7 @@ fn test_program() {
 
     let func = &contract.functions[0];
     let vars: Vec<&VariableSym> = func.scope.vars.values().collect();
-    assert_eq!(vars.len(), 8, "{:#?}", vars);
+    assert_eq!(vars.len(), 9, "{:#?}", vars);
 
     assert_eq!(func.return_ty.ty(), &TypeVariant::Bool);
     assert_eq!(func.params.len(), 1);
