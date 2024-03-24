@@ -32,7 +32,7 @@ pub struct Report {
 }
 
 impl Report {
-    /// Build report from the lexer error.
+    /// Build a report from the lexer error.
     pub fn lexer_error(loc: Span, message: String) -> Self {
         Self {
             loc,
@@ -42,11 +42,51 @@ impl Report {
         }
     }
 
-    /// Build report from the parser error.
+    /// Build a report from the parser error.
     pub fn parser_error(start: usize, end: usize, message: String) -> Self {
         Self {
             loc: Span { start, end },
             error_type: ErrorType::Parser,
+            level: Level::Error,
+            message,
+        }
+    }
+
+    /// Build a report from the semantic error.
+    pub fn semantic_error(loc: Span, message: String) -> Self {
+        Self {
+            loc,
+            error_type: ErrorType::Semantics,
+            level: Level::Error,
+            message,
+        }
+    }
+
+    /// Build a report from the semantic warning.
+    pub fn semantic_warning(loc: Span, message: String) -> Self {
+        Self {
+            loc,
+            error_type: ErrorType::Semantics,
+            level: Level::Warning,
+            message,
+        }
+    }
+
+    /// Build a report from the type error.
+    pub fn type_error(loc: Span, message: String) -> Self {
+        Self {
+            loc,
+            error_type: ErrorType::Type,
+            level: Level::Error,
+            message,
+        }
+    }
+
+    /// Build a report from the functional error.
+    pub fn func_error(loc: Span, message: String) -> Self {
+        Self {
+            loc,
+            error_type: ErrorType::Functional,
             level: Level::Error,
             message,
         }

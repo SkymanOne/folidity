@@ -107,7 +107,7 @@ AccessAttr: ast::AccessAttribute = {
 
 
 View: ast::FunctionVisibility = {
-    <start:@L> "view" <param:StateParam>  <end:@R> => {
+    <start:@L> "view" <param:StateParam> <end:@R> => {
         ast::FunctionVisibility::View(
             ast::ViewState::new(start, end, param)
         )
@@ -116,13 +116,10 @@ View: ast::FunctionVisibility = {
 
 StateParam: ast::StateParam = {
     <start:@L> <ty:Identifier> <end:@R> => {
-        ast::StateParam::new(start, end, Some(ty), None)
+        ast::StateParam::new(start, end, ty, None)
     },
     <start:@L> "(" <ty:Identifier> <name_op:Identifier> ")" <end:@R> => {
-        ast::StateParam::new(start, end, Some(ty), Some(name_op))
-    },
-    <start:@L> "()" <end:@R> => {
-        ast::StateParam::new(start, end, None, None)
+        ast::StateParam::new(start, end, ty, Some(name_op))
     }
 }
 
@@ -199,9 +196,14 @@ ListComma<T>: Vec<T> = {
 
 StateBound: ast::StateBound = {
     "when" <start:@L> <from:StateParam> "->" <to:ListComma<StateParam>> <end:@R> => {
-        ast::StateBound::new(start, end, from, to)
+        ast::StateBound::new(start, end, Some(from), to)
+    },
+    "when" <start:@L> "()" "->" <to:ListComma<StateParam>> <end:@R> => {
+        ast::StateBound::new(start, end, None, to)
+    },
+    "when" <start:@L> <from:StateParam> "->" "()" <end:@R> => {
+        ast::StateBound::new(start, end, Some(from), vec![])
     }
-
 }
 
 StBlock: ast::StBlock = {
@@ -312,11 +314,17 @@ Statement: ast::Statement = {
     <IfElse> => ast::Statement::IfElse(<>),
     <ForLoop> => ast::Statement::ForLoop(<>),
     <Iterator> => ast::Statement::Iterator(<>),
-    "return" <Expression> ";" => ast::Statement::Return(<>),
-    <FunCall> ";" => ast::Statement::FunCall(<>),
-    "move" <StructInit> ";" => ast::Statement::StateTransition(<>),
+    <start:@L> "return" <e:Expression?> <end:@R> ";" => {
+        ast::Statement::Return(ast::Return::new(start, end, e))
+    },
+    <Expression> ";" => ast::Statement::Expression(<>),
+    "move" <Expression> ";" => ast::Statement::StateTransition(<>),
 
     <block:StatementBlock> => ast::Statement::Block(block),
+
+    <start:@L> "skip" <end:@R> ";" => {
+        ast::Statement::Skip(Span { start, end })
+    },
 
     <start:@L> <error:!> <end:@R> => {
         errors.push(error);
@@ -437,9 +445,9 @@ Term: ast::Expression = {
         ast::Expression::Variable(i)
     },
 
-    <start:@L> <val:StructInit> <end:@R> => {
+    <val:StructInit> => {
         ast::Expression::StructInit(
-            ast::UnaryExpression::new(start, end, val)
+            val
         )
     },
 
@@ -475,9 +483,7 @@ Term: ast::Expression = {
         )
     },
     <start:@L> <val:string> <end:@R> => {
-        ast::Expression::String(
-            ast::UnaryExpression::new(start, end, val.to_string())
-        )
+        ast::Expression::new_string(start, end, val)
     },
     <start:@L> <val:char_token> <end:@R> => {
         ast::Expression::Char(
@@ -485,14 +491,10 @@ Term: ast::Expression = {
         )
     },
     <start:@L> <val:hex> <end:@R> => {
-        ast::Expression::Hex(
-            ast::UnaryExpression::new(start, end, val.to_string())
-        )
+        ast::Expression::new_hex(start, end, val)
     },
     <start:@L> <val:address> <end:@R> => {
-        ast::Expression::Address(
-            ast::UnaryExpression::new(start, end, val.to_string())
-        )
+        ast::Expression::new_address(start, end, val)
     },
 
 
@@ -544,7 +546,7 @@ extern {
         char_token => Token::Char(<char>),
         string => Token::String(<&'input str>),
         address => Token::Address(<&'input str>),
-        hex => Token::String(<&'input str>),
+        hex => Token::Hex(<&'input str>),
         ident => Token::Identifier(<&'input str>),
         "true" => Token::True,
         "false" => Token::False,
@@ -603,6 +605,7 @@ extern {
         "author" => Token::Author,
         "let" => Token::Let,
         "mut" => Token::Mut,
+        "skip" => Token::Skip,
         "->" => Token::Arr,
         ";" => Token::SemiCol,
         ":" => Token::Col,

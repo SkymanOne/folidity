@@ -138,13 +138,22 @@
         }
     ],
     "cSpell.words": [
+        "algonaut",
+        "Algorand",
         "entrancy",
         "Folidity",
-        "incrementer"
+        "incrementer",
+        "indexmap",
+        "lalrpop",
+        "nums",
+        "petgraph",
+        "symtable",
+        "tarjan",
+        "yays"
     ],
     "rust-analyzer.linkedProjects": [
         "./crates/parser/Cargo.toml",
-        "./crates/parser/Cargo.toml"
+        "./crates/semantics/Cargo.toml",
     ],
     "typst-lsp.experimentalFormatterMode": "on",
 }

@@ -6,12 +6,19 @@ pub struct Source {
     pub declarations: Vec<Declaration>,
 }
 
-#[derive(Clone, Debug, PartialEq, Node)]
+#[derive(Clone, Debug, PartialEq, Node, Default)]
 pub struct Identifier {
     /// Location of the identifier.
     pub loc: Span,
     /// The name of the identifier.
     pub name: String,
+}
+
+impl Identifier {
+    /// Check if the identifier is particular variable.
+    pub fn is(&self, name: &str) -> bool {
+        self.name == name
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -57,7 +64,7 @@ pub struct List {
     pub ty: Box<Type>,
 }
 
-#[derive(Clone, Debug, PartialEq, Node)]
+#[derive(Clone, Debug, PartialEq, Node, Default)]
 pub struct MappingRelation {
     pub loc: Span,
     pub injective: bool,
@@ -84,7 +91,7 @@ pub struct Mapping {
 pub struct StateParam {
     pub loc: Span,
     /// State type identifier.
-    pub ty: Option<Identifier>,
+    pub ty: Identifier,
     /// Variable name identifier.
     pub name: Option<Identifier>,
 }
@@ -121,11 +128,21 @@ pub enum FuncReturnType {
     ParamType(Param),
 }
 
+impl FuncReturnType {
+    /// Return [`TypeVariant`] of a function return type.
+    pub fn ty(&self) -> &TypeVariant {
+        match self {
+            FuncReturnType::Type(ty) => &ty.ty,
+            FuncReturnType::ParamType(pty) => &pty.ty.ty,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Node)]
 pub struct StateBound {
     pub loc: Span,
     /// Original state
-    pub from: StateParam,
+    pub from: Option<StateParam>,
     /// Final state
     pub to: Vec<StateParam>,
 }
@@ -226,6 +243,13 @@ pub struct StBlock {
     pub expr: Expression,
 }
 
+#[derive(Clone, Debug, PartialEq, Node)]
+pub struct Return {
+    pub loc: Span,
+    /// List of logic expressions
+    pub expr: Option<Expression>,
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
     Variable(Variable),
@@ -233,9 +257,10 @@ pub enum Statement {
     IfElse(IfElse),
     ForLoop(ForLoop),
     Iterator(Iterator),
-    Return(Expression),
-    FunCall(FunctionCall),
-    StateTransition(StructInit),
+    Return(Return),
+    Expression(Expression),
+    StateTransition(Expression),
+    Skip(Span),
 
     Block(StatementBlock),
     Error(Span),
@@ -302,6 +327,7 @@ pub struct StructInit {
 pub enum Expression {
     Variable(Identifier),
 
+    // Literals
     Number(UnaryExpression<String>),
     Boolean(UnaryExpression<bool>),
     Float(UnaryExpression<String>),
@@ -309,6 +335,7 @@ pub enum Expression {
     Char(UnaryExpression<char>),
     Hex(UnaryExpression<String>),
     Address(UnaryExpression<String>),
+    List(UnaryExpression<Vec<Expression>>),
 
     // Maths operations.
     Multiply(BinaryExpression),
@@ -334,9 +361,33 @@ pub enum Expression {
     FunctionCall(FunctionCall),
     MemberAccess(MemberAccess),
     Pipe(BinaryExpression),
-    StructInit(UnaryExpression<StructInit>),
+    StructInit(StructInit),
+}
 
-    List(UnaryExpression<Vec<Expression>>),
+impl Expression {
+    pub fn new_address(start: usize, end: usize, value: &str) -> Self {
+        let reg = regex::Regex::new(r#"(a\")([a-zA-Z0-9]+)(\")"#).unwrap();
+        let Some((_, [_, address, _])) = reg.captures(value).map(|caps| caps.extract()) else {
+            panic!()
+        };
+        Expression::Address(UnaryExpression::new(start, end, address.to_string()))
+    }
+
+    pub fn new_hex(start: usize, end: usize, value: &str) -> Self {
+        let reg = regex::Regex::new(r#"(hex\")([a-zA-Z0-9]+)(\")"#).unwrap();
+        let Some((_, [_, hex, _])) = reg.captures(value).map(|caps| caps.extract()) else {
+            panic!()
+        };
+        Expression::Hex(UnaryExpression::new(start, end, hex.to_string()))
+    }
+
+    pub fn new_string(start: usize, end: usize, value: &str) -> Self {
+        let reg = regex::Regex::new(r#"(s\")([\w\W][^"]*)(\")"#).unwrap();
+        let Some((_, [_, string, _])) = reg.captures(value).map(|caps| caps.extract()) else {
+            panic!()
+        };
+        Expression::String(UnaryExpression::new(start, end, string.to_string()))
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]
@@ -387,6 +438,59 @@ impl<T> UnaryExpression<T> {
         Self {
             loc: Span { start, end },
             element,
+        }
+    }
+}
+
+impl Expression {
+    pub fn loc(&self) -> &Span {
+        match self {
+            Expression::Variable(i) => &i.loc,
+            Expression::Number(u) => &u.loc,
+            Expression::Boolean(u) => &u.loc,
+            Expression::Float(u) => &u.loc,
+            Expression::String(u) => &u.loc,
+            Expression::Char(u) => &u.loc,
+            Expression::Hex(u) => &u.loc,
+            Expression::Address(u) => &u.loc,
+            Expression::List(u) => &u.loc,
+            Expression::Multiply(b) => &b.loc,
+            Expression::Divide(b) => &b.loc,
+            Expression::Modulo(b) => &b.loc,
+            Expression::Add(b) => &b.loc,
+            Expression::Subtract(b) => &b.loc,
+            Expression::Equal(b) => &b.loc,
+            Expression::NotEqual(b) => &b.loc,
+            Expression::Greater(b) => &b.loc,
+            Expression::Less(b) => &b.loc,
+            Expression::GreaterEq(b) => &b.loc,
+            Expression::LessEq(b) => &b.loc,
+            Expression::In(b) => &b.loc,
+            Expression::Not(u) => &u.loc,
+            Expression::Or(b) => &b.loc,
+            Expression::And(b) => &b.loc,
+            Expression::FunctionCall(f) => &f.loc,
+            Expression::MemberAccess(m) => &m.loc,
+            Expression::Pipe(b) => &b.loc,
+            Expression::StructInit(s) => &s.loc,
+        }
+    }
+}
+
+impl Statement {
+    pub fn loc(&self) -> &Span {
+        match self {
+            Statement::Variable(v) => &v.loc,
+            Statement::Assign(a) => &a.loc,
+            Statement::IfElse(br) => &br.loc,
+            Statement::ForLoop(l) => &l.loc,
+            Statement::Iterator(i) => &i.loc,
+            Statement::Return(e) => &e.loc,
+            Statement::Expression(e) => e.loc(),
+            Statement::StateTransition(tr) => tr.loc(),
+            Statement::Block(b) => &b.loc,
+            Statement::Skip(s) => s,
+            Statement::Error(s) => s,
         }
     }
 }

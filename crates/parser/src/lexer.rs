@@ -1,6 +1,12 @@
 use super::Span;
-use logos::{Logos, SpannedIter};
-use std::{fmt, num::ParseIntError};
+use logos::{
+    Logos,
+    SpannedIter,
+};
+use std::{
+    fmt,
+    num::ParseIntError,
+};
 use thiserror::Error;
 
 #[derive(Default, Clone, Debug, PartialEq)]
@@ -41,17 +47,17 @@ pub type Spanned<Tok, Loc> = (Loc, Tok, Loc);
 #[logos(error = LogosError)]
 pub enum Token<'input> {
     // Type values
-    #[regex("[0-9]+", |lex| lex.slice(), priority = 2)]
+    #[regex("-?[0-9]+", |lex| lex.slice(), priority = 2)]
     Number(&'input str),
-    #[regex("([0-9]*[.])?[0-9]+", |lex| lex.slice(), priority = 1)]
+    #[regex("-?([0-9]*[.])?[0-9]+", |lex| lex.slice(), priority = 1)]
     Float(&'input str),
     #[regex("\'[a-zA-Z]\'", |lex| lex.slice().parse().ok())]
     Char(char),
-    #[regex("\"[a-zA-Z]+\"", |lex| lex.slice())]
+    #[regex(r#"s\"[\w\W][^"]*\""#, |lex| lex.slice())]
     String(&'input str),
-    #[regex("hex\"[a-zA-Z]+\"", |lex| lex.slice())]
+    #[regex("hex\"[a-zA-Z0-9]+\"", |lex| lex.slice())]
     Hex(&'input str),
-    #[regex("a\"[a-zA-Z]+\"", |lex| lex.slice())]
+    #[regex("a\"[a-zA-Z0-9]+\"", |lex| lex.slice())]
     Address(&'input str),
     #[regex("[_a-zA-Z][_0-9a-zA-Z]*", |lex| lex.slice())]
     Identifier(&'input str),
@@ -185,6 +191,8 @@ pub enum Token<'input> {
     Let,
     #[token("mut")]
     Mut,
+    #[token("skip")]
+    Skip,
 
     // Misc chars
     #[token("->")]
@@ -282,6 +290,7 @@ impl<'input> fmt::Display for Token<'input> {
             Token::Author => word("author"),
             Token::Let => word("let"),
             Token::Mut => word("mut"),
+            Token::Skip => word("skip"),
             Token::Arr => word("->"),
             Token::Col => word(":"),
             Token::SemiCol => word(";"),
@@ -320,10 +329,12 @@ impl<'input> Iterator for Lexer<'input> {
     fn next(&mut self) -> Option<Self::Item> {
         if let Some((tok_res, span)) = self.token_stream.next() {
             match tok_res {
-                Ok(tok) => match tok {
-                    Token::Comment(_) => self.next(),
-                    _ => Some((span.start, tok, span.end)),
-                },
+                Ok(tok) => {
+                    match tok {
+                        Token::Comment(_) => self.next(),
+                        _ => Some((span.start, tok, span.end)),
+                    }
+                }
                 Err(err) => {
                     self.errors.push(logos_to_lexical_error(&err, &span));
                     self.next()

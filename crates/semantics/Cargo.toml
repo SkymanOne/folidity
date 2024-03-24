@@ -1,0 +1,23 @@
+[package]
+name = "folidity-semantics"
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+
+
+[dependencies]
+folidity-parser = { workspace = true }
+folidity-diagnostics = { workspace = true }
+derive-node = { workspace = true }
+indexmap = { workspace = true }
+petgraph = { workspace = true }
+num-bigint = { workspace = true }
+num-rational = { workspace = true }
+num-traits = { workspace = true }
+algonaut_core = { workspace = true }
+hex = { workspace = true }

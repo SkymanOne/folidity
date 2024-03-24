@@ -1,12 +1,40 @@
 use crate::{
     ast::{
-        self, AccessAttribute, BinaryExpression, Declaration, EnumDeclaration, Expression,
-        FuncReturnType, FunctionCall, FunctionDeclaration, FunctionVisibility, Identifier, IfElse,
-        List, Mapping, MappingRelation, MemberAccess, ModelDeclaration, Param, Set, Source,
-        StBlock, StateDeclaration, Statement, StatementBlock, StructDeclaration, StructInit,
-        TypeVariant, UnaryExpression, Variable,
+        self,
+        AccessAttribute,
+        BinaryExpression,
+        Declaration,
+        EnumDeclaration,
+        Expression,
+        FuncReturnType,
+        FunctionCall,
+        FunctionDeclaration,
+        FunctionVisibility,
+        Identifier,
+        IfElse,
+        List,
+        Mapping,
+        MappingRelation,
+        MemberAccess,
+        ModelDeclaration,
+        Param,
+        Return,
+        Set,
+        Source,
+        StBlock,
+        StateDeclaration,
+        Statement,
+        StatementBlock,
+        StructDeclaration,
+        StructInit,
+        TypeVariant,
+        UnaryExpression,
+        Variable,
     },
-    lexer::{Lexer, Token},
+    lexer::{
+        Lexer,
+        Token,
+    },
     parse,
 };
 
@@ -42,6 +70,19 @@ fn comment_token() {
     let mut errors = Vec::new();
     let mut tokens = Lexer::new(input, &mut errors);
     assert_eq!(tokens.next(), Some((6, Token::Identifier("ident"), 11)))
+}
+
+#[test]
+fn strings() {
+    let input = "s\"Hello World\" a\"ABC\" hex\"ABC\"";
+    let mut errors = Vec::new();
+    let mut tokens = Lexer::new(input, &mut errors);
+    assert_eq!(
+        tokens.next(),
+        Some((0, Token::String("s\"Hello World\""), 14))
+    );
+    assert_eq!(tokens.next(), Some((15, Token::Address("a\"ABC\""), 21)));
+    assert_eq!(tokens.next(), Some((22, Token::Hex("hex\"ABC\""), 30)));
 }
 
 fn unwrap_tree(src: &str) -> Result<Source, String> {
@@ -235,7 +276,7 @@ fn test_factorial_tree() -> Result<(), String> {
                         body: Box::new(StatementBlock {
                             loc: 113..170,
                             statements: vec![
-                                Statement::StateTransition(StructInit {
+                                Statement::StateTransition(Expression::StructInit(StructInit {
                                     loc: 128..141,
                                     name: Identifier {
                                         loc: 128..138,
@@ -243,17 +284,21 @@ fn test_factorial_tree() -> Result<(), String> {
                                     },
                                     args: vec![],
                                     auto_object: None,
-                                }),
-                                Statement::Return(Expression::Variable(Identifier {
-                                    loc: 158..163,
-                                    name: "value".to_string(),
                                 })),
+                                Statement::Return(Return {
+                                    loc: 151..163,
+                                    expr: Some(Expression::Variable(Identifier {
+                                        loc: 158..163,
+                                        name: "value".to_string(),
+                                    })),
+                                }),
                             ],
                         }),
                         else_part: Some(Box::new(Statement::Block(StatementBlock {
                             loc: 176..350,
-                            statements: vec![Statement::Return(Expression::FunctionCall(
-                                FunctionCall {
+                            statements: vec![Statement::Return(Return {
+                                loc: 186..343,
+                                expr: Some(Expression::FunctionCall(FunctionCall {
                                     loc: 193..343,
                                     name: Identifier {
                                         loc: 193..202,
@@ -297,8 +342,8 @@ fn test_factorial_tree() -> Result<(), String> {
                                             })],
                                         })),
                                     })],
-                                },
-                            ))],
+                                })),
+                            })],
                         }))),
                     })],
                 }),
@@ -349,17 +394,20 @@ fn test_factorial_tree() -> Result<(), String> {
                         })),
                     }),
                 }),
-                body: Statement::Return(Expression::FunctionCall(FunctionCall {
-                    loc: 418..434,
-                    name: Identifier {
-                        loc: 418..427,
-                        name: "calculate".to_string(),
-                    },
-                    args: vec![Expression::Variable(Identifier {
-                        loc: 428..433,
-                        name: "value".to_string(),
-                    })],
-                })),
+                body: Statement::Return(Return {
+                    loc: 411..434,
+                    expr: Some(Expression::FunctionCall(FunctionCall {
+                        loc: 418..434,
+                        name: Identifier {
+                            loc: 418..427,
+                            name: "calculate".to_string(),
+                        },
+                        args: vec![Expression::Variable(Identifier {
+                            loc: 428..433,
+                            name: "value".to_string(),
+                        })],
+                    })),
+                }),
             })),
         ],
     };
@@ -613,26 +661,23 @@ fn test_structs_enums() -> Result<(), String> {
                             }],
                             mutable: false,
                             ty: None,
-                            value: Some(Expression::StructInit(UnaryExpression {
+                            value: Some(Expression::StructInit(StructInit {
                                 loc: 112..131,
-                                element: StructInit {
-                                    loc: 112..131,
-                                    name: Identifier {
-                                        loc: 112..120,
-                                        name: "MyStruct".to_string(),
-                                    },
-                                    args: vec![
-                                        Expression::Number(UnaryExpression {
-                                            loc: 125..126,
-                                            element: "2".to_string(),
-                                        }),
-                                        Expression::Number(UnaryExpression {
-                                            loc: 128..129,
-                                            element: "3".to_string(),
-                                        }),
-                                    ],
-                                    auto_object: None,
+                                name: Identifier {
+                                    loc: 112..120,
+                                    name: "MyStruct".to_string(),
                                 },
+                                args: vec![
+                                    Expression::Number(UnaryExpression {
+                                        loc: 125..126,
+                                        element: "2".to_string(),
+                                    }),
+                                    Expression::Number(UnaryExpression {
+                                        loc: 128..129,
+                                        element: "3".to_string(),
+                                    }),
+                                ],
+                                auto_object: None,
                             })),
                         }),
                         Statement::Variable(Variable {
@@ -649,20 +694,17 @@ fn test_structs_enums() -> Result<(), String> {
                             ],
                             mutable: false,
                             ty: None,
-                            value: Some(Expression::StructInit(UnaryExpression {
+                            value: Some(Expression::StructInit(StructInit {
                                 loc: 158..178,
-                                element: StructInit {
-                                    loc: 158..178,
-                                    name: Identifier {
-                                        loc: 158..166,
-                                        name: "MyStruct".to_string(),
-                                    },
-                                    args: vec![],
-                                    auto_object: Some(Identifier {
-                                        loc: 173..176,
-                                        name: "obj".to_string(),
-                                    }),
+                                name: Identifier {
+                                    loc: 158..166,
+                                    name: "MyStruct".to_string(),
                                 },
+                                args: vec![],
+                                auto_object: Some(Identifier {
+                                    loc: 173..176,
+                                    name: "obj".to_string(),
+                                }),
                             })),
                         }),
                         Statement::Variable(Variable {
@@ -768,7 +810,7 @@ state ExecuteState(ExecuteModel) from RevealState st [
 ]
 
 state ExecuteState {
-    proposal: String,
+    proposal: string,
     passed: bool
 } from (RevealState rst) st [
     current_block > rst.end_block 
@@ -776,7 +818,7 @@ state ExecuteState {
 
 @init
 @(any)
-fn () init(proposal: String, 
+fn () init(proposal: string, 
           start_block: int, 
           max_size: int, 
           end_block: int) 
@@ -801,7 +843,7 @@ fn () join() when (BeginState s) -> BeginState {
     };
 }
 
-@(voters)
+@(s.voters)
 fn () start_voting() when (BeginState s) -> VotingState {
     let commits = Set();
     move VotingState : {
@@ -810,7 +852,7 @@ fn () start_voting() when (BeginState s) -> VotingState {
     };
 }
 
-@(voters)
+@(s.voters)
 fn () commit(h: hex) when (VotingState s) -> VotingState {
     let caller = caller();
     let { commits, params } = s;
@@ -876,6 +918,8 @@ fn () execute() when (RevealState s) -> ExecuteState {
     # add lambda later
     # let yay = votes :> filter(|v| v == Choice::Yay).sum();
     let mut passed = false;
+    [1, 2, 3] :> func1 :> func2 :> func3;
+    func3();
     if votes.size / yay > 0.5 {
         passed = true;
         move ExecuteState : {
