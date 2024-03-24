@@ -38,3 +38,8 @@ num-rational = "0.4"
 num-traits = "0.2"
 algonaut_core = "0.4"
 hex = "0.4"
+regex = "1.10"
+clap = { version ="4.5", features = ["derive"]}
+ariadne = { version = "0.4", features = ["auto-color"] }
+anyhow = "1.0"
+walkdir = "2.5"
