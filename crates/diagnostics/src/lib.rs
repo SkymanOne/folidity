@@ -1,6 +1,14 @@
-use std::ops::Range;
+use std::{
+    fmt::Display,
+    ops::Range,
+};
 
 pub type Span = Range<usize>;
+
+pub use ariadne::{
+    Color,
+    Fmt,
+};
 
 #[derive(Debug, Clone)]
 pub enum ErrorType {
@@ -11,11 +19,34 @@ pub enum ErrorType {
     Functional,
 }
 
+impl Display for ErrorType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut word = |s: &str| -> std::fmt::Result { write!(f, "{s}") };
+        match self {
+            ErrorType::Lexer => word("Lexical error"),
+            ErrorType::Parser => word("Parser error"),
+            ErrorType::Semantics => word("Semantic error"),
+            ErrorType::Type => word("Type error"),
+            ErrorType::Functional => word("Functional error"),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Level {
     Info,
     Warning,
     Error,
+}
+
+impl<'a> From<Level> for ariadne::ReportKind<'a> {
+    fn from(val: Level) -> Self {
+        match &val {
+            Level::Info => Self::Advice,
+            Level::Warning => Self::Warning,
+            Level::Error => Self::Error,
+        }
+    }
 }
 
 /// Error report.

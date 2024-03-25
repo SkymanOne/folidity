@@ -15,7 +15,7 @@ fn () initialise() when () -> CounterState {
 }
 
 @(any)
-fn () incr_by(value: int) when CounterState s -> CounterState
+fn () incr_by(value: int) when (CounterState s) -> CounterState
 st [
     value > 100,
     value < 100
@@ -25,7 +25,7 @@ st [
 }
 
 @(any)
-fn () decr_by(value: int) when CounterState s -> CounterState 
+fn () decr_by(value: int) when (CounterState s) -> CounterState 
 st [
     value > 100,
     value < 100
