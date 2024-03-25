@@ -246,33 +246,36 @@ fn test_err_program() {
 
     let contract = resolve_semantics(tree);
     // assert_eq!(contract.diagnostics.len(), 0, "{:#?}", contract.diagnostics);
-    let mut errors = contract.diagnostics.iter();
+    let mut errors = contract
+        .diagnostics
+        .iter()
+        .map(|r| strip_ansi_escapes::strip_str(&r.message));
     assert_eq!(
         "Expected function to return a value of type bool",
-        &errors.next().unwrap().message
+        &errors.next().unwrap()
     );
     assert_eq!(
         "Variable is immutable. Annotate with `mut` keyword to allow mutation.",
-        &errors.next().unwrap().message
+        &errors.next().unwrap()
     );
     assert_eq!(
         "Mismatched types: expected to resolve to int, but expression can only resolve to string",
-        &errors.next().unwrap().message
+        &errors.next().unwrap()
     );
     assert_eq!(
         "Mismatched types: expected to resolve to string, but expression can only resolve to int",
-        &errors.next().unwrap().message
+        &errors.next().unwrap()
     );
     assert_eq!(
         "Mismatched types: expected to resolve to string, but expression can only resolve to int",
-        &errors.next().unwrap().message
+        &errors.next().unwrap()
     );
     assert_eq!(
         "List elements appear to be of different types.",
-        &errors.next().unwrap().message
+        &errors.next().unwrap()
     );
     assert_eq!(
         "Expected function to transition to states [StartState]",
-        &errors.next().unwrap().message
+        &errors.next().unwrap()
     );
 }

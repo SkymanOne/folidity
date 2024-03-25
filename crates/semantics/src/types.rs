@@ -14,8 +14,7 @@ use crate::{
     global_symbol::GlobalSymbol,
 };
 use folidity_diagnostics::{
-    Color,
-    Fmt,
+    Paint,
     Report,
 };
 use folidity_parser::{
@@ -418,13 +417,13 @@ pub(super) fn report_type_mismatch(
     contract: &mut ContractDefinition,
 ) {
     let actual = actual.iter().fold(String::new(), |acc, x| {
-        format!("{}, {}", acc, x.display(contract).fg(Color::Magenta))
+        format!("{}, {}", acc, x.display(contract).cyan().bold())
     });
     contract.diagnostics.push(Report::type_error(
         loc.clone(),
         format!(
             "Mismatched types: expected to resolve to {}, but expression can only resolve to {}",
-            expected.display(contract).fg(Color::Green),
+            expected.display(contract).magenta().bold(),
             actual.trim_start_matches(", ")
         ),
     ));

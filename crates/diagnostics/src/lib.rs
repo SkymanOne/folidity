@@ -5,9 +5,9 @@ use std::{
 
 pub type Span = Range<usize>;
 
-pub use ariadne::{
+pub use yansi::{
     Color,
-    Fmt,
+    Paint,
 };
 
 #[derive(Debug, Clone)]

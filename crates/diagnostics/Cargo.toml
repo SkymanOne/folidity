@@ -14,3 +14,4 @@ version.workspace = true
 [dependencies]
 lalrpop-util = { workspace = true }
 ariadne = { workspace = true }
+yansi = { workspace = true }

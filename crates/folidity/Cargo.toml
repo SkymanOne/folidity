@@ -19,3 +19,4 @@ clap = { workspace = true }
 ariadne = { workspace = true }
 anyhow = { workspace = true }
 walkdir = { workspace = true }
+yansi = { workspace = true }

@@ -38,7 +38,7 @@ impl CheckCommand {
                         &def.diagnostics,
                         self.contract.to_str().unwrap(),
                     );
-                    anyhow::bail!("Error during checking")
+                    anyhow::bail!("Syntactical checking failed.")
                 }
             }
             Err(errors) => {

@@ -1,5 +1,9 @@
 use clap::Parser;
 use cmd::Commands;
+use yansi::{
+    Color,
+    Paint,
+};
 
 mod cmd;
 
@@ -15,7 +19,11 @@ fn main() {
     match cli.command.run() {
         Ok(()) => {}
         Err(err) => {
-            eprintln!("{err:?}");
+            eprintln!(
+                "{} {}",
+                "ERROR:".fg(Color::Red).bold(),
+                err.to_string().fg(Color::Red)
+            );
             std::process::exit(1);
         }
     }

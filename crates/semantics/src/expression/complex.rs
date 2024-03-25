@@ -1,6 +1,9 @@
 //! Resolve complex expressions.
 
-use folidity_diagnostics::Report;
+use folidity_diagnostics::{
+    Paint,
+    Report,
+};
 use folidity_parser::{
     ast::{
         self as parsed_ast,
@@ -188,10 +191,7 @@ pub fn resolve_func_call(
 ) -> Result<Expression, ()> {
     let func = find_func(ident, contract)?;
     if func.params.len() != args.len() {
-        contract.diagnostics.push(Report::semantic_error(
-            loc.clone(),
-            String::from("Function call has invalid number of arguments."),
-        ));
+        report_mismatched_args_len(&loc, func.params.len(), args.len(), contract);
         return Err(());
     }
 
@@ -598,10 +598,7 @@ pub fn resolve_struct_init(
         fields.extend(model_decl.fields);
 
         if fields.len() != args.len() {
-            contract.diagnostics.push(Report::semantic_error(
-                loc.clone(),
-                String::from("Invalid number of arguments."),
-            ));
+            report_mismatched_args_len(&loc, fields.len(), args.len(), contract);
             return Err(());
         }
         let (parsed_args, error_args) = parse_args(args, &fields, scope, contract);
@@ -643,10 +640,7 @@ pub fn resolve_struct_init(
 
             let struct_decl = contract.structs[s.i].clone();
             if struct_decl.fields.len() != args.len() {
-                contract.diagnostics.push(Report::semantic_error(
-                    loc.clone(),
-                    String::from("Invalid number of arguments."),
-                ));
+                report_mismatched_args_len(&loc, struct_decl.fields.len(), args.len(), contract);
                 return Err(());
             }
             let (parsed_args, error_args) = parse_args(args, &struct_decl.fields, scope, contract);
@@ -709,10 +703,7 @@ pub fn resolve_struct_init(
             let (parsed_args, parent) = match body {
                 StateBody::Raw(fields) => {
                     if fields.len() != args.len() {
-                        contract.diagnostics.push(Report::semantic_error(
-                            loc.clone(),
-                            String::from("Invalid number of arguments."),
-                        ));
+                        report_mismatched_args_len(&loc, fields.len(), args.len(), contract);
                         return Err(());
                     }
                     let (parsed_args, error_args) = parse_args(args, fields, scope, contract);
@@ -826,6 +817,22 @@ fn find_func(ident: &Identifier, contract: &mut ContractDefinition) -> Result<Fu
     Ok(func.clone())
 }
 
+fn report_mismatched_args_len(
+    loc: &Span,
+    expected: usize,
+    got: usize,
+    contract: &mut ContractDefinition,
+) {
+    contract.diagnostics.push(Report::semantic_error(
+        loc.clone(),
+        format!(
+            "Invalid number of arguments. Expected {}, got {}",
+            expected.green().bold(),
+            got.red().bold()
+        ),
+    ));
+}
+
 fn find_var(
     ident: &Identifier,
     contract: &mut ContractDefinition,
@@ -836,7 +843,7 @@ fn find_var(
             ident.loc.clone(),
             format!(
                 "`{}`: Variable is not declared or inaccessible.",
-                ident.name
+                ident.name.yellow().bold()
             ),
         ));
         return Err(());

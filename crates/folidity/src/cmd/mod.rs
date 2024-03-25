@@ -11,6 +11,7 @@ use anyhow::{
 };
 use clap::Subcommand;
 use folidity_diagnostics::Report;
+use yansi::Paint;
 
 use self::{
     check::CheckCommand,
@@ -60,7 +61,7 @@ pub fn read_contract(path_str: &OsString) -> Result<String> {
 pub fn build_report(content: &str, diagnostics: &[Report], file_name: &str) {
     for r in diagnostics {
         PrettyReport::build(r.level.clone().into(), file_name, r.loc.start)
-            .with_message(format!("{} detected.", r.error_type))
+            .with_message(format!("{} detected.", r.error_type.cyan()))
             .with_label(
                 Label::new((file_name, r.loc.clone()))
                     .with_message(r.message.clone())
