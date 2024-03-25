@@ -136,6 +136,13 @@ impl FuncReturnType {
             FuncReturnType::ParamType(pty) => &pty.ty.ty,
         }
     }
+
+    pub fn loc(&self) -> &Span {
+        match self {
+            FuncReturnType::Type(ty) => &ty.loc,
+            FuncReturnType::ParamType(param) => &param.loc,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]

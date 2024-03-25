@@ -347,7 +347,7 @@ pub fn resolve_func_body(
 
     if reachable && return_required {
         contract.diagnostics.push(Report::semantic_error(
-            func_decl.loc.clone(),
+            func_decl.return_ty.loc().clone(),
             format!(
                 "Expected function to return a value of type {}",
                 contract.functions[func_i].return_ty.ty().display(contract)
@@ -371,7 +371,7 @@ pub fn resolve_func_body(
 
     if mutating && !transition_required {
         contract.diagnostics.push(Report::semantic_error(
-            func_decl.loc.clone(),
+            func_decl.name.loc.clone(),
             String::from("Function is not supposed to perform a state transition."),
         ));
     }

@@ -10,6 +10,10 @@ pub use yansi::{
     Paint,
 };
 
+pub fn disable_pretty_print() {
+    yansi::disable();
+}
+
 #[derive(Debug, Clone)]
 pub enum ErrorType {
     Lexer,

@@ -44,4 +44,3 @@ ariadne = { version = "0.4", features = ["auto-color"] }
 anyhow = "1.0"
 walkdir = "2.5"
 yansi = "1.0"
-strip-ansi-escapes = "0.2"

@@ -239,6 +239,8 @@ fn () fail_move_state() when () -> (StartState s) {
 
 #[test]
 fn test_err_program() {
+    folidity_diagnostics::disable_pretty_print();
+
     let result = parse(NOT_WORKING);
     let Ok(tree) = &result else {
         panic!("{:#?}", &result.err().unwrap());
@@ -246,10 +248,7 @@ fn test_err_program() {
 
     let contract = resolve_semantics(tree);
     // assert_eq!(contract.diagnostics.len(), 0, "{:#?}", contract.diagnostics);
-    let mut errors = contract
-        .diagnostics
-        .iter()
-        .map(|r| strip_ansi_escapes::strip_str(&r.message));
+    let mut errors = contract.diagnostics.iter().map(|r| r.message.clone());
     assert_eq!(
         "Expected function to return a value of type bool",
         &errors.next().unwrap()
