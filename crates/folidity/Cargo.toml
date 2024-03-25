@@ -13,3 +13,10 @@ version.workspace = true
 
 [dependencies]
 folidity-parser = { workspace = true }
+folidity-semantics = { workspace = true }
+folidity-diagnostics = { workspace = true }
+clap = { workspace = true }
+ariadne = { workspace = true }
+anyhow = { workspace = true }
+walkdir = { workspace = true }
+yansi = { workspace = true }

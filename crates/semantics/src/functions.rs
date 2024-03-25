@@ -92,7 +92,7 @@ pub fn function_decl(
     let mut func_vis = FunctionVisibility::Priv;
     if let parsed_ast::FunctionVisibility::View(v) = &func.vis {
         let mut view_error = false;
-        let mut id = 0;
+        let mut id = SymbolInfo::default();
         let mut ident = Identifier::default();
         if func.access_attributes.is_empty() {
             contract.diagnostics.push(Report::semantic_warning(
@@ -105,7 +105,7 @@ pub fn function_decl(
 
         if let Some(sym) = GlobalSymbol::lookup(contract, &v.param.ty) {
             if let GlobalSymbol::State(s) = sym {
-                id = s.i;
+                id = s.clone();
             } else {
                 contract.diagnostics.push(Report::semantic_error(
                     ident.loc.clone(),
@@ -172,7 +172,8 @@ pub fn function_decl(
         i: function_no,
     });
 
-    let mut scope = Scope::new(&sym, ScopeContext::AccessAttributes);
+    let mut scope = Scope::new(&sym, ScopeContext::DeclarationBounds);
+
     scope.add(
         &Identifier {
             loc: func.loc.clone(),
@@ -180,25 +181,22 @@ pub fn function_decl(
         },
         TypeVariant::Address,
         None,
-        VariableKind::State,
+        VariableKind::Local,
         false,
         scope.current,
         contract,
     );
-    if let Some(bounds) = &s_bound {
-        if let Some(from) = &bounds.from {
-            if let Some(var) = &from.name {
-                scope.add(
-                    var,
-                    TypeVariant::State(from.ty.clone()),
-                    None,
-                    VariableKind::State,
-                    false,
-                    scope.current,
-                    contract,
-                );
-            }
-        }
+
+    if let FunctionVisibility::View(v) = &func_vis {
+        scope.add(
+            &v.name,
+            TypeVariant::State(v.ty.clone()),
+            None,
+            VariableKind::Local,
+            false,
+            scope.current,
+            contract,
+        );
     }
 
     let access_attributes: Vec<Expression> = func
@@ -243,6 +241,54 @@ pub fn function_decl(
         return Err(());
     }
 
+    // add params to the scope.
+    for param in params.values() {
+        scope.add(
+            &param.name,
+            param.ty.ty.clone(),
+            None,
+            VariableKind::Param,
+            param.is_mut,
+            scope.current,
+            contract,
+        );
+    }
+
+    let mut add_state_param = |param: &StateParam, kind: VariableKind| {
+        if let Some(ident) = &param.name {
+            scope.add(
+                ident,
+                TypeVariant::State(param.ty.clone()),
+                None,
+                kind,
+                false,
+                0,
+                contract,
+            );
+        }
+    };
+
+    if let Some(b) = &s_bound {
+        if let Some(from) = &b.from {
+            add_state_param(from, VariableKind::FromState);
+        }
+        for state_param in &b.to {
+            add_state_param(state_param, VariableKind::ToState);
+        }
+    }
+
+    if let FuncReturnType::ParamType(param) = &return_ty {
+        scope.add(
+            &param.name,
+            param.ty.ty.clone(),
+            None,
+            VariableKind::Return,
+            false,
+            0,
+            contract,
+        );
+    }
+
     let mut decl = Function::new(
         func.loc.clone(),
         func.is_init,
@@ -278,25 +324,8 @@ pub fn resolve_func_body(
 ) -> Result<(), ()> {
     let mut scope = Scope::default();
     std::mem::swap(&mut scope, &mut contract.functions[func_i].scope);
-    scope.push(ScopeContext::FunctionParams);
 
     let mut resolved_stmts = Vec::new();
-
-    // add params to the scope.
-    for param in &func_decl.params {
-        let ty = map_type(contract, &param.ty)?;
-        scope.add(
-            &param.name,
-            ty.ty,
-            None,
-            VariableKind::Param,
-            param.is_mut,
-            scope.current,
-            contract,
-        );
-    }
-
-    scope.push(ScopeContext::FunctionBody);
 
     // if the return type is not `()` then we expect the function body to contain `return`
     // statement. i.e. it should be unreachable after the last statement,
@@ -318,7 +347,7 @@ pub fn resolve_func_body(
 
     if reachable && return_required {
         contract.diagnostics.push(Report::semantic_error(
-            func_decl.loc.clone(),
+            func_decl.return_ty.loc().clone(),
             format!(
                 "Expected function to return a value of type {}",
                 contract.functions[func_i].return_ty.ty().display(contract)
@@ -342,7 +371,7 @@ pub fn resolve_func_body(
 
     if mutating && !transition_required {
         contract.diagnostics.push(Report::semantic_error(
-            func_decl.loc.clone(),
+            func_decl.name.loc.clone(),
             String::from("Function is not supposed to perform a state transition."),
         ));
     }

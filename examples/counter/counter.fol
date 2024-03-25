@@ -1,0 +1,40 @@
+state CounterState {
+    counter: int,
+} st [
+    # example bounds
+    counter < 1000,
+    counter > -1000
+]
+
+# This is an constructor.
+@init
+# Anyone can call this function.
+@(any)
+fn () initialise() when () -> CounterState {
+    move CounterState : { 0 };
+}
+
+@(any)
+fn () incr_by(value: int) when (CounterState s) -> CounterState
+st [
+    value > 100,
+    value < 100
+] {
+    let value = s.counter + value;
+    move CounterState : { value };
+}
+
+@(any)
+fn () decr_by(value: int) when (CounterState s) -> CounterState 
+st [
+    value > 100,
+    value < 100
+] {
+    let value = s.counter - value;
+    move CounterState : { value };
+}
+
+@(any)
+view(CounterState s) fn int get_value() {
+    return s.counter;
+}

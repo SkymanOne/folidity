@@ -11,17 +11,14 @@ use folidity_parser::{
 };
 use indexmap::IndexMap;
 
-use crate::{
-    ast::{
-        EnumDeclaration,
-        Function,
-        ModelDeclaration,
-        Param,
-        StateBody,
-        StateDeclaration,
-        StructDeclaration,
-    },
-    functions::resolve_func_body,
+use crate::ast::{
+    EnumDeclaration,
+    Function,
+    ModelDeclaration,
+    Param,
+    StateBody,
+    StateDeclaration,
+    StructDeclaration,
 };
 
 use crate::{
@@ -115,10 +112,6 @@ impl ContractDefinition {
                     decl: *f.clone(),
                 });
             }
-        }
-
-        for f in &delayed_decls.functions {
-            let _ = resolve_func_body(&f.decl, f.i, self);
         }
     }
 

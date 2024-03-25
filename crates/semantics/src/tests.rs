@@ -61,6 +61,12 @@ state StartState(MyModel)
 
 state SecondState(MyModel)
 
+state BoundedState {
+    field: int
+} st [
+    field > 0
+]
+
 @init
 @(any)
 fn (r: bool) start(init: int) when () -> (StartState s) 
@@ -107,14 +113,22 @@ fn () conditionals(cond: bool, value: int) {
     }
 }
 
-fn () move_state() when () -> (StartState s) {
+fn () move_state() when (StartState s1) -> (StartState s2) {
     let a = a"2FMLYJHYQWRHMFKRHKTKX5UNB5DGO65U57O3YVLWUJWKRE4YYJYC2CWWBY";
     let b = [1, 2, 3];
     let c = -5;
     let d = s"Hello World";
+    let gawd = s1.c;
+    # this will fails as we can't access the final state variable.
+    # let va = s2.c;
 
     let m = MyModel : { a, b, c, d };
     move StartState : { m };
+}
+
+@(any)
+view(StartState s) fn int get_value() {
+    return s.c;
 }
 "#;
 
@@ -128,8 +142,8 @@ fn test_program() {
     let contract = resolve_semantics(tree);
     assert_eq!(contract.diagnostics.len(), 0, "{:#?}", contract.diagnostics);
     assert_eq!(contract.models.len(), 2);
-    assert_eq!(contract.states.len(), 2);
-    assert_eq!(contract.functions.len(), 4);
+    assert_eq!(contract.states.len(), 3);
+    assert_eq!(contract.functions.len(), 5);
     assert_eq!(contract.structs.len(), 0);
 
     let model = contract
@@ -225,6 +239,8 @@ fn () fail_move_state() when () -> (StartState s) {
 
 #[test]
 fn test_err_program() {
+    folidity_diagnostics::disable_pretty_print();
+
     let result = parse(NOT_WORKING);
     let Ok(tree) = &result else {
         panic!("{:#?}", &result.err().unwrap());
@@ -232,33 +248,33 @@ fn test_err_program() {
 
     let contract = resolve_semantics(tree);
     // assert_eq!(contract.diagnostics.len(), 0, "{:#?}", contract.diagnostics);
-    let mut errors = contract.diagnostics.iter();
+    let mut errors = contract.diagnostics.iter().map(|r| r.message.clone());
     assert_eq!(
         "Expected function to return a value of type bool",
-        &errors.next().unwrap().message
+        &errors.next().unwrap()
     );
     assert_eq!(
         "Variable is immutable. Annotate with `mut` keyword to allow mutation.",
-        &errors.next().unwrap().message
+        &errors.next().unwrap()
     );
     assert_eq!(
         "Mismatched types: expected to resolve to int, but expression can only resolve to string",
-        &errors.next().unwrap().message
+        &errors.next().unwrap()
     );
     assert_eq!(
         "Mismatched types: expected to resolve to string, but expression can only resolve to int",
-        &errors.next().unwrap().message
+        &errors.next().unwrap()
     );
     assert_eq!(
         "Mismatched types: expected to resolve to string, but expression can only resolve to int",
-        &errors.next().unwrap().message
+        &errors.next().unwrap()
     );
     assert_eq!(
         "List elements appear to be of different types.",
-        &errors.next().unwrap().message
+        &errors.next().unwrap()
     );
     assert_eq!(
         "Expected function to transition to states [StartState]",
-        &errors.next().unwrap().message
+        &errors.next().unwrap()
     );
 }

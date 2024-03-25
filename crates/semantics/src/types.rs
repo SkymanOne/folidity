@@ -13,7 +13,10 @@ use crate::{
     contract::ContractDefinition,
     global_symbol::GlobalSymbol,
 };
-use folidity_diagnostics::Report;
+use folidity_diagnostics::{
+    Paint,
+    Report,
+};
 use folidity_parser::{
     ast as parsed_ast,
     Span,
@@ -414,13 +417,13 @@ pub(super) fn report_type_mismatch(
     contract: &mut ContractDefinition,
 ) {
     let actual = actual.iter().fold(String::new(), |acc, x| {
-        format!("{}, {}", acc, x.display(contract))
+        format!("{}, {}", acc, x.display(contract).cyan().bold())
     });
     contract.diagnostics.push(Report::type_error(
         loc.clone(),
         format!(
             "Mismatched types: expected to resolve to {}, but expression can only resolve to {}",
-            expected.display(contract),
+            expected.display(contract).magenta().bold(),
             actual.trim_start_matches(", ")
         ),
     ));
