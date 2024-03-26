@@ -5,7 +5,8 @@ members = [
     "crates/diagnostics",
     "crates/folidity",
     "crates/parser", 
-    "crates/semantics",
+    "crates/semantics", 
+    "crates/verifier",
 ]
 
 [workspace.package]
@@ -21,8 +22,9 @@ version = "1.0.0"
 [workspace.dependencies]
 folidity-parser = { path = "crates/parser" }
 folidity-diagnostics = { path = "crates/diagnostics" }
-derive-node = { path = "crates/derive_node" }
 folidity-semantics = { path = "crates/semantics" }
+folidity-verifier = { path = "crates/semantics" }
+derive-node = { path = "crates/derive_node" }
 logos = "0.14"
 lalrpop-util = "0.20"
 lalrpop = "0.20"
