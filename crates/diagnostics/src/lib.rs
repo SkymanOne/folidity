@@ -14,7 +14,7 @@ pub fn disable_pretty_print() {
     yansi::disable();
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ErrorType {
     Lexer,
     Parser,
@@ -36,7 +36,7 @@ impl Display for ErrorType {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Level {
     Info,
     Warning,
@@ -54,7 +54,7 @@ impl<'a> From<Level> for ariadne::ReportKind<'a> {
 }
 
 /// Error report.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Report {
     /// Location of an error
     pub loc: Span,

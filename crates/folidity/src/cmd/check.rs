@@ -1,16 +1,13 @@
 use anyhow::Result;
-use ariadne::{
-    Color,
-    Fmt,
-};
 use folidity_parser::parse;
-use folidity_semantics::resolve_semantics;
+use folidity_semantics::ContractDefinition;
 use std::ffi::OsString;
 
 use clap::Args;
 
 use super::{
     build_report,
+    exec,
     read_contract,
 };
 
@@ -28,18 +25,12 @@ impl CheckCommand {
         let parse_result = parse(&contract_contents);
         match parse_result {
             Ok(tree) => {
-                let def = resolve_semantics(&tree);
-                if def.diagnostics.is_empty() {
-                    println!("{}", "Contract has no known errors".fg(Color::Green));
-                    Ok(())
-                } else {
-                    build_report(
-                        &contract_contents,
-                        &def.diagnostics,
-                        self.contract.to_str().unwrap(),
-                    );
-                    anyhow::bail!("Syntactical checking failed.")
-                }
+                let _ = exec::<_, ContractDefinition>(
+                    &tree,
+                    &contract_contents,
+                    self.contract.to_str().unwrap(),
+                )?;
+                Ok(())
             }
             Err(errors) => {
                 build_report(&contract_contents, &errors, self.contract.to_str().unwrap());

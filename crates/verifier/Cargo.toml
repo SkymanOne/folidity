@@ -13,3 +13,4 @@ description = "Formal verification library for the Folidity compiler"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+folidity-semantics = { workspace = true }

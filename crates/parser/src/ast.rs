@@ -1,9 +1,11 @@
 use super::Span;
 use derive_node::Node;
+use folidity_diagnostics::Report;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Source {
     pub declarations: Vec<Declaration>,
+    pub diagnostics: Vec<Report>,
 }
 
 #[derive(Clone, Debug, PartialEq, Node, Default)]

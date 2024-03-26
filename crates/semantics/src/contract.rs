@@ -11,14 +11,17 @@ use folidity_parser::{
 };
 use indexmap::IndexMap;
 
-use crate::ast::{
-    EnumDeclaration,
-    Function,
-    ModelDeclaration,
-    Param,
-    StateBody,
-    StateDeclaration,
-    StructDeclaration,
+use crate::{
+    ast::{
+        EnumDeclaration,
+        Function,
+        ModelDeclaration,
+        Param,
+        StateBody,
+        StateDeclaration,
+        StructDeclaration,
+    },
+    symtable::Scope,
 };
 
 use crate::{
@@ -309,6 +312,7 @@ impl ContractDefinition {
                 parent: None,
                 bounds: Vec::new(),
                 recursive_parent: false,
+                scope: Scope::default(),
             });
 
             delay
@@ -339,6 +343,7 @@ impl ContractDefinition {
                 from: None,
                 bounds: Vec::new(),
                 recursive_parent: false,
+                scope: Scope::default(),
             });
 
             delay

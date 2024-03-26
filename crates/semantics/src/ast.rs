@@ -253,7 +253,7 @@ pub struct StructDeclaration {
     pub fields: Vec<Param>,
 }
 
-#[derive(Clone, Debug, PartialEq, Node)]
+#[derive(Clone, Debug, Node)]
 pub struct ModelDeclaration {
     /// Location span of the model.
     pub loc: Span,
@@ -268,6 +268,8 @@ pub struct ModelDeclaration {
     pub bounds: Vec<Expression>,
     /// Is the parent model recursive.
     pub recursive_parent: bool,
+    /// Scope table for the bounds context.
+    pub scope: Scope,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -278,7 +280,7 @@ pub enum StateBody {
     Model(SymbolInfo),
 }
 
-#[derive(Clone, Debug, PartialEq, Node)]
+#[derive(Clone, Debug, Node)]
 pub struct StateDeclaration {
     /// Location span of the model.
     pub loc: Span,
@@ -293,6 +295,8 @@ pub struct StateDeclaration {
     pub bounds: Vec<Expression>,
     /// Is the parent state recursive.
     pub recursive_parent: bool,
+    /// Scope table for the bounds context.
+    pub scope: Scope,
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]
@@ -520,6 +524,7 @@ impl TypeVariant {
 
 /// Extracts literal value, `T`, from the expression, if possible.
 pub trait TryGetValue<T> {
+    #[allow(clippy::result_unit_err)]
     fn try_get(&self) -> Result<T, ()>;
 }
 

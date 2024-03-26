@@ -62,6 +62,7 @@ pub fn resolve_bounds(contract: &mut ContractDefinition, delay: &DelayedDeclarat
             continue;
         };
 
+        contract.models[model_delay.i].scope = scope;
         contract.models[model_delay.i].bounds = bounds;
     }
 
@@ -115,6 +116,7 @@ pub fn resolve_bounds(contract: &mut ContractDefinition, delay: &DelayedDeclarat
         };
 
         contract.states[state_delay.i].bounds = bounds;
+        contract.states[state_delay.i].scope = scope;
     }
 
     for func_delay in &delay.functions {

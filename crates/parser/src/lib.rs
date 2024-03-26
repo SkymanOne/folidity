@@ -15,6 +15,9 @@ use lexer::{
 };
 use std::ops::Range;
 
+#[cfg(test)]
+mod tests;
+
 pub type Span = Range<usize>;
 
 lalrpop_mod!(pub folidity);
@@ -44,8 +47,11 @@ pub fn parse(src: &str) -> Result<Source, Vec<Report>> {
             reports.push(parser_error_to_report(&e));
             Err(reports)
         }
-        Ok(_) if !reports.is_empty() => Err(reports),
-        Ok(tree) => Ok(tree),
+        // Ok(_) if !reports.is_empty() => Err(reports),
+        Ok(mut tree) => {
+            tree.diagnostics.extend(reports);
+            Ok(tree)
+        }
     }
 }
 
@@ -114,6 +120,3 @@ fn parser_error_to_report(error: &ParseError<usize, Token<'_>, LexicalError>) ->
         ParseError::User { error } => Report::from(error.clone()),
     }
 }
-
-#[cfg(test)]
-mod tests;

@@ -11,6 +11,10 @@ use anyhow::{
 };
 use clap::Subcommand;
 use folidity_diagnostics::Report;
+use folidity_semantics::{
+    CompilationError,
+    Runner,
+};
 use yansi::Paint;
 
 use self::{
@@ -71,4 +75,17 @@ pub fn build_report(content: &str, diagnostics: &[Report], file_name: &str) {
             .print((file_name, Source::from(content)))
             .unwrap();
     }
+}
+
+/// Execute the compilation stage using the runner.
+pub fn exec<S, W: Runner<S>>(input: &S, contract_contents: &str, file_name: &str) -> Result<W> {
+    W::run(input).map_err(|e| {
+        let reports = e.diagnostics();
+        build_report(contract_contents, reports, file_name);
+        match e {
+            CompilationError::Syntax(_) => anyhow::anyhow!("Syntactical error occurred"),
+            CompilationError::Formal(_) => anyhow::anyhow!("Verification failed"),
+            CompilationError::Emit(_) => anyhow::anyhow!("Compilation failed"),
+        }
+    })
 }

@@ -1,7 +1,8 @@
 use crate::{
     ast::TypeVariant,
-    resolve_semantics,
     symtable::VariableSym,
+    ContractDefinition,
+    Runner,
 };
 use folidity_parser::parse;
 
@@ -16,9 +17,13 @@ enum MyEnum {
     B
 }
 
+model ParentModel {
+    a: int
+}
+
 model MyModel: ParentModel {
     c: int,
-    b: string,
+    b: string
 }
 
 state NoState(MyModel)
@@ -28,10 +33,13 @@ state NoState(MyModel)
 fn test_first_pass() {
     let tree = parse(DECL_SRC).unwrap();
 
-    let def = resolve_semantics(&tree);
+    let res = ContractDefinition::run(&tree);
+    let Ok(def) = res else {
+        panic!("{:#?}", res.err().unwrap())
+    };
     assert_eq!(def.structs.len(), 1);
     assert_eq!(def.enums.len(), 1);
-    assert_eq!(def.models.len(), 1);
+    assert_eq!(def.models.len(), 2);
     assert_eq!(def.states.len(), 1);
 
     let e = &def.enums[0];
@@ -139,7 +147,9 @@ fn test_program() {
         panic!("{:#?}", &result.err().unwrap());
     };
 
-    let contract = resolve_semantics(tree);
+    let res = ContractDefinition::run(tree);
+    assert!(res.is_ok(), "{:#?}", res.err().unwrap());
+    let contract = res.unwrap();
     assert_eq!(contract.diagnostics.len(), 0, "{:#?}", contract.diagnostics);
     assert_eq!(contract.models.len(), 2);
     assert_eq!(contract.states.len(), 3);
@@ -240,15 +250,17 @@ fn () fail_move_state() when () -> (StartState s) {
 #[test]
 fn test_err_program() {
     folidity_diagnostics::disable_pretty_print();
-
     let result = parse(NOT_WORKING);
     let Ok(tree) = &result else {
         panic!("{:#?}", &result.err().unwrap());
     };
 
-    let contract = resolve_semantics(tree);
+    let result = ContractDefinition::run(tree);
+    let Err(e) = result else {
+        panic!("The contract is expected to fail")
+    };
+    let mut errors = e.diagnostics().iter().map(|r| r.message.clone());
     // assert_eq!(contract.diagnostics.len(), 0, "{:#?}", contract.diagnostics);
-    let mut errors = contract.diagnostics.iter().map(|r| r.message.clone());
     assert_eq!(
         "Expected function to return a value of type bool",
         &errors.next().unwrap()
