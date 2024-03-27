@@ -10,6 +10,7 @@ use z3::{
     Solver,
 };
 
+/// A declaration in the code AST.
 pub struct Declaration<'ctx> {
     /// Info about the declaration
     pub decl_sym: GlobalSymbol,
@@ -19,6 +20,7 @@ pub struct Declaration<'ctx> {
     pub block: ConstraintBlock<'ctx>,
 }
 
+/// A singular constraint.
 #[derive(Debug, Clone)]
 pub struct Constraint<'ctx> {
     /// Location of the constraint in the original code.
@@ -39,8 +41,7 @@ impl<'ctx> Constraint<'ctx> {
     }
 }
 
-// impl build_
-
+/// Block of constraints of to be verified.
 #[derive(Debug, Clone)]
 pub struct ConstraintBlock<'ctx> {
     /// Solver which is scoped to the specific constraint block.
