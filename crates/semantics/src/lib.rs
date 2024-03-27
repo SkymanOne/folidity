@@ -41,13 +41,13 @@ impl CompilationError {
 }
 
 /// Recursively walk the tree and modify the program artifacts.
-pub trait Runner<S> {
-    fn run(source: &S) -> Result<Self, CompilationError>
+pub trait Runner<I, O> {
+    fn run(source: &I) -> Result<O, CompilationError>
     where
         Self: std::marker::Sized;
 }
 
-impl Runner<Source> for ContractDefinition {
+impl Runner<Source, ContractDefinition> for ContractDefinition {
     fn run(source: &Source) -> Result<ContractDefinition, CompilationError> {
         let mut definition = ContractDefinition::default();
         definition.diagnostics.extend(source.diagnostics.clone());

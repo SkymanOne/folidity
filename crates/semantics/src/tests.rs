@@ -56,6 +56,11 @@ model ParentModel {
     b: list<int>    
 }
 
+enum MyEnum {
+    A, 
+    B
+}
+
 model MyModel: ParentModel {
     c: int,
     d: string
@@ -80,7 +85,8 @@ state BoundedState {
 fn (r: bool) start(init: int) when () -> (StartState s) 
 st [
     r == true,
-    s.c < 10
+    s.c < 10,
+    MyEnum.A == MyEnum.A
 ]
 {
     let a = a"2FMLYJHYQWRHMFKRHKTKX5UNB5DGO65U57O3YVLWUJWKRE4YYJYC2CWWBY";
@@ -142,6 +148,7 @@ view(StartState s) fn int get_value() {
 
 #[test]
 fn test_program() {
+    folidity_diagnostics::disable_pretty_print();
     let result = parse(WORKING);
     let Ok(tree) = &result else {
         panic!("{:#?}", &result.err().unwrap());
@@ -154,6 +161,7 @@ fn test_program() {
     assert_eq!(contract.models.len(), 2);
     assert_eq!(contract.states.len(), 3);
     assert_eq!(contract.functions.len(), 5);
+    assert_eq!(contract.enums.len(), 1);
     assert_eq!(contract.structs.len(), 0);
 
     let model = contract
