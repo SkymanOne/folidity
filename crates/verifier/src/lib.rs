@@ -1,14 +1,13 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+use z3::Config;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+mod ast;
+mod executor;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+/// Create config for the Z3 context.
+pub fn z3_cfg() -> Config {
+    let mut cfg = Config::new();
+    cfg.set_model_generation(true);
+    // 10s timeout for constraint solving.
+    cfg.set_timeout_msec(10_000);
+    cfg
 }

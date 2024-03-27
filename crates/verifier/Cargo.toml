@@ -14,3 +14,4 @@ description = "Formal verification library for the Folidity compiler"
 
 [dependencies]
 folidity-semantics = { workspace = true }
+z3 = { workspace = true }
