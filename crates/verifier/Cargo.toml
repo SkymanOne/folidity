@@ -14,4 +14,10 @@ description = "Formal verification library for the Folidity compiler"
 
 [dependencies]
 folidity-semantics = { workspace = true }
+folidity-diagnostics = { workspace = true }
+num-bigint = { workspace = true }
+num-rational = { workspace = true }
+num-traits = { workspace = true }
+algonaut_core = { workspace = true }
 z3 = { workspace = true }
+hex = { workspace = true }

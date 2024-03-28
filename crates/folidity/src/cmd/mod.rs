@@ -78,7 +78,11 @@ pub fn build_report(content: &str, diagnostics: &[Report], file_name: &str) {
 }
 
 /// Execute the compilation stage using the runner.
-pub fn exec<S, W: Runner<S>>(input: &S, contract_contents: &str, file_name: &str) -> Result<W> {
+pub fn exec<I, O, W: Runner<I, O>>(
+    input: &I,
+    contract_contents: &str,
+    file_name: &str,
+) -> Result<O> {
     W::run(input).map_err(|e| {
         let reports = e.diagnostics();
         build_report(contract_contents, reports, file_name);

@@ -25,15 +25,19 @@ impl CheckCommand {
         let parse_result = parse(&contract_contents);
         match parse_result {
             Ok(tree) => {
-                let _ = exec::<_, ContractDefinition>(
+                let _ = exec::<_, _, ContractDefinition>(
                     &tree,
                     &contract_contents,
-                    self.contract.to_str().unwrap(),
+                    self.contract.to_str().expect("Valid path name."),
                 )?;
                 Ok(())
             }
             Err(errors) => {
-                build_report(&contract_contents, &errors, self.contract.to_str().unwrap());
+                build_report(
+                    &contract_contents,
+                    &errors,
+                    self.contract.to_str().expect("Valid path name."),
+                );
                 anyhow::bail!("Error during parsing")
             }
         }

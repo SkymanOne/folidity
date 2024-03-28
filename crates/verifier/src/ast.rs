@@ -5,12 +5,18 @@ use folidity_semantics::{
     SymbolInfo,
 };
 use z3::{
-    ast::Bool,
+    ast::{
+        Bool,
+        Dynamic,
+        Int,
+        Real,
+        String,
+    },
     Context,
     Solver,
 };
-
 /// A declaration in the code AST.
+#[derive(Debug, Clone)]
 pub struct Declaration<'ctx> {
     /// Info about the declaration
     pub decl_sym: GlobalSymbol,
@@ -64,4 +70,74 @@ impl<'ctx> ConstraintBlock<'ctx> {
             .map(|c| c.sym_to_const(ctx))
             .collect()
     }
+}
+
+pub struct Variable<'ctx> {
+    /// Location of the expression
+    pub loc: Span,
+    /// Element of the expression.
+    pub element: Dynamic<'ctx>,
+}
+
+/// A list of Z3 concrete expression.
+/// Translated from the semantics AST?
+pub enum Z3Expression<'ctx> {
+    Variable(Z3UnaryExpression<usize>),
+
+    // Literals
+    Int(Z3UnaryExpression<Int<'ctx>>),
+    Real(Z3UnaryExpression<Real<'ctx>>),
+    Boolean(Z3UnaryExpression<Bool<'ctx>>),
+    String(Z3UnaryExpression<String<'ctx>>),
+
+    // Maths operations.
+    Multiply(Z3BinaryExpression),
+    Divide(Z3BinaryExpression),
+    Modulo(Z3BinaryExpression),
+    Add(Z3BinaryExpression),
+    Subtract(Z3BinaryExpression),
+
+    // Boolean relations.
+    Equal(Z3BinaryExpression),
+    NotEqual(Z3BinaryExpression),
+    Greater(Z3BinaryExpression),
+    Less(Z3BinaryExpression),
+    GreaterEq(Z3BinaryExpression),
+    LessEq(Z3BinaryExpression),
+    In(Z3BinaryExpression),
+    Not(Z3UnaryExpression<Box<Expression>>),
+
+    // Boolean operations.
+    Or(Z3BinaryExpression),
+    And(Z3BinaryExpression),
+
+    List(Z3UnaryExpression<Vec<Expression>>),
+}
+
+/// Represents unary style expression.
+///
+/// # Example
+/// `false`
+#[derive(Clone, Debug, PartialEq)]
+pub struct Z3UnaryExpression<T> {
+    /// Location of the expression
+    pub loc: Span,
+    /// Element of the expression.
+    pub element: T,
+}
+
+/// Represents binary-style expression.
+///
+/// # Example
+///
+/// - `10 + 2`
+/// - `a > b`
+#[derive(Clone, Debug, PartialEq)]
+pub struct Z3BinaryExpression {
+    /// Location of the parent expression.
+    pub loc: Span,
+    /// Left expression.
+    pub left: Box<Expression>,
+    /// Right expression
+    pub right: Box<Expression>,
 }
