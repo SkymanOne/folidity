@@ -10,7 +10,7 @@ use z3::{
 
 mod ast;
 mod executor;
-mod resolver;
+mod transformer;
 
 /// Create config for the Z3 context.
 pub fn z3_cfg() -> Config {
