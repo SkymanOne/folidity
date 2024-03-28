@@ -20,7 +20,7 @@ pub enum ErrorType {
     Parser,
     Semantics,
     Type,
-    Functional,
+    Verification,
 }
 
 impl Display for ErrorType {
@@ -31,7 +31,7 @@ impl Display for ErrorType {
             ErrorType::Parser => word("Parser error"),
             ErrorType::Semantics => word("Semantic error"),
             ErrorType::Type => word("Type error"),
-            ErrorType::Functional => word("Functional error"),
+            ErrorType::Verification => word("Verification error"),
         }
     }
 }
@@ -64,6 +64,8 @@ pub struct Report {
     pub level: Level,
     /// Message of an error
     pub message: String,
+
+    pub additional_info: Vec<Report>,
 }
 
 impl Report {
@@ -74,6 +76,7 @@ impl Report {
             error_type: ErrorType::Lexer,
             level: Level::Error,
             message,
+            additional_info: vec![],
         }
     }
 
@@ -84,6 +87,7 @@ impl Report {
             error_type: ErrorType::Parser,
             level: Level::Error,
             message,
+            additional_info: vec![],
         }
     }
 
@@ -94,6 +98,7 @@ impl Report {
             error_type: ErrorType::Semantics,
             level: Level::Error,
             message,
+            additional_info: vec![],
         }
     }
 
@@ -104,6 +109,7 @@ impl Report {
             error_type: ErrorType::Semantics,
             level: Level::Warning,
             message,
+            additional_info: vec![],
         }
     }
 
@@ -114,16 +120,28 @@ impl Report {
             error_type: ErrorType::Type,
             level: Level::Error,
             message,
+            additional_info: vec![],
         }
     }
 
-    /// Build a report from the functional error.
-    pub fn func_error(loc: Span, message: String) -> Self {
+    /// Build a report from the verification error.
+    pub fn ver_error(loc: Span, message: String) -> Self {
         Self {
             loc,
-            error_type: ErrorType::Functional,
+            error_type: ErrorType::Verification,
             level: Level::Error,
             message,
+            additional_info: vec![],
+        }
+    }
+    /// Build a report from the verification error with additional info.
+    pub fn ver_error_with_extra(loc: Span, message: String, errs: Vec<Report>) -> Self {
+        Self {
+            loc,
+            error_type: ErrorType::Verification,
+            level: Level::Error,
+            message,
+            additional_info: errs,
         }
     }
 }
