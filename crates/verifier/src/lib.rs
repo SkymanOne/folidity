@@ -12,6 +12,9 @@ mod ast;
 mod executor;
 mod transformer;
 
+#[cfg(test)]
+mod tests;
+
 /// Create config for the Z3 context.
 pub fn z3_cfg() -> Config {
     let mut cfg = Config::new();

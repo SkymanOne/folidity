@@ -106,10 +106,10 @@ fn list<'ctx>(
     ctx: &'ctx Context,
     executor: &mut SymbolicExecutor<'ctx>,
 ) -> Result<Z3Expression<'ctx>, ()> {
-    let set = Set::fresh_const(ctx, "", &type_to_sort(ty, ctx));
+    let mut set = Set::empty(ctx, &type_to_sort(ty, ctx));
     for e in exprs {
         let z3_e = transform_expr(e, ctx, executor)?;
-        set.add(&z3_e.element);
+        set = set.add(&z3_e.element);
     }
     Ok(Z3Expression::new(loc, &set))
 }
