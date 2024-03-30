@@ -2,6 +2,7 @@ use anyhow::Result;
 use folidity_parser::parse;
 use folidity_semantics::ContractDefinition;
 use std::ffi::OsString;
+use yansi::Paint;
 
 use clap::Args;
 
@@ -30,6 +31,7 @@ impl CheckCommand {
                     &contract_contents,
                     self.contract.to_str().expect("Valid path name."),
                 )?;
+                println!("{}", "Program is semantically valid.".green().bold());
                 Ok(())
             }
             Err(errors) => {

@@ -1,5 +1,4 @@
 use folidity_semantics::{
-    ast::Expression,
     GlobalSymbol,
     Span,
     SymbolInfo,
@@ -9,9 +8,6 @@ use z3::{
         Ast,
         Bool,
         Dynamic,
-        Int,
-        Real,
-        String,
     },
     Context,
     Solver,

@@ -70,9 +70,13 @@ model MyModel: ParentModel {
     d == s"Hello World"
 ]
 
-state StartState(MyModel)
+state StartState(MyModel) st [
+    c < 1000
+]
 
-state SecondState(MyModel)
+state SecondState(MyModel) st [
+    c < 500
+]
 
 state BoundedState {
     field: int
