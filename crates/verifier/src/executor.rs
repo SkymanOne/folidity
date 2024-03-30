@@ -1,7 +1,9 @@
 use folidity_diagnostics::Report;
 use z3::{
+    ast::Dynamic,
     Context,
     Solver,
+    Sort,
 };
 
 use crate::ast::Declaration;
@@ -25,5 +27,18 @@ impl<'ctx> SymbolicExecutor<'ctx> {
             diagnostics: vec![],
             symbol_counter: 0,
         }
+    }
+
+    /// Create a Z3 constant with the current symbol counter as a name while increasing
+    /// the counter.
+    pub fn create_constant(
+        &mut self,
+        sort: &Sort<'ctx>,
+        context: &'ctx Context,
+    ) -> (Dynamic<'ctx>, u32) {
+        let id = self.symbol_counter;
+        let c = Dynamic::new_const(context, id, sort);
+        self.symbol_counter += 1;
+        (c, id)
     }
 }

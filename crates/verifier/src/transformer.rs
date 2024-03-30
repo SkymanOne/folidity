@@ -1,10 +1,11 @@
-use std::ops::Mul;
-
 use folidity_diagnostics::{
     Report,
     Span,
 };
-use folidity_semantics::ast::Expression;
+use folidity_semantics::ast::{
+    Expression,
+    TypeVariant,
+};
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use z3::{
@@ -14,16 +15,15 @@ use z3::{
         Dynamic,
         Int,
         Real,
+        Set,
         String as Z3String,
     },
     Context,
+    Sort,
 };
 
 use crate::{
-    ast::{
-        Constraint,
-        Z3Expression,
-    },
+    ast::Z3Expression,
     executor::SymbolicExecutor,
 };
 
@@ -32,7 +32,7 @@ use crate::{
 pub fn transform_expr<'ctx>(
     expr: &Expression,
     ctx: &'ctx Context,
-    executor: &mut SymbolicExecutor,
+    executor: &mut SymbolicExecutor<'ctx>,
 ) -> Result<Z3Expression<'ctx>, ()> {
     match expr {
         // literals
@@ -64,24 +64,96 @@ pub fn transform_expr<'ctx>(
         Expression::Or(b) => or(&b.left, &b.right, &b.loc, ctx, executor),
         Expression::And(b) => and(&b.left, &b.right, &b.loc, ctx, executor),
 
-        Expression::In(_) => todo!(),
-        Expression::MemberAccess(_) => todo!(),
-        Expression::List(_) => todo!(),
-        Expression::Variable(_) => todo!(),
+        Expression::Variable(_) => variable(expr, ctx, executor),
+        Expression::MemberAccess(_) => variable(expr, ctx, executor),
+        Expression::List(l) => list(&l.element, &l.loc, &l.ty, ctx, executor),
+        Expression::In(b) => in_(&b.left, &b.right, &b.loc, ctx, executor),
 
         Expression::FunctionCall(_) => {
-            todo!("Verification of function calls is not currently unsupported.")
+            todo!("Verification of function calls is currently unsupported.")
         }
         Expression::StructInit(_) => {
-            todo!("Verification of struct initialisation is not currently unsupported.")
+            todo!("Verification of struct initialisation is currently unsupported.")
         }
+    }
+}
+
+fn in_<'ctx>(
+    left: &Expression,
+    right: &Expression,
+    loc: &Span,
+    ctx: &'ctx Context,
+    executor: &mut SymbolicExecutor<'ctx>,
+) -> Result<Z3Expression<'ctx>, ()> {
+    let e1 = transform_expr(left, ctx, executor)?;
+    let e2 = transform_expr(right, ctx, executor)?;
+    let set = e2.element.as_set().ok_or_else(|| {
+        executor.diagnostics.push(Report::ver_error(
+            right.loc().clone(),
+            String::from("Expression can not be coerces to a Z3 `Set`"),
+        ));
+    })?;
+
+    let assertion = set.member(&e1.element);
+
+    Ok(Z3Expression::new(loc, &assertion))
+}
+
+fn list<'ctx>(
+    exprs: &[Expression],
+    loc: &Span,
+    ty: &TypeVariant,
+    ctx: &'ctx Context,
+    executor: &mut SymbolicExecutor<'ctx>,
+) -> Result<Z3Expression<'ctx>, ()> {
+    let set = Set::fresh_const(ctx, "", &type_to_sort(ty, ctx));
+    for e in exprs {
+        let z3_e = transform_expr(e, ctx, executor)?;
+        set.add(&z3_e.element);
+    }
+    Ok(Z3Expression::new(loc, &set))
+}
+
+fn variable<'ctx>(
+    e: &Expression,
+    ctx: &'ctx Context,
+    executor: &mut SymbolicExecutor<'ctx>,
+) -> Result<Z3Expression<'ctx>, ()> {
+    let sort = type_to_sort(e.ty(), ctx);
+    let res = executor.create_constant(&sort, ctx);
+    Ok(Z3Expression::new(e.loc(), &res.0))
+}
+
+fn type_to_sort<'ctx>(ty: &TypeVariant, ctx: &'ctx Context) -> Sort<'ctx> {
+    match ty {
+        TypeVariant::Int | TypeVariant::Uint | TypeVariant::Char | TypeVariant::Enum(_) => {
+            Sort::int(ctx)
+        }
+        TypeVariant::Float => Sort::real(ctx),
+        TypeVariant::Address | TypeVariant::Hex | TypeVariant::String => Sort::string(ctx),
+        TypeVariant::Bool => Sort::bool(ctx),
+        TypeVariant::Unit => Sort::uninterpreted(ctx, "()".into()),
+        TypeVariant::Model(s) => Sort::uninterpreted(ctx, format!("M!{}", s.i).into()),
+        TypeVariant::State(s) => Sort::uninterpreted(ctx, format!("S!{}", s.i).into()),
+        TypeVariant::Struct(s) => Sort::uninterpreted(ctx, format!("SS!{}", s.i).into()),
+        TypeVariant::Set(s_ty) => Sort::set(ctx, &type_to_sort(s_ty, ctx)),
+        TypeVariant::List(l_ty) => Sort::set(ctx, &type_to_sort(l_ty, ctx)),
+        TypeVariant::Mapping(m) => {
+            Sort::array(
+                ctx,
+                &type_to_sort(&m.from_ty, ctx),
+                &type_to_sort(&m.to_ty, ctx),
+            )
+        }
+        TypeVariant::Function(_) => unimplemented!(),
+        TypeVariant::Generic(_) => unimplemented!(),
     }
 }
 
 fn int_real_op<'ctx>(
     e: &Expression,
     ctx: &'ctx Context,
-    executor: &mut SymbolicExecutor,
+    executor: &mut SymbolicExecutor<'ctx>,
 ) -> Result<Z3Expression<'ctx>, ()> {
     let (Expression::Multiply(b)
     | Expression::Divide(b)
@@ -148,7 +220,7 @@ fn modulo<'ctx>(
     right: &Expression,
     loc: &Span,
     ctx: &'ctx Context,
-    executor: &mut SymbolicExecutor,
+    executor: &mut SymbolicExecutor<'ctx>,
 ) -> Result<Z3Expression<'ctx>, ()> {
     let e1 = transform_expr(left, ctx, executor)?;
     let e2 = transform_expr(right, ctx, executor)?;
@@ -177,7 +249,7 @@ fn equality<'ctx>(
     right: &Expression,
     loc: &Span,
     ctx: &'ctx Context,
-    executor: &mut SymbolicExecutor,
+    executor: &mut SymbolicExecutor<'ctx>,
 ) -> Result<Z3Expression<'ctx>, ()> {
     let e1 = transform_expr(left, ctx, executor)?;
     let e2 = transform_expr(right, ctx, executor)?;
@@ -197,7 +269,7 @@ fn inequality<'ctx>(
     right: &Expression,
     loc: &Span,
     ctx: &'ctx Context,
-    executor: &mut SymbolicExecutor,
+    executor: &mut SymbolicExecutor<'ctx>,
 ) -> Result<Z3Expression<'ctx>, ()> {
     let e1 = transform_expr(left, ctx, executor)?;
     let e2 = transform_expr(right, ctx, executor)?;
@@ -211,7 +283,7 @@ fn not<'ctx>(
     e: &Expression,
     loc: &Span,
     ctx: &'ctx Context,
-    executor: &mut SymbolicExecutor,
+    executor: &mut SymbolicExecutor<'ctx>,
 ) -> Result<Z3Expression<'ctx>, ()> {
     let v = transform_expr(e, ctx, executor)?;
 
@@ -225,7 +297,7 @@ fn or<'ctx>(
     right: &Expression,
     loc: &Span,
     ctx: &'ctx Context,
-    executor: &mut SymbolicExecutor,
+    executor: &mut SymbolicExecutor<'ctx>,
 ) -> Result<Z3Expression<'ctx>, ()> {
     let e1 = transform_expr(left, ctx, executor)?;
     let e2 = transform_expr(right, ctx, executor)?;
@@ -254,7 +326,7 @@ fn and<'ctx>(
     right: &Expression,
     loc: &Span,
     ctx: &'ctx Context,
-    executor: &mut SymbolicExecutor,
+    executor: &mut SymbolicExecutor<'ctx>,
 ) -> Result<Z3Expression<'ctx>, ()> {
     let e1 = transform_expr(left, ctx, executor)?;
     let e2 = transform_expr(right, ctx, executor)?;
@@ -359,11 +431,8 @@ fn to_z3_string<'ctx>(
 /// Create a boolean constant and returns its id as `u32`
 pub fn create_constraint_const<'ctx>(
     ctx: &'ctx Context,
-    executor: &mut SymbolicExecutor,
+    executor: &mut SymbolicExecutor<'ctx>,
 ) -> (Bool<'ctx>, u32) {
-    let bool_const = Bool::new_const(ctx, executor.symbol_counter);
-    let id = executor.symbol_counter;
-    executor.symbol_counter += 1;
-
-    (bool_const, id)
+    let val = executor.create_constant(&Sort::bool(ctx), ctx);
+    (val.0.as_bool().unwrap(), val.1)
 }
