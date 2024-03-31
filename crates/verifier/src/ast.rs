@@ -23,7 +23,7 @@ use crate::{
     transformer::transform_expr,
 };
 /// A declaration in the code AST.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Declaration<'ctx> {
     /// Info about the declaration
     pub decl_sym: GlobalSymbol,
@@ -31,6 +31,37 @@ pub struct Declaration<'ctx> {
     pub parent: Option<SymbolInfo>,
     /// Constraint block of the declaration.
     pub constraints: Vec<Constraint<'ctx>>,
+}
+
+impl<'ctx> Declaration<'ctx> {
+    /// Translate context to the new solver.
+    pub fn translate_to_solver<'src_ctx>(
+        &self,
+        solver: &Solver<'src_ctx>,
+    ) -> Vec<Constraint<'src_ctx>>
+    where
+        'ctx: 'src_ctx,
+    {
+        let new_ctx = solver.get_context();
+        self.constraints
+            .iter()
+            .map(|c| {
+                Constraint {
+                    loc: c.loc.clone(),
+                    binding_sym: c.binding_sym,
+                    expr: c.expr.translate(new_ctx).clone(),
+                }
+            })
+            .collect()
+    }
+
+    /// Transform the list of ids of constraints into concrete boolean constants.
+    pub fn constraint_consts<'a>(&self, ctx: &'a Context) -> Vec<Bool<'a>> {
+        self.constraints
+            .iter()
+            .map(|c| c.sym_to_const(ctx))
+            .collect()
+    }
 }
 
 /// A singular constraint.
@@ -53,12 +84,12 @@ impl<'ctx> Constraint<'ctx> {
         Bool::new_const(ctx, self.binding_sym)
     }
 
-    pub fn from_expr(
+    pub fn from_expr<'a>(
         expr: &Expression,
-        ctx: &'ctx Context,
+        ctx: &'a Context,
         diagnostics: &mut Vec<Report>,
         executor: &mut SymbolicExecutor<'ctx>,
-    ) -> Result<Constraint<'ctx>, ()> {
+    ) -> Result<Constraint<'a>, ()> {
         let resolve_e = transform_expr(expr, &ctx, diagnostics, executor)?;
         let Some(bool_expr) = resolve_e.element.as_bool() else {
             diagnostics.push(Report::ver_error(
@@ -79,31 +110,6 @@ impl<'ctx> Constraint<'ctx> {
             binding_sym: n,
             expr: binding_expr,
         })
-    }
-}
-
-/// Block of constraints of to be verified.
-#[derive(Debug)]
-pub struct ConstraintBlock<'ctx> {
-    pub context: Context,
-    /// Solver which is scoped to the specific constraint block.
-    /// List of constraints in the given block.
-    pub constraints: Vec<Constraint<'ctx>>,
-}
-
-impl<'ctx> ConstraintBlock<'ctx> {
-    /// Translate context to the new solver.
-    pub fn translate_to_solver<'a>(&self, solver: &Solver<'a>) -> Solver<'a> {
-        let new_ctx = solver.get_context();
-        Solver::new(&self.context).translate(new_ctx)
-    }
-
-    /// Transform the list of ids of constraints into concrete boolean constants.
-    pub fn constraint_consts<'a>(&self, ctx: &'a Context) -> Vec<Bool<'a>> {
-        self.constraints
-            .iter()
-            .map(|c| c.sym_to_const(ctx))
-            .collect()
     }
 }
 

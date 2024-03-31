@@ -52,7 +52,7 @@ fn mul_transform() {
     });
 
     let context = Context::new(&z3_cfg());
-    let mut executor = SymbolicExecutor::new(Context::new(&z3_cfg()));
+    let mut executor = SymbolicExecutor::new(&context);
     let mut diagnostics = vec![];
     let z3_res = transform_expr(&mul, &context, &mut diagnostics, &mut executor);
 
@@ -74,7 +74,7 @@ fn var_transform() {
     });
 
     let context = Context::new(&z3_cfg());
-    let mut executor = SymbolicExecutor::new(Context::new(&z3_cfg()));
+    let mut executor = SymbolicExecutor::new(&context);
     let mut diagnostics = vec![];
     let z3_res = transform_expr(&var, &context, &mut diagnostics, &mut executor);
 
@@ -93,7 +93,7 @@ fn string_hex_transform() {
     });
 
     let context = Context::new(&z3_cfg());
-    let mut executor = SymbolicExecutor::new(Context::new(&z3_cfg()));
+    let mut executor = SymbolicExecutor::new(&context);
     let mut diagnostics = vec![];
     let z3_res = transform_expr(&string, &context, &mut diagnostics, &mut executor);
 
@@ -145,7 +145,7 @@ fn list_transform() {
     });
 
     let context = Context::new(&z3_cfg());
-    let mut executor = SymbolicExecutor::new(Context::new(&z3_cfg()));
+    let mut executor = SymbolicExecutor::new(&context);
     let mut diagnostics = vec![];
     let z3_res = transform_expr(&list, &context, &mut diagnostics, &mut executor);
 
@@ -234,7 +234,7 @@ fn in_transform() {
     });
 
     let context = Context::new(&z3_cfg());
-    let mut executor = SymbolicExecutor::new(Context::new(&z3_cfg()));
+    let mut executor = SymbolicExecutor::new(&context);
     let mut diagnostics = vec![];
 
     // verify that `30` is in the list.

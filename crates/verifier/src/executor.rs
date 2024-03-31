@@ -33,53 +33,58 @@ pub struct SymbolicExecutor<'ctx> {
     /// Global solver of the executor.
     ///
     /// We encapsulate it as it can't be easily transferred between scopes.
-    context: Context,
+    solver: Solver<'ctx>,
+    pub local_contexts: Vec<Context>,
     /// List of resolved declaration to verify.
     pub declarations: Vec<Declaration<'ctx>>,
-    pub contexts: Vec<Context>,
     /// Symbol counter to track boolean constants across the program.
     pub symbol_counter: u32,
     pub diagnostics: Vec<Report>,
 }
 
 impl<'ctx> SymbolicExecutor<'ctx> {
-    pub fn new(context: Context) -> Self {
+    pub fn new(context: &'ctx Context) -> Self {
         Self {
-            context,
-            contexts: vec![],
+            solver: Solver::new(context),
+            local_contexts: vec![],
             declarations: vec![],
             diagnostics: vec![],
             symbol_counter: 0,
         }
     }
 
-    pub fn parse_declarations(&mut self, contract: &ContractDefinition) -> Result<(), ()> {
+    pub fn parse_declarations(
+        &mut self,
+        contract: &ContractDefinition,
+        context: &'ctx Context,
+    ) -> Result<(), ()> {
         let mut error = false;
         let mut diagnostics = Vec::new();
 
-        for (i, m) in contract.models.iter().enumerate() {
-            let context = Context::new(&z3_cfg());
-            let z3_exprs: Vec<Z3Expression> = m
-                .bounds
-                .iter()
-                .filter_map(|e| {
-                    match transform_expr(e, &context, &mut diagnostics, self) {
-                        Ok(c) => Some(c),
-                        Err(_) => {
-                            error = true;
-                            None
-                        }
+        for i in 0..contract.models.len() {
+            let mut constraints: Vec<Constraint> = vec![];
+            let m = &contract.models[i];
+
+            for e in &m.bounds {
+                match Constraint::from_expr(e, context, &mut diagnostics, self) {
+                    Ok(c) => constraints.push(c),
+                    Err(_) => {
+                        error = true;
+                        continue;
                     }
-                })
-                .collect();
+                };
+            }
 
-            // let decl = Declaration {
-            //     decl_sym: GlobalSymbol::Model(SymbolInfo::new(m.loc.clone(), i)),
-            //     parent: m.parent.clone(),
-            //     constraints,
-            // };
+            let decl = Declaration {
+                constraints,
+                decl_sym: GlobalSymbol::Model(SymbolInfo {
+                    loc: m.loc.clone(),
+                    i,
+                }),
+                parent: m.parent.clone(),
+            };
 
-            // self.declarations.push(decl);
+            self.declarations.push(decl);
         }
 
         if error {
@@ -103,6 +108,6 @@ impl<'ctx> SymbolicExecutor<'ctx> {
 
     /// Retrieve the context of the internal `solver`.
     pub fn context(&self) -> &Context {
-        &self.context
+        self.solver.get_context()
     }
 }
