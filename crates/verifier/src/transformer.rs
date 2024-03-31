@@ -25,6 +25,7 @@ use z3::{
 use crate::{
     ast::Z3Expression,
     executor::SymbolicExecutor,
+    Diagnostics,
 };
 
 /// Transforms [`folidity_semantics::ast::Expression`] into [`crate::ast::Z3Expression`]
@@ -32,7 +33,7 @@ use crate::{
 pub fn transform_expr<'ctx>(
     expr: &Expression,
     ctx: &'ctx Context,
-    diagnostics: &mut Vec<Report>,
+    diagnostics: &mut Diagnostics,
     executor: &mut SymbolicExecutor<'ctx>,
 ) -> Result<Z3Expression<'ctx>, ()> {
     match expr {
@@ -86,7 +87,7 @@ fn in_<'ctx>(
     right: &Expression,
     loc: &Span,
     ctx: &'ctx Context,
-    diagnostics: &mut Vec<Report>,
+    diagnostics: &mut Diagnostics,
     executor: &mut SymbolicExecutor<'ctx>,
 ) -> Result<Z3Expression<'ctx>, ()> {
     let e1 = transform_expr(left, ctx, diagnostics, executor)?;
@@ -108,7 +109,7 @@ fn list<'ctx>(
     loc: &Span,
     ty: &TypeVariant,
     ctx: &'ctx Context,
-    diagnostics: &mut Vec<Report>,
+    diagnostics: &mut Diagnostics,
     executor: &mut SymbolicExecutor<'ctx>,
 ) -> Result<Z3Expression<'ctx>, ()> {
     let mut set = Set::empty(ctx, &type_to_sort(ty, ctx));
@@ -158,7 +159,7 @@ fn type_to_sort<'ctx>(ty: &TypeVariant, ctx: &'ctx Context) -> Sort<'ctx> {
 fn int_real_op<'ctx>(
     e: &Expression,
     ctx: &'ctx Context,
-    diagnostics: &mut Vec<Report>,
+    diagnostics: &mut Diagnostics,
     executor: &mut SymbolicExecutor<'ctx>,
 ) -> Result<Z3Expression<'ctx>, ()> {
     let (Expression::Multiply(b)
@@ -226,7 +227,7 @@ fn modulo<'ctx>(
     right: &Expression,
     loc: &Span,
     ctx: &'ctx Context,
-    diagnostics: &mut Vec<Report>,
+    diagnostics: &mut Diagnostics,
     executor: &mut SymbolicExecutor<'ctx>,
 ) -> Result<Z3Expression<'ctx>, ()> {
     let e1 = transform_expr(left, ctx, diagnostics, executor)?;
@@ -256,7 +257,7 @@ fn equality<'ctx>(
     right: &Expression,
     loc: &Span,
     ctx: &'ctx Context,
-    diagnostics: &mut Vec<Report>,
+    diagnostics: &mut Diagnostics,
     executor: &mut SymbolicExecutor<'ctx>,
 ) -> Result<Z3Expression<'ctx>, ()> {
     let e1 = transform_expr(left, ctx, diagnostics, executor)?;
@@ -277,7 +278,7 @@ fn inequality<'ctx>(
     right: &Expression,
     loc: &Span,
     ctx: &'ctx Context,
-    diagnostics: &mut Vec<Report>,
+    diagnostics: &mut Diagnostics,
     executor: &mut SymbolicExecutor<'ctx>,
 ) -> Result<Z3Expression<'ctx>, ()> {
     let e1 = transform_expr(left, ctx, diagnostics, executor)?;
@@ -292,7 +293,7 @@ fn not<'ctx>(
     e: &Expression,
     loc: &Span,
     ctx: &'ctx Context,
-    diagnostics: &mut Vec<Report>,
+    diagnostics: &mut Diagnostics,
     executor: &mut SymbolicExecutor<'ctx>,
 ) -> Result<Z3Expression<'ctx>, ()> {
     let v = transform_expr(e, ctx, diagnostics, executor)?;
@@ -307,7 +308,7 @@ fn or<'ctx>(
     right: &Expression,
     loc: &Span,
     ctx: &'ctx Context,
-    diagnostics: &mut Vec<Report>,
+    diagnostics: &mut Diagnostics,
     executor: &mut SymbolicExecutor<'ctx>,
 ) -> Result<Z3Expression<'ctx>, ()> {
     let e1 = transform_expr(left, ctx, diagnostics, executor)?;
@@ -337,7 +338,7 @@ fn and<'ctx>(
     right: &Expression,
     loc: &Span,
     ctx: &'ctx Context,
-    diagnostics: &mut Vec<Report>,
+    diagnostics: &mut Diagnostics,
     executor: &mut SymbolicExecutor<'ctx>,
 ) -> Result<Z3Expression<'ctx>, ()> {
     let e1 = transform_expr(left, ctx, diagnostics, executor)?;
@@ -394,7 +395,7 @@ fn enum_<'ctx>(value: usize, loc: &Span, ctx: &'ctx Context) -> Z3Expression<'ct
 
 fn to_z3_int<'ctx>(
     expr: &Z3Expression<'ctx>,
-    diagnostics: &mut Vec<Report>,
+    diagnostics: &mut Diagnostics,
 ) -> Result<Int<'ctx>, ()> {
     expr.element.as_int().ok_or_else(|| {
         diagnostics.push(Report::ver_error(
@@ -406,7 +407,7 @@ fn to_z3_int<'ctx>(
 
 fn to_z3_real<'ctx>(
     expr: &Z3Expression<'ctx>,
-    diagnostics: &mut Vec<Report>,
+    diagnostics: &mut Diagnostics,
 ) -> Result<Real<'ctx>, ()> {
     expr.element.as_real().ok_or_else(|| {
         diagnostics.push(Report::ver_error(
@@ -418,7 +419,7 @@ fn to_z3_real<'ctx>(
 
 fn to_z3_bool<'ctx>(
     expr: &Z3Expression<'ctx>,
-    diagnostics: &mut Vec<Report>,
+    diagnostics: &mut Diagnostics,
 ) -> Result<Bool<'ctx>, ()> {
     expr.element.as_bool().ok_or_else(|| {
         diagnostics.push(Report::ver_error(
@@ -430,7 +431,7 @@ fn to_z3_bool<'ctx>(
 
 fn to_z3_string<'ctx>(
     expr: &Z3Expression<'ctx>,
-    diagnostics: &mut Vec<Report>,
+    diagnostics: &mut Diagnostics,
 ) -> Result<Z3String<'ctx>, ()> {
     expr.element.as_string().ok_or_else(|| {
         diagnostics.push(Report::ver_error(

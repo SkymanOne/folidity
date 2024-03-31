@@ -21,3 +21,4 @@ num-traits = { workspace = true }
 algonaut_core = { workspace = true }
 z3 = { workspace = true }
 hex = { workspace = true }
+indexmap = { workspace = true }

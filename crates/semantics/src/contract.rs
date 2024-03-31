@@ -310,7 +310,7 @@ impl ContractDefinition {
                 name: item.name.clone(),
                 fields: Vec::new(),
                 parent: None,
-                bounds: Vec::new(),
+                bounds: None,
                 recursive_parent: false,
                 scope: Scope::default(),
             });
@@ -341,7 +341,7 @@ impl ContractDefinition {
                 name: item.name.clone(),
                 body: None,
                 from: None,
-                bounds: Vec::new(),
+                bounds: None,
                 recursive_parent: false,
                 scope: Scope::default(),
             });

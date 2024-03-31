@@ -5,6 +5,7 @@ use folidity_semantics::{
     Span,
     SymbolInfo,
 };
+use indexmap::IndexMap;
 use z3::{
     ast::{
         Ast,
@@ -18,7 +19,11 @@ use z3::{
 
 use crate::{
     executor::SymbolicExecutor,
-    transformer::transform_expr,
+    transformer::{
+        create_constraint_const,
+        transform_expr,
+    },
+    Diagnostics,
 };
 /// A declaration in the code AST.
 #[derive(Debug, Default)]
@@ -28,7 +33,7 @@ pub struct Declaration<'ctx> {
     /// Parent of the declaration.
     pub parent: Option<SymbolInfo>,
     /// Constraint block of the declaration.
-    pub constraints: Vec<Constraint<'ctx>>,
+    pub constraints: IndexMap<u32, Constraint<'ctx>>,
 }
 
 impl<'ctx> Declaration<'ctx> {
@@ -43,7 +48,7 @@ impl<'ctx> Declaration<'ctx> {
         let new_ctx = solver.get_context();
         self.constraints
             .iter()
-            .map(|c| {
+            .map(|(n, c)| {
                 Constraint {
                     loc: c.loc.clone(),
                     binding_sym: c.binding_sym,
@@ -57,7 +62,7 @@ impl<'ctx> Declaration<'ctx> {
     pub fn constraint_consts<'a>(&self, ctx: &'a Context) -> Vec<Bool<'a>> {
         self.constraints
             .iter()
-            .map(|c| c.sym_to_const(ctx))
+            .map(|(n, c)| c.sym_to_const(ctx))
             .collect()
     }
 }
@@ -85,7 +90,7 @@ impl<'ctx> Constraint<'ctx> {
     pub fn from_expr(
         expr: &Expression,
         ctx: &'ctx Context,
-        diagnostics: &mut Vec<Report>,
+        diagnostics: &mut Diagnostics,
         executor: &mut SymbolicExecutor<'ctx>,
     ) -> Result<Constraint<'ctx>, ()> {
         let resolve_e = transform_expr(expr, ctx, diagnostics, executor)?;
@@ -96,12 +101,10 @@ impl<'ctx> Constraint<'ctx> {
             ));
             return Err(());
         };
-        let (binding_const, n) = executor.create_constant(&Sort::bool(ctx));
+        let (binding_const, n) = create_constraint_const(ctx, executor);
 
-        let binding_expr = binding_const
-            .as_bool()
-            .expect("must be bool")
-            .implies(&bool_expr);
+        // create a binding boolean constant: `c => expr`, to track each constraint.
+        let binding_expr = binding_const.implies(&bool_expr);
 
         Ok(Constraint {
             loc: resolve_e.loc.clone(),

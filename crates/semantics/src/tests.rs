@@ -174,7 +174,11 @@ fn test_program() {
         .find(|x| &x.name.name == "MyModel")
         .unwrap();
 
-    assert_eq!(model.bounds.len(), 3);
+    let Some(bounds) = &model.bounds else {
+        assert!(false, "Model should have bounds");
+        return;
+    };
+    assert_eq!(bounds.exprs.len(), 3);
 
     let func = &contract.functions[0];
     let vars: Vec<&VariableSym> = func.scope.vars.values().collect();

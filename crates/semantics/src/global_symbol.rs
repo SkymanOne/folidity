@@ -47,6 +47,16 @@ impl GlobalSymbol {
             }
         }
     }
+
+    pub fn loc(&self) -> &Span {
+        match self {
+            GlobalSymbol::Struct(s) => &s.loc,
+            GlobalSymbol::Model(s) => &s.loc,
+            GlobalSymbol::Enum(s) => &s.loc,
+            GlobalSymbol::State(s) => &s.loc,
+            GlobalSymbol::Function(s) => &s.loc,
+        }
+    }
 }
 
 impl Display for GlobalSymbol {

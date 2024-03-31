@@ -1,9 +1,13 @@
-use folidity_diagnostics::Report;
+use folidity_diagnostics::{
+    Paint,
+    Report,
+};
 use folidity_semantics::{
     ContractDefinition,
     GlobalSymbol,
     SymbolInfo,
 };
+use indexmap::IndexMap;
 use z3::{
     ast::Dynamic,
     Context,
@@ -11,9 +15,13 @@ use z3::{
     Sort,
 };
 
-use crate::ast::{
-    Constraint,
-    Declaration,
+use crate::{
+    ast::{
+        Constraint,
+        Declaration,
+    },
+    solver::verify_constraints,
+    Diagnostics,
 };
 #[derive(Debug)]
 pub struct SymbolicExecutor<'ctx> {
@@ -42,12 +50,16 @@ impl<'ctx> SymbolicExecutor<'ctx> {
     pub fn resolve_declarations(&mut self, contract: &ContractDefinition) -> Result<(), ()> {
         let mut error = false;
         let mut diagnostics = Vec::new();
-        (0..contract.models.len()).for_each(|i| {
-            let mut constraints: Vec<Constraint> = vec![];
+
+        for i in 0..contract.functions.len() {
+            let mut constraints: IndexMap<u32, Constraint> = IndexMap::new();
             let m = &contract.models[i];
-            for e in &m.bounds {
+            let Some(bounds) = &m.bounds else {
+                continue;
+            };
+            for e in &bounds.exprs {
                 match Constraint::from_expr(e, self.context, &mut diagnostics, self) {
-                    Ok(c) => constraints.push(c),
+                    Ok(c) => constraints.insert(c.binding_sym, c),
                     Err(_) => {
                         error = true;
                         continue;
@@ -57,21 +69,24 @@ impl<'ctx> SymbolicExecutor<'ctx> {
             let decl = Declaration {
                 constraints,
                 decl_sym: GlobalSymbol::Model(SymbolInfo {
-                    loc: m.loc.clone(),
+                    loc: bounds.loc.clone(),
                     i,
                 }),
                 parent: m.parent.clone(),
             };
 
             self.declarations.push(decl);
-        });
+        }
 
-        (0..contract.states.len()).for_each(|i| {
-            let mut constraints: Vec<Constraint> = vec![];
+        for i in 0..contract.states.len() {
+            let mut constraints: IndexMap<u32, Constraint> = IndexMap::new();
             let s = &contract.states[i];
-            for e in &s.bounds {
+            let Some(bounds) = &s.bounds else {
+                continue;
+            };
+            for e in &bounds.exprs {
                 match Constraint::from_expr(e, self.context, &mut diagnostics, self) {
-                    Ok(c) => constraints.push(c),
+                    Ok(c) => constraints.insert(c.binding_sym, c),
                     Err(_) => {
                         error = true;
                         continue;
@@ -81,21 +96,24 @@ impl<'ctx> SymbolicExecutor<'ctx> {
             let decl = Declaration {
                 constraints,
                 decl_sym: GlobalSymbol::State(SymbolInfo {
-                    loc: s.loc.clone(),
+                    loc: bounds.loc.clone(),
                     i,
                 }),
                 parent: s.from.clone().map(|x| x.0),
             };
 
             self.declarations.push(decl);
-        });
+        }
 
-        (0..contract.functions.len()).for_each(|i| {
-            let mut constraints: Vec<Constraint> = vec![];
+        for i in 0..contract.functions.len() {
+            let mut constraints: IndexMap<u32, Constraint> = IndexMap::new();
             let f = &contract.functions[i];
-            for e in &f.bounds {
+            let Some(bounds) = &f.bounds else {
+                continue;
+            };
+            for e in &bounds.exprs {
                 match Constraint::from_expr(e, self.context, &mut diagnostics, self) {
-                    Ok(c) => constraints.push(c),
+                    Ok(c) => constraints.insert(c.binding_sym, c),
                     Err(_) => {
                         error = true;
                         continue;
@@ -115,18 +133,69 @@ impl<'ctx> SymbolicExecutor<'ctx> {
             let decl = Declaration {
                 constraints,
                 decl_sym: GlobalSymbol::Model(SymbolInfo {
-                    loc: f.loc.clone(),
+                    loc: bounds.loc.clone(),
                     i,
                 }),
                 parent: parent_bound,
             };
 
             self.declarations.push(decl);
-        });
+        }
 
         if error {
+            self.diagnostics.extend(diagnostics);
             return Err(());
         }
+        Ok(())
+    }
+
+    /// Verify individual blocks of constraints for satisfiability.
+    pub fn verify_individual_blocks(&mut self, contract: &ContractDefinition) -> Result<(), ()> {
+        let mut diagnostics: Diagnostics = vec![];
+        let mut error = false;
+
+        for d in &self.declarations {
+            if let Err(errs) = verify_constraints(
+                d.constraints
+                    .values()
+                    .collect::<Vec<&Constraint>>()
+                    .as_slice(),
+                self.context,
+            ) {
+                let mut notes: Diagnostics = vec![];
+                for (i, e) in errs.iter().enumerate() {
+                    let c = d.constraints.get(e).expect("constraints exists");
+                    notes.push(Report::ver_error(
+                        c.loc.clone(),
+                        format!(
+                            "This is a constraint {}. It contradicts {:?}",
+                            e.yellow(),
+                            &remove_element(&errs, i).red()
+                        ),
+                    ))
+                }
+
+                notes.push(Report::ver_info(
+                    "Consider rewriting logical bounds to satisfy all constraints.".to_string(),
+                ));
+
+                diagnostics.push(Report::ver_error_with_extra(
+                    d.decl_sym.loc().clone(),
+                    format!(
+                        "{} has unsatisfiable constraints.",
+                        symbol_name(&d.decl_sym, contract)
+                    ),
+                    notes,
+                ));
+
+                error = true;
+            }
+        }
+        if error {
+            self.diagnostics.extend(diagnostics);
+            return Err(());
+        }
+
         Ok(())
     }
 
@@ -146,5 +215,24 @@ impl<'ctx> SymbolicExecutor<'ctx> {
 
     pub fn transfer_context(&mut self, solver: Solver<'_>) -> Solver<'_> {
         solver.translate(self.context)
+    }
+}
+
+fn remove_element<T: Clone>(arr: &[T], i: usize) -> Vec<T> {
+    let (first_part, second_part) = arr.split_at(i);
+    let mut result = first_part.to_vec();
+    if i < second_part.len() {
+        result.extend_from_slice(&second_part[1..]);
+    }
+    result
+}
+
+fn symbol_name(sym: &GlobalSymbol, contract: &ContractDefinition) -> String {
+    match sym {
+        GlobalSymbol::Struct(s) => format!("struct {}", contract.structs[s.i].name.name.cyan()),
+        GlobalSymbol::Model(s) => format!("model {}", contract.structs[s.i].name.name.cyan()),
+        GlobalSymbol::Enum(s) => format!("enum {}", contract.structs[s.i].name.name.cyan()),
+        GlobalSymbol::State(s) => format!("state {}", contract.structs[s.i].name.name.cyan()),
+        GlobalSymbol::Function(s) => format!("function {}", contract.structs[s.i].name.name.cyan()),
     }
 }

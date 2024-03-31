@@ -2,6 +2,7 @@ use folidity_parser::ast as parsed_ast;
 
 use crate::{
     ast::{
+        Bounds,
         Expression,
         StateBody,
         TypeVariant,
@@ -63,7 +64,10 @@ pub fn resolve_bounds(contract: &mut ContractDefinition, delay: &DelayedDeclarat
         };
 
         contract.models[model_delay.i].scope = scope;
-        contract.models[model_delay.i].bounds = bounds;
+        contract.models[model_delay.i].bounds = Some(Bounds {
+            loc: st.loc.clone(),
+            exprs: bounds,
+        });
     }
 
     for state_delay in &delay.states {
@@ -115,7 +119,10 @@ pub fn resolve_bounds(contract: &mut ContractDefinition, delay: &DelayedDeclarat
             continue;
         };
 
-        contract.states[state_delay.i].bounds = bounds;
+        contract.states[state_delay.i].bounds = Some(Bounds {
+            loc: st.loc.clone(),
+            exprs: bounds,
+        });
         contract.states[state_delay.i].scope = scope;
     }
 
@@ -129,7 +136,10 @@ pub fn resolve_bounds(contract: &mut ContractDefinition, delay: &DelayedDeclarat
             } else {
                 vec![]
             };
-            contract.functions[func_delay.i].bounds = bounds;
+            contract.functions[func_delay.i].bounds = Some(Bounds {
+                loc: st.loc.clone(),
+                exprs: bounds,
+            });
         }
 
         std::mem::swap(&mut scope, &mut contract.functions[func_delay.i].scope);

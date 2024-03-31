@@ -1,4 +1,5 @@
 use executor::SymbolicExecutor;
+use folidity_diagnostics::Report;
 use folidity_semantics::{
     CompilationError,
     ContractDefinition,
@@ -11,10 +12,13 @@ use z3::{
 
 mod ast;
 mod executor;
+mod solver;
 mod transformer;
 
 #[cfg(test)]
 mod tests;
+
+pub type Diagnostics = Vec<Report>;
 
 /// Create config for the Z3 context.
 pub fn z3_cfg() -> Config {
@@ -34,7 +38,11 @@ impl<'ctx> Runner<ContractDefinition, ()> for SymbolicExecutor<'ctx> {
 
         let mut executor = SymbolicExecutor::new(&context);
 
-        if executor.resolve_declarations(source).is_err() {
+        let mut err = executor.resolve_declarations(source).is_err();
+
+        err |= executor.verify_individual_blocks(source).is_err();
+
+        if err {
             return Err(CompilationError::Formal(executor.diagnostics));
         }
 

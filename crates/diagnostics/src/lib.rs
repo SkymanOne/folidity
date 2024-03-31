@@ -134,6 +134,18 @@ impl Report {
             additional_info: vec![],
         }
     }
+
+    /// Build a report from the verification suggestion.
+    pub fn ver_info(message: String) -> Self {
+        Self {
+            loc: Default::default(),
+            error_type: ErrorType::Verification,
+            level: Level::Info,
+            message,
+            additional_info: vec![],
+        }
+    }
+
     /// Build a report from the verification error with additional info.
     pub fn ver_error_with_extra(loc: Span, message: String, errs: Vec<Report>) -> Self {
         Self {
