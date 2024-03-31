@@ -30,7 +30,7 @@ impl<'ctx> Runner<ContractDefinition, ()> for SymbolicExecutor<'ctx> {
         Self: std::marker::Sized,
     {
         let context = Context::new(&z3_cfg());
-        let executor = SymbolicExecutor::new(&context);
+        let executor = SymbolicExecutor::new(context);
 
         Ok(())
     }

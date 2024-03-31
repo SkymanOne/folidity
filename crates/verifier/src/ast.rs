@@ -1,4 +1,8 @@
+use std::rc::Rc;
+
+use folidity_diagnostics::Report;
 use folidity_semantics::{
+    ast::Expression,
     GlobalSymbol,
     Span,
     SymbolInfo,
@@ -11,16 +15,22 @@ use z3::{
     },
     Context,
     Solver,
+    Sort,
+};
+
+use crate::{
+    executor::SymbolicExecutor,
+    transformer::transform_expr,
 };
 /// A declaration in the code AST.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Declaration<'ctx> {
     /// Info about the declaration
     pub decl_sym: GlobalSymbol,
     /// Parent of the declaration.
     pub parent: Option<SymbolInfo>,
     /// Constraint block of the declaration.
-    pub block: ConstraintBlock<'ctx>,
+    pub constraints: Vec<Constraint<'ctx>>,
 }
 
 /// A singular constraint.
@@ -42,13 +52,41 @@ impl<'ctx> Constraint<'ctx> {
     pub fn sym_to_const<'a>(&self, ctx: &'a Context) -> Bool<'a> {
         Bool::new_const(ctx, self.binding_sym)
     }
+
+    pub fn from_expr(
+        expr: &Expression,
+        ctx: &'ctx Context,
+        diagnostics: &mut Vec<Report>,
+        executor: &mut SymbolicExecutor<'ctx>,
+    ) -> Result<Constraint<'ctx>, ()> {
+        let resolve_e = transform_expr(expr, &ctx, diagnostics, executor)?;
+        let Some(bool_expr) = resolve_e.element.as_bool() else {
+            diagnostics.push(Report::ver_error(
+                resolve_e.loc.clone(),
+                String::from("Expression must be boolean."),
+            ));
+            return Err(());
+        };
+        let (binding_const, n) = executor.create_constant(&Sort::bool(&ctx), &ctx);
+
+        let binding_expr = binding_const
+            .as_bool()
+            .expect("must be bool")
+            .implies(&bool_expr);
+
+        Ok(Constraint {
+            loc: resolve_e.loc.clone(),
+            binding_sym: n,
+            expr: binding_expr,
+        })
+    }
 }
 
 /// Block of constraints of to be verified.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ConstraintBlock<'ctx> {
+    pub context: Context,
     /// Solver which is scoped to the specific constraint block.
-    pub solver: Solver<'ctx>,
     /// List of constraints in the given block.
     pub constraints: Vec<Constraint<'ctx>>,
 }
@@ -57,7 +95,7 @@ impl<'ctx> ConstraintBlock<'ctx> {
     /// Translate context to the new solver.
     pub fn translate_to_solver<'a>(&self, solver: &Solver<'a>) -> Solver<'a> {
         let new_ctx = solver.get_context();
-        self.solver.translate(new_ctx)
+        Solver::new(&self.context).translate(new_ctx)
     }
 
     /// Transform the list of ids of constraints into concrete boolean constants.

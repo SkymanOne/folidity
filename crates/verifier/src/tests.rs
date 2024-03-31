@@ -14,10 +14,7 @@ use num_bigint::{
 use num_traits::FromPrimitive;
 use z3::{
     ast::{
-        exists_const,
-        forall_const,
         Ast,
-        Bool,
         Int,
         Set,
         String as Z3String,
@@ -55,8 +52,9 @@ fn mul_transform() {
     });
 
     let context = Context::new(&z3_cfg());
-    let mut executor = SymbolicExecutor::new(&context);
-    let z3_res = transform_expr(&mul, &context, &mut executor);
+    let mut executor = SymbolicExecutor::new(Context::new(&z3_cfg()));
+    let mut diagnostics = vec![];
+    let z3_res = transform_expr(&mul, &context, &mut diagnostics, &mut executor);
 
     assert!(z3_res.is_ok());
     let z3_e = z3_res.expect("Should be Ok");
@@ -76,8 +74,9 @@ fn var_transform() {
     });
 
     let context = Context::new(&z3_cfg());
-    let mut executor = SymbolicExecutor::new(&context);
-    let z3_res = transform_expr(&var, &context, &mut executor);
+    let mut executor = SymbolicExecutor::new(Context::new(&z3_cfg()));
+    let mut diagnostics = vec![];
+    let z3_res = transform_expr(&var, &context, &mut diagnostics, &mut executor);
 
     assert!(z3_res.is_ok());
     let z3_e = z3_res.expect("Should be Ok");
@@ -94,8 +93,9 @@ fn string_hex_transform() {
     });
 
     let context = Context::new(&z3_cfg());
-    let mut executor = SymbolicExecutor::new(&context);
-    let z3_res = transform_expr(&string, &context, &mut executor);
+    let mut executor = SymbolicExecutor::new(Context::new(&z3_cfg()));
+    let mut diagnostics = vec![];
+    let z3_res = transform_expr(&string, &context, &mut diagnostics, &mut executor);
 
     assert!(z3_res.is_ok());
     let z3_e = z3_res.expect("Should be Ok");
@@ -109,7 +109,7 @@ fn string_hex_transform() {
         element: hex::decode("AB").unwrap(),
         ty: TypeVariant::Int,
     });
-    let z3_res = transform_expr(&hex, &context, &mut executor);
+    let z3_res = transform_expr(&hex, &context, &mut diagnostics, &mut executor);
 
     assert!(z3_res.is_ok());
     let z3_e = z3_res.expect("Should be Ok");
@@ -145,8 +145,9 @@ fn list_transform() {
     });
 
     let context = Context::new(&z3_cfg());
-    let mut executor = SymbolicExecutor::new(&context);
-    let z3_res = transform_expr(&list, &context, &mut executor);
+    let mut executor = SymbolicExecutor::new(Context::new(&z3_cfg()));
+    let mut diagnostics = vec![];
+    let z3_res = transform_expr(&list, &context, &mut diagnostics, &mut executor);
 
     assert!(z3_res.is_ok());
     let z3_e = z3_res.expect("Should be Ok");
@@ -233,11 +234,12 @@ fn in_transform() {
     });
 
     let context = Context::new(&z3_cfg());
-    let mut executor = SymbolicExecutor::new(&context);
+    let mut executor = SymbolicExecutor::new(Context::new(&z3_cfg()));
+    let mut diagnostics = vec![];
 
     // verify that `30` is in the list.
     let solver = Solver::new(&context);
-    let z3_res = transform_expr(&in_true, &context, &mut executor);
+    let z3_res = transform_expr(&in_true, &context, &mut diagnostics, &mut executor);
     assert!(z3_res.is_ok());
     let z3_in_true = z3_res.expect("Ok");
     solver.push();
@@ -248,7 +250,7 @@ fn in_transform() {
     solver.push();
 
     // verify that `40` is not in the list.
-    let z3_res = transform_expr(&in_false, &context, &mut executor);
+    let z3_res = transform_expr(&in_false, &context, &mut diagnostics, &mut executor);
     assert!(z3_res.is_ok());
     let z3_in_true = z3_res.expect("Ok");
     solver.assert(&z3_in_true.element.as_bool().expect("Should be bool.").not());
