@@ -29,12 +29,12 @@ use crate::{
 
 /// Transforms [`folidity_semantics::ast::Expression`] into [`crate::ast::Z3Expression`]
 /// in some given context [`z3::Context`].
-pub fn transform_expr<'a>(
+pub fn transform_expr<'ctx>(
     expr: &Expression,
-    ctx: &'a Context,
+    ctx: &'ctx Context,
     diagnostics: &mut Vec<Report>,
-    executor: &mut SymbolicExecutor<'_>,
-) -> Result<Z3Expression<'a>, ()> {
+    executor: &mut SymbolicExecutor<'ctx>,
+) -> Result<Z3Expression<'ctx>, ()> {
     match expr {
         // literals
         Expression::Int(u) => Ok(int(&u.element, &u.loc, ctx)),
@@ -81,14 +81,14 @@ pub fn transform_expr<'a>(
     }
 }
 
-fn in_<'a>(
+fn in_<'ctx>(
     left: &Expression,
     right: &Expression,
     loc: &Span,
-    ctx: &'a Context,
+    ctx: &'ctx Context,
     diagnostics: &mut Vec<Report>,
-    executor: &mut SymbolicExecutor<'_>,
-) -> Result<Z3Expression<'a>, ()> {
+    executor: &mut SymbolicExecutor<'ctx>,
+) -> Result<Z3Expression<'ctx>, ()> {
     let e1 = transform_expr(left, ctx, diagnostics, executor)?;
     let e2 = transform_expr(right, ctx, diagnostics, executor)?;
     let set = e2.element.as_set().ok_or_else(|| {
@@ -103,14 +103,14 @@ fn in_<'a>(
     Ok(Z3Expression::new(loc, &assertion))
 }
 
-fn list<'a>(
+fn list<'ctx>(
     exprs: &[Expression],
     loc: &Span,
     ty: &TypeVariant,
-    ctx: &'a Context,
+    ctx: &'ctx Context,
     diagnostics: &mut Vec<Report>,
-    executor: &mut SymbolicExecutor<'_>,
-) -> Result<Z3Expression<'a>, ()> {
+    executor: &mut SymbolicExecutor<'ctx>,
+) -> Result<Z3Expression<'ctx>, ()> {
     let mut set = Set::empty(ctx, &type_to_sort(ty, ctx));
     for e in exprs {
         let z3_e = transform_expr(e, ctx, diagnostics, executor)?;
@@ -119,17 +119,17 @@ fn list<'a>(
     Ok(Z3Expression::new(loc, &set))
 }
 
-fn variable<'ctx, 'a>(
+fn variable<'ctx>(
     e: &Expression,
-    ctx: &'a Context,
-    executor: &mut SymbolicExecutor<'_>,
-) -> Result<Z3Expression<'a>, ()> {
+    ctx: &'ctx Context,
+    executor: &mut SymbolicExecutor<'ctx>,
+) -> Result<Z3Expression<'ctx>, ()> {
     let sort = type_to_sort(e.ty(), ctx);
-    let res = executor.create_constant(&sort, ctx);
+    let res = executor.create_constant(&sort);
     Ok(Z3Expression::new(e.loc(), &res.0))
 }
 
-fn type_to_sort<'a>(ty: &TypeVariant, ctx: &'a Context) -> Sort<'a> {
+fn type_to_sort<'ctx>(ty: &TypeVariant, ctx: &'ctx Context) -> Sort<'ctx> {
     match ty {
         TypeVariant::Int | TypeVariant::Uint | TypeVariant::Char | TypeVariant::Enum(_) => {
             Sort::int(ctx)
@@ -155,12 +155,12 @@ fn type_to_sort<'a>(ty: &TypeVariant, ctx: &'a Context) -> Sort<'a> {
     }
 }
 
-fn int_real_op<'a>(
+fn int_real_op<'ctx>(
     e: &Expression,
-    ctx: &'a Context,
+    ctx: &'ctx Context,
     diagnostics: &mut Vec<Report>,
-    executor: &mut SymbolicExecutor<'_>,
-) -> Result<Z3Expression<'a>, ()> {
+    executor: &mut SymbolicExecutor<'ctx>,
+) -> Result<Z3Expression<'ctx>, ()> {
     let (Expression::Multiply(b)
     | Expression::Divide(b)
     | Expression::Add(b)
@@ -221,14 +221,14 @@ fn int_real_op<'a>(
     })
 }
 
-fn modulo<'a>(
+fn modulo<'ctx>(
     left: &Expression,
     right: &Expression,
     loc: &Span,
-    ctx: &'a Context,
+    ctx: &'ctx Context,
     diagnostics: &mut Vec<Report>,
-    executor: &mut SymbolicExecutor<'_>,
-) -> Result<Z3Expression<'a>, ()> {
+    executor: &mut SymbolicExecutor<'ctx>,
+) -> Result<Z3Expression<'ctx>, ()> {
     let e1 = transform_expr(left, ctx, diagnostics, executor)?;
     let e2 = transform_expr(right, ctx, diagnostics, executor)?;
 
@@ -251,14 +251,14 @@ fn modulo<'a>(
     }
 }
 
-fn equality<'a>(
+fn equality<'ctx>(
     left: &Expression,
     right: &Expression,
     loc: &Span,
-    ctx: &'a Context,
+    ctx: &'ctx Context,
     diagnostics: &mut Vec<Report>,
-    executor: &mut SymbolicExecutor<'_>,
-) -> Result<Z3Expression<'a>, ()> {
+    executor: &mut SymbolicExecutor<'ctx>,
+) -> Result<Z3Expression<'ctx>, ()> {
     let e1 = transform_expr(left, ctx, diagnostics, executor)?;
     let e2 = transform_expr(right, ctx, diagnostics, executor)?;
 
@@ -272,14 +272,14 @@ fn equality<'a>(
     Ok(Z3Expression::new(loc, &res))
 }
 
-fn inequality<'a>(
+fn inequality<'ctx>(
     left: &Expression,
     right: &Expression,
     loc: &Span,
-    ctx: &'a Context,
+    ctx: &'ctx Context,
     diagnostics: &mut Vec<Report>,
-    executor: &mut SymbolicExecutor<'_>,
-) -> Result<Z3Expression<'a>, ()> {
+    executor: &mut SymbolicExecutor<'ctx>,
+) -> Result<Z3Expression<'ctx>, ()> {
     let e1 = transform_expr(left, ctx, diagnostics, executor)?;
     let e2 = transform_expr(right, ctx, diagnostics, executor)?;
 
@@ -288,13 +288,13 @@ fn inequality<'a>(
     Ok(Z3Expression::new(loc, &res))
 }
 
-fn not<'a>(
+fn not<'ctx>(
     e: &Expression,
     loc: &Span,
-    ctx: &'a Context,
+    ctx: &'ctx Context,
     diagnostics: &mut Vec<Report>,
-    executor: &mut SymbolicExecutor<'_>,
-) -> Result<Z3Expression<'a>, ()> {
+    executor: &mut SymbolicExecutor<'ctx>,
+) -> Result<Z3Expression<'ctx>, ()> {
     let v = transform_expr(e, ctx, diagnostics, executor)?;
 
     let bool_v = to_z3_bool(&v, diagnostics)?;
@@ -302,14 +302,14 @@ fn not<'a>(
     Ok(Z3Expression::new(loc, &bool_v))
 }
 
-fn or<'a>(
+fn or<'ctx>(
     left: &Expression,
     right: &Expression,
     loc: &Span,
-    ctx: &'a Context,
+    ctx: &'ctx Context,
     diagnostics: &mut Vec<Report>,
-    executor: &mut SymbolicExecutor<'_>,
-) -> Result<Z3Expression<'a>, ()> {
+    executor: &mut SymbolicExecutor<'ctx>,
+) -> Result<Z3Expression<'ctx>, ()> {
     let e1 = transform_expr(left, ctx, diagnostics, executor)?;
     let e2 = transform_expr(right, ctx, diagnostics, executor)?;
 
@@ -332,14 +332,14 @@ fn or<'a>(
     }
 }
 
-fn and<'a>(
+fn and<'ctx>(
     left: &Expression,
     right: &Expression,
     loc: &Span,
-    ctx: &'a Context,
+    ctx: &'ctx Context,
     diagnostics: &mut Vec<Report>,
-    executor: &mut SymbolicExecutor<'_>,
-) -> Result<Z3Expression<'a>, ()> {
+    executor: &mut SymbolicExecutor<'ctx>,
+) -> Result<Z3Expression<'ctx>, ()> {
     let e1 = transform_expr(left, ctx, diagnostics, executor)?;
     let e2 = transform_expr(right, ctx, diagnostics, executor)?;
 
@@ -362,32 +362,32 @@ fn and<'a>(
     }
 }
 
-fn int<'a>(value: &BigInt, loc: &Span, ctx: &'a Context) -> Z3Expression<'a> {
+fn int<'ctx>(value: &BigInt, loc: &Span, ctx: &'ctx Context) -> Z3Expression<'ctx> {
     let c = Int::from_big_int(ctx, value);
     Z3Expression::new(loc, &c)
 }
 
-fn real<'a>(value: &BigRational, loc: &Span, ctx: &'a Context) -> Z3Expression<'a> {
+fn real<'ctx>(value: &BigRational, loc: &Span, ctx: &'ctx Context) -> Z3Expression<'ctx> {
     let c = Real::from_big_rational(ctx, value);
     Z3Expression::new(loc, &c)
 }
 
-fn bool<'a>(value: bool, loc: &Span, ctx: &'a Context) -> Z3Expression<'a> {
+fn bool<'ctx>(value: bool, loc: &Span, ctx: &'ctx Context) -> Z3Expression<'ctx> {
     let c = Bool::from_bool(ctx, value);
     Z3Expression::new(loc, &c)
 }
 
-fn string<'a>(value: &str, loc: &Span, ctx: &'a Context) -> Z3Expression<'a> {
+fn string<'ctx>(value: &str, loc: &Span, ctx: &'ctx Context) -> Z3Expression<'ctx> {
     let c = Z3String::from_str(ctx, value).unwrap_or(Z3String::fresh_const(ctx, ""));
     Z3Expression::new(loc, &c)
 }
 
-fn char<'a>(value: char, loc: &Span, ctx: &'a Context) -> Z3Expression<'a> {
+fn char<'ctx>(value: char, loc: &Span, ctx: &'ctx Context) -> Z3Expression<'ctx> {
     let c = Int::from_u64(ctx, value as u64);
     Z3Expression::new(loc, &c)
 }
 
-fn enum_<'a>(value: usize, loc: &Span, ctx: &'a Context) -> Z3Expression<'a> {
+fn enum_<'ctx>(value: usize, loc: &Span, ctx: &'ctx Context) -> Z3Expression<'ctx> {
     let c = Int::from_u64(ctx, value as u64);
     Z3Expression::new(loc, &c)
 }
@@ -441,10 +441,10 @@ fn to_z3_string<'ctx>(
 }
 
 /// Create a boolean constant and returns its id as `u32`
-pub fn create_constraint_const<'a>(
-    ctx: &'a Context,
-    executor: &mut SymbolicExecutor<'_>,
-) -> (Bool<'a>, u32) {
-    let val = executor.create_constant(&Sort::bool(ctx), ctx);
+pub fn create_constraint_const<'ctx>(
+    ctx: &'ctx Context,
+    executor: &mut SymbolicExecutor<'ctx>,
+) -> (Bool<'ctx>, u32) {
+    let val = executor.create_constant(&Sort::bool(ctx));
     (val.0.as_bool().unwrap(), val.1)
 }

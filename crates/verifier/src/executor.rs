@@ -132,13 +132,9 @@ impl<'ctx> SymbolicExecutor<'ctx> {
 
     /// Create a Z3 constant with the current symbol counter as a name while increasing
     /// the counter.
-    pub fn create_constant<'a>(
-        &mut self,
-        sort: &Sort<'a>,
-        context: &'a Context,
-    ) -> (Dynamic<'a>, u32) {
+    pub fn create_constant(&mut self, sort: &Sort<'ctx>) -> (Dynamic<'ctx>, u32) {
         let id = self.symbol_counter;
-        let c = Dynamic::new_const(context, id, sort);
+        let c = Dynamic::new_const(self.context, id, sort);
         self.symbol_counter += 1;
         (c, id)
     }

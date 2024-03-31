@@ -82,13 +82,13 @@ impl<'ctx> Constraint<'ctx> {
         Bool::new_const(ctx, self.binding_sym)
     }
 
-    pub fn from_expr<'a>(
+    pub fn from_expr(
         expr: &Expression,
-        ctx: &'a Context,
+        ctx: &'ctx Context,
         diagnostics: &mut Vec<Report>,
         executor: &mut SymbolicExecutor<'ctx>,
-    ) -> Result<Constraint<'a>, ()> {
-        let resolve_e = transform_expr(expr, &ctx, diagnostics, executor)?;
+    ) -> Result<Constraint<'ctx>, ()> {
+        let resolve_e = transform_expr(expr, ctx, diagnostics, executor)?;
         let Some(bool_expr) = resolve_e.element.as_bool() else {
             diagnostics.push(Report::ver_error(
                 resolve_e.loc.clone(),
@@ -96,7 +96,7 @@ impl<'ctx> Constraint<'ctx> {
             ));
             return Err(());
         };
-        let (binding_const, n) = executor.create_constant(&Sort::bool(&ctx), &ctx);
+        let (binding_const, n) = executor.create_constant(&Sort::bool(ctx));
 
         let binding_expr = binding_const
             .as_bool()
