@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use folidity_diagnostics::Report;
 use folidity_semantics::{
     ast::Expression,

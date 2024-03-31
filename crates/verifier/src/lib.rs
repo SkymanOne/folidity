@@ -1,5 +1,6 @@
 use executor::SymbolicExecutor;
 use folidity_semantics::{
+    CompilationError,
     ContractDefinition,
     Runner,
 };
@@ -25,12 +26,17 @@ pub fn z3_cfg() -> Config {
 }
 
 impl<'ctx> Runner<ContractDefinition, ()> for SymbolicExecutor<'ctx> {
-    fn run(source: &ContractDefinition) -> Result<(), folidity_semantics::CompilationError>
+    fn run(source: &ContractDefinition) -> Result<(), CompilationError>
     where
         Self: std::marker::Sized,
     {
         let context = Context::new(&z3_cfg());
-        let executor = SymbolicExecutor::new(&context);
+
+        let mut executor = SymbolicExecutor::new(&context);
+
+        if executor.resolve_declarations(source).is_err() {
+            return Err(CompilationError::Formal(executor.diagnostics));
+        }
 
         Ok(())
     }
