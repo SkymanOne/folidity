@@ -39,28 +39,39 @@ use crate::{
     Diagnostics,
 };
 
+#[derive(Debug)]
+pub struct TransformParams<'ctx, 'a> {
+    pub ctx: &'ctx Context,
+    pub z3_scope: &'a mut Z3Scope,
+    pub scope: &'a Scope,
+    pub contract: &'a ContractDefinition,
+    pub diagnostics: &'a mut Diagnostics,
+    pub executor: &'a mut SymbolicExecutor<'ctx>,
+}
+
 /// Transforms [`folidity_semantics::ast::Expression`] into [`crate::ast::Z3Expression`]
 /// in some given context [`z3::Context`].
 pub fn transform_expr<'ctx>(
     expr: &Expression,
-    ctx: &'ctx Context,
-    z3_scope: &mut Z3Scope,
-    scope: &Scope,
-    contract: &ContractDefinition,
-    diagnostics: &mut Diagnostics,
-    executor: &mut SymbolicExecutor<'ctx>,
+    params: &mut TransformParams<'ctx, '_>,
 ) -> Result<Z3Expression<'ctx>, ()> {
     match expr {
         // literals
-        Expression::Int(u) => Ok(int(&u.element, &u.loc, ctx)),
-        Expression::UInt(u) => Ok(int(&u.element.clone().into(), &u.loc, ctx)),
-        Expression::Float(u) => Ok(real(&u.element, &u.loc, ctx)),
-        Expression::Boolean(u) => Ok(bool(u.element, &u.loc, ctx)),
-        Expression::String(u) => Ok(string(u.element.as_str(), &u.loc, ctx)),
-        Expression::Char(u) => Ok(char(u.element, &u.loc, ctx)),
-        Expression::Hex(u) => Ok(string(hex::encode(&u.element).as_str(), &u.loc, ctx)),
-        Expression::Address(u) => Ok(string(u.element.to_string().as_str(), &u.loc, ctx)),
-        Expression::Enum(u) => Ok(enum_(u, ctx, z3_scope, contract, executor)),
+        Expression::Int(u) => Ok(int(&u.element, &u.loc, &params.ctx)),
+        Expression::UInt(u) => Ok(int(&u.element.clone().into(), &u.loc, &params.ctx)),
+        Expression::Float(u) => Ok(real(&u.element, &u.loc, &params.ctx)),
+        Expression::Boolean(u) => Ok(bool(u.element, &u.loc, &params.ctx)),
+        Expression::String(u) => Ok(string(u.element.as_str(), &u.loc, &params.ctx)),
+        Expression::Char(u) => Ok(char(u.element, &u.loc, &params.ctx)),
+        Expression::Hex(u) => {
+            Ok(string(
+                hex::encode(&u.element).as_str(),
+                &u.loc,
+                &params.ctx,
+            ))
+        }
+        Expression::Address(u) => Ok(string(u.element.to_string().as_str(), &u.loc, &params.ctx)),
+        Expression::Enum(u) => Ok(enum_(u, params)),
 
         // binary operations
         Expression::Add(_)
@@ -70,26 +81,20 @@ pub fn transform_expr<'ctx>(
         | Expression::Less(_)
         | Expression::LessEq(_)
         | Expression::Greater(_)
-        | Expression::GreaterEq(_) => {
-            int_real_op(expr, ctx, scope, z3_scope, contract, diagnostics, executor)
-        }
+        | Expression::GreaterEq(_) => int_real_op(expr, params),
 
-        Expression::Modulo(b) => modulo(b, ctx, scope, z3_scope, contract, diagnostics, executor),
-        Expression::Equal(b) => equality(b, ctx, scope, z3_scope, contract, diagnostics, executor),
-        Expression::NotEqual(b) => {
-            inequality(b, ctx, scope, z3_scope, contract, diagnostics, executor)
-        }
-        Expression::Not(u) => not(u, ctx, scope, z3_scope, contract, diagnostics, executor),
+        Expression::Modulo(b) => modulo(b, params),
+        Expression::Equal(b) => equality(b, params),
+        Expression::NotEqual(b) => inequality(b, params),
+        Expression::Not(u) => not(u, params),
 
-        Expression::Or(b) => or(b, ctx, scope, z3_scope, contract, diagnostics, executor),
-        Expression::And(b) => and(b, ctx, scope, z3_scope, contract, diagnostics, executor),
+        Expression::Or(b) => or(b, params),
+        Expression::And(b) => and(b, params),
 
-        Expression::Variable(u) => variable(u, ctx, scope, z3_scope, executor),
-        Expression::MemberAccess(m) => {
-            member_access(m, ctx, scope, z3_scope, contract, diagnostics, executor)
-        }
-        Expression::List(u) => list(u, ctx, scope, z3_scope, contract, diagnostics, executor),
-        Expression::In(b) => in_(b, ctx, scope, z3_scope, contract, diagnostics, executor),
+        Expression::Variable(u) => variable(u, params),
+        Expression::MemberAccess(m) => member_access(m, params),
+        Expression::List(u) => list(u, params),
+        Expression::In(b) => in_(b, params),
 
         Expression::FunctionCall(_) => {
             todo!("Verification of function calls is currently unsupported.")
@@ -102,33 +107,12 @@ pub fn transform_expr<'ctx>(
 
 fn in_<'ctx>(
     b: &BinaryExpression,
-    ctx: &'ctx Context,
-    scope: &Scope,
-    z3_scope: &mut Z3Scope,
-    contract: &ContractDefinition,
-    diagnostics: &mut Diagnostics,
-    executor: &mut SymbolicExecutor<'ctx>,
+    params: &mut TransformParams<'ctx, '_>,
 ) -> Result<Z3Expression<'ctx>, ()> {
-    let e1 = transform_expr(
-        &b.left,
-        ctx,
-        z3_scope,
-        scope,
-        contract,
-        diagnostics,
-        executor,
-    )?;
-    let e2 = transform_expr(
-        &b.right,
-        ctx,
-        z3_scope,
-        scope,
-        contract,
-        diagnostics,
-        executor,
-    )?;
+    let e1 = transform_expr(&b.left, params)?;
+    let e2 = transform_expr(&b.right, params)?;
     let set = e2.element.as_set().ok_or_else(|| {
-        diagnostics.push(Report::ver_error(
+        params.diagnostics.push(Report::ver_error(
             b.right.loc().clone(),
             String::from("Expression can not be coerces to a Z3 `Set`"),
         ));
@@ -141,16 +125,11 @@ fn in_<'ctx>(
 
 fn list<'ctx>(
     u: &UnaryExpression<Vec<Expression>>,
-    ctx: &'ctx Context,
-    scope: &Scope,
-    z3_scope: &mut Z3Scope,
-    contract: &ContractDefinition,
-    diagnostics: &mut Diagnostics,
-    executor: &mut SymbolicExecutor<'ctx>,
+    params: &mut TransformParams<'ctx, '_>,
 ) -> Result<Z3Expression<'ctx>, ()> {
-    let mut set = Set::empty(ctx, &type_to_sort(&u.ty, ctx));
+    let mut set = Set::empty(&params.ctx, &type_to_sort(&u.ty, &params.ctx));
     for e in &u.element {
-        let z3_e = transform_expr(e, ctx, z3_scope, scope, contract, diagnostics, executor)?;
+        let z3_e = transform_expr(e, params)?;
         set = set.add(&z3_e.element);
     }
     Ok(Z3Expression::new(&u.loc, &set))
@@ -167,15 +146,10 @@ fn list<'ctx>(
 /// - the member is access from non-variable expression.
 fn member_access<'ctx>(
     e: &MemberAccess,
-    ctx: &'ctx Context,
-    scope: &Scope,
-    z3_scope: &mut Z3Scope,
-    contract: &ContractDefinition,
-    diagnostics: &mut Diagnostics,
-    executor: &mut SymbolicExecutor<'ctx>,
+    params: &mut TransformParams<'ctx, '_>,
 ) -> Result<Z3Expression<'ctx>, ()> {
     let Expression::Variable(var) = &e.expr.as_ref() else {
-        diagnostics.push(Report::ver_error(
+        params.diagnostics.push(Report::ver_error(
             e.expr.loc().clone(),
             String::from("Non-variable access is unsupported in verifier."),
         ));
@@ -183,29 +157,34 @@ fn member_access<'ctx>(
     };
 
     if let TypeVariant::State(s) = &var.ty {
-        let local_scope = &mut executor
+        let local_scope = &mut params
+            .executor
             .declarations
             .get_mut(&GlobalSymbol::State(s.clone()))
             .expect("Should exist")
             .scope;
 
-        let state_decl = &contract.states[s.i];
-        let members = state_decl.fields(contract);
+        let state_decl = &params.contract.states[s.i];
+        let members = state_decl.fields(params.contract);
         let member = &members[e.member.0];
         let c = local_scope
-            .get(&member.name.name, type_to_sort(&member.ty.ty, ctx), ctx)
+            .get(
+                &member.name.name,
+                type_to_sort(&member.ty.ty, params.ctx),
+                params.ctx,
+            )
             .expect("const should exist");
 
         return Ok(Z3Expression::new(&e.loc, &c));
     }
 
-    let name = &scope.vars[var.element].ident.name;
+    let name = &params.scope.vars[var.element].ident.name;
     let variant = e.member.0.to_string();
-    let c = z3_scope.create_or_get(
+    let c = params.z3_scope.create_or_get(
         &format!("{}.{}", name, variant),
-        type_to_sort(&e.ty, ctx),
-        ctx,
-        executor,
+        type_to_sort(&e.ty, params.ctx),
+        params.ctx,
+        params.executor,
     );
 
     Ok(Z3Expression::new(&e.loc, &c))
@@ -213,13 +192,15 @@ fn member_access<'ctx>(
 
 fn variable<'ctx>(
     e: &UnaryExpression<usize>,
-    ctx: &'ctx Context,
-    scope: &Scope,
-    z3_scope: &mut Z3Scope,
-    executor: &mut SymbolicExecutor<'ctx>,
+    params: &mut TransformParams<'ctx, '_>,
 ) -> Result<Z3Expression<'ctx>, ()> {
-    let var = scope.vars.get(&e.element).expect("should exist");
-    let z3_const = z3_scope.create_or_get(&var.ident.name, type_to_sort(&e.ty, ctx), ctx, executor);
+    let var = params.scope.vars.get(&e.element).expect("should exist");
+    let z3_const = params.z3_scope.create_or_get(
+        &var.ident.name,
+        type_to_sort(&e.ty, params.ctx),
+        params.ctx,
+        params.executor,
+    );
     Ok(Z3Expression::new(&e.loc, &z3_const))
 }
 
@@ -251,12 +232,7 @@ pub fn type_to_sort<'ctx>(ty: &TypeVariant, ctx: &'ctx Context) -> Sort<'ctx> {
 
 fn int_real_op<'ctx>(
     e: &Expression,
-    ctx: &'ctx Context,
-    scope: &Scope,
-    z3_scope: &mut Z3Scope,
-    contract: &ContractDefinition,
-    diagnostics: &mut Diagnostics,
-    executor: &mut SymbolicExecutor<'ctx>,
+    params: &mut TransformParams<'ctx, '_>,
 ) -> Result<Z3Expression<'ctx>, ()> {
     let (Expression::Multiply(b)
     | Expression::Divide(b)
@@ -269,24 +245,8 @@ fn int_real_op<'ctx>(
     else {
         unreachable!("Only [*, /, +, -, >, <, ≥, ≤] ops are allowed to be passed.");
     };
-    let e1 = transform_expr(
-        &b.left,
-        ctx,
-        z3_scope,
-        scope,
-        contract,
-        diagnostics,
-        executor,
-    )?;
-    let e2 = transform_expr(
-        &b.right,
-        ctx,
-        z3_scope,
-        scope,
-        contract,
-        diagnostics,
-        executor,
-    )?;
+    let e1 = transform_expr(&b.left, params)?;
+    let e2 = transform_expr(&b.right, params)?;
     let mut reports = Vec::new();
     let int1 = to_z3_int(&e1, &mut reports);
     let int2 = to_z3_int(&e2, &mut reports);
@@ -320,7 +280,7 @@ fn int_real_op<'ctx>(
             }
         }
         _ => {
-            diagnostics.push(Report::ver_error_with_extra(
+            params.diagnostics.push(Report::ver_error_with_extra(
                 b.loc.clone(),
                 String::from("Can not apply arithmetic operation on these data ."),
                 reports,
@@ -336,31 +296,10 @@ fn int_real_op<'ctx>(
 
 fn modulo<'ctx>(
     b: &BinaryExpression,
-    ctx: &'ctx Context,
-    scope: &Scope,
-    z3_scope: &mut Z3Scope,
-    contract: &ContractDefinition,
-    diagnostics: &mut Diagnostics,
-    executor: &mut SymbolicExecutor<'ctx>,
+    params: &mut TransformParams<'ctx, '_>,
 ) -> Result<Z3Expression<'ctx>, ()> {
-    let e1 = transform_expr(
-        &b.left,
-        ctx,
-        z3_scope,
-        scope,
-        contract,
-        diagnostics,
-        executor,
-    )?;
-    let e2 = transform_expr(
-        &b.right,
-        ctx,
-        z3_scope,
-        scope,
-        contract,
-        diagnostics,
-        executor,
-    )?;
+    let e1 = transform_expr(&b.left, params)?;
+    let e2 = transform_expr(&b.right, params)?;
 
     let mut reports = Vec::new();
     let int1 = to_z3_int(&e1, &mut reports);
@@ -371,7 +310,7 @@ fn modulo<'ctx>(
             Ok(Z3Expression::new(&b.loc, &res))
         }
         _ => {
-            diagnostics.push(Report::ver_error_with_extra(
+            params.diagnostics.push(Report::ver_error_with_extra(
                 b.loc.clone(),
                 String::from("Can not perform modulo operation."),
                 reports,
@@ -383,34 +322,13 @@ fn modulo<'ctx>(
 
 fn equality<'ctx>(
     b: &BinaryExpression,
-    ctx: &'ctx Context,
-    scope: &Scope,
-    z3_scope: &mut Z3Scope,
-    contract: &ContractDefinition,
-    diagnostics: &mut Diagnostics,
-    executor: &mut SymbolicExecutor<'ctx>,
+    params: &mut TransformParams<'ctx, '_>,
 ) -> Result<Z3Expression<'ctx>, ()> {
-    let e1 = transform_expr(
-        &b.left,
-        ctx,
-        z3_scope,
-        scope,
-        contract,
-        diagnostics,
-        executor,
-    )?;
-    let e2 = transform_expr(
-        &b.right,
-        ctx,
-        z3_scope,
-        scope,
-        contract,
-        diagnostics,
-        executor,
-    )?;
+    let e1 = transform_expr(&b.left, params)?;
+    let e2 = transform_expr(&b.right, params)?;
 
     let res = e1.element._safe_eq(&e2.element).map_err(|_| {
-        diagnostics.push(Report::ver_error(
+        params.diagnostics.push(Report::ver_error(
             b.loc.clone(),
             String::from("Sort mismatch."),
         ))
@@ -421,99 +339,44 @@ fn equality<'ctx>(
 
 fn inequality<'ctx>(
     b: &BinaryExpression,
-    ctx: &'ctx Context,
-    scope: &Scope,
-    z3_scope: &mut Z3Scope,
-    contract: &ContractDefinition,
-    diagnostics: &mut Diagnostics,
-    executor: &mut SymbolicExecutor<'ctx>,
+    params: &mut TransformParams<'ctx, '_>,
 ) -> Result<Z3Expression<'ctx>, ()> {
-    let e1 = transform_expr(
-        &b.left,
-        ctx,
-        z3_scope,
-        scope,
-        contract,
-        diagnostics,
-        executor,
-    )?;
-    let e2 = transform_expr(
-        &b.right,
-        ctx,
-        z3_scope,
-        scope,
-        contract,
-        diagnostics,
-        executor,
-    )?;
+    let e1 = transform_expr(&b.left, params)?;
+    let e2 = transform_expr(&b.right, params)?;
 
-    let res = Dynamic::distinct(ctx, &[&e1.element, &e2.element]);
+    let res = Dynamic::distinct(params.ctx, &[&e1.element, &e2.element]);
 
     Ok(Z3Expression::new(&b.loc, &res))
 }
 
 fn not<'ctx>(
     u: &UnaryExpression<Box<Expression>>,
-    ctx: &'ctx Context,
-    scope: &Scope,
-    z3_scope: &mut Z3Scope,
-    contract: &ContractDefinition,
-    diagnostics: &mut Diagnostics,
-    executor: &mut SymbolicExecutor<'ctx>,
+    params: &mut TransformParams<'ctx, '_>,
 ) -> Result<Z3Expression<'ctx>, ()> {
-    let v = transform_expr(
-        &u.element,
-        ctx,
-        z3_scope,
-        scope,
-        contract,
-        diagnostics,
-        executor,
-    )?;
+    let v = transform_expr(&u.element, params)?;
 
-    let bool_v = to_z3_bool(&v, diagnostics)?;
+    let bool_v = to_z3_bool(&v, params.diagnostics)?;
 
     Ok(Z3Expression::new(&u.loc, &bool_v))
 }
 
 fn or<'ctx>(
     b: &BinaryExpression,
-    ctx: &'ctx Context,
-    scope: &Scope,
-    z3_scope: &mut Z3Scope,
-    contract: &ContractDefinition,
-    diagnostics: &mut Diagnostics,
-    executor: &mut SymbolicExecutor<'ctx>,
+    params: &mut TransformParams<'ctx, '_>,
 ) -> Result<Z3Expression<'ctx>, ()> {
-    let e1 = transform_expr(
-        &b.left,
-        ctx,
-        z3_scope,
-        scope,
-        contract,
-        diagnostics,
-        executor,
-    )?;
-    let e2 = transform_expr(
-        &b.right,
-        ctx,
-        z3_scope,
-        scope,
-        contract,
-        diagnostics,
-        executor,
-    )?;
+    let e1 = transform_expr(&b.left, params)?;
+    let e2 = transform_expr(&b.right, params)?;
 
     let mut reports = Vec::new();
     let int1 = to_z3_bool(&e1, &mut reports);
     let int2 = to_z3_bool(&e2, &mut reports);
     match (int1, int2) {
         (Ok(n1), Ok(n2)) => {
-            let res = Bool::or(ctx, &[n1, n2]);
+            let res = Bool::or(params.ctx, &[n1, n2]);
             Ok(Z3Expression::new(&b.loc, &res))
         }
         _ => {
-            diagnostics.push(Report::ver_error_with_extra(
+            params.diagnostics.push(Report::ver_error_with_extra(
                 b.loc.clone(),
                 String::from("Can not perform boolean OR."),
                 reports,
@@ -525,42 +388,21 @@ fn or<'ctx>(
 
 fn and<'ctx>(
     b: &BinaryExpression,
-    ctx: &'ctx Context,
-    scope: &Scope,
-    z3_scope: &mut Z3Scope,
-    contract: &ContractDefinition,
-    diagnostics: &mut Diagnostics,
-    executor: &mut SymbolicExecutor<'ctx>,
+    params: &mut TransformParams<'ctx, '_>,
 ) -> Result<Z3Expression<'ctx>, ()> {
-    let e1 = transform_expr(
-        &b.left,
-        ctx,
-        z3_scope,
-        scope,
-        contract,
-        diagnostics,
-        executor,
-    )?;
-    let e2 = transform_expr(
-        &b.right,
-        ctx,
-        z3_scope,
-        scope,
-        contract,
-        diagnostics,
-        executor,
-    )?;
+    let e1 = transform_expr(&b.left, params)?;
+    let e2 = transform_expr(&b.right, params)?;
 
     let mut reports = Vec::new();
     let int1 = to_z3_bool(&e1, &mut reports);
     let int2 = to_z3_bool(&e2, &mut reports);
     match (int1, int2) {
         (Ok(n1), Ok(n2)) => {
-            let res = Bool::and(ctx, &[n1, n2]);
+            let res = Bool::and(params.ctx, &[n1, n2]);
             Ok(Z3Expression::new(&b.loc, &res))
         }
         _ => {
-            diagnostics.push(Report::ver_error_with_extra(
+            params.diagnostics.push(Report::ver_error_with_extra(
                 b.loc.clone(),
                 String::from("Can not perform boolean AND."),
                 reports,
@@ -598,26 +440,23 @@ fn char<'ctx>(value: char, loc: &Span, ctx: &'ctx Context) -> Z3Expression<'ctx>
 /// Similar approach to 'member_access()', instead we use concrete variant name.
 fn enum_<'ctx>(
     e: &UnaryExpression<usize>,
-    ctx: &'ctx Context,
-    z3_scope: &mut Z3Scope,
-    contract: &ContractDefinition,
-    executor: &mut SymbolicExecutor<'ctx>,
+    params: &mut TransformParams<'ctx, '_>,
 ) -> Z3Expression<'ctx> {
     let TypeVariant::Enum(s) = &e.ty else {
         unreachable!("type must be enum");
     };
-    let enum_ = &contract.enums[s.i];
+    let enum_ = &params.contract.enums[s.i];
     let name = &enum_.name.name;
     let variant = enum_
         .variants
         .get_index(e.element)
         .expect("variant should exist")
         .0;
-    let c = z3_scope.create_or_get(
+    let c = params.z3_scope.create_or_get(
         &format!("{}.{}", name, variant),
-        Sort::int(ctx),
-        ctx,
-        executor,
+        Sort::int(params.ctx),
+        params.ctx,
+        params.executor,
     );
     Z3Expression::new(&e.loc, &c)
 }

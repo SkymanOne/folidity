@@ -36,7 +36,10 @@ use z3::{
 use crate::{
     ast::Z3Scope,
     executor::SymbolicExecutor,
-    transformer::transform_expr,
+    transformer::{
+        transform_expr,
+        TransformParams,
+    },
     z3_cfg,
 };
 
@@ -66,15 +69,15 @@ fn mul_transform() {
     let scope = Scope::default();
     let mut z3_scope = Z3Scope::default();
     let contract = ContractDefinition::default();
-    let z3_res = transform_expr(
-        &mul,
-        &context,
-        &mut z3_scope,
-        &scope,
-        &contract,
-        &mut diagnostics,
-        &mut executor,
-    );
+    let mut params = TransformParams {
+        ctx: &context,
+        z3_scope: &mut z3_scope,
+        scope: &scope,
+        contract: &contract,
+        diagnostics: &mut diagnostics,
+        executor: &mut executor,
+    };
+    let z3_res = transform_expr(&mul, &mut params);
 
     assert!(z3_res.is_ok());
     let z3_e = z3_res.expect("Should be Ok");
@@ -108,15 +111,15 @@ fn var_transform() {
         &mut contract,
     );
     let mut z3_scope = Z3Scope::default();
-    let z3_res = transform_expr(
-        &var,
-        &context,
-        &mut z3_scope,
-        &scope,
-        &contract,
-        &mut diagnostics,
-        &mut executor,
-    );
+    let mut params = TransformParams {
+        ctx: &context,
+        z3_scope: &mut z3_scope,
+        scope: &scope,
+        contract: &contract,
+        diagnostics: &mut diagnostics,
+        executor: &mut executor,
+    };
+    let z3_res = transform_expr(&var, &mut params);
 
     assert!(z3_res.is_ok());
     let z3_e = z3_res.expect("Should be Ok");
@@ -138,15 +141,15 @@ fn string_hex_transform() {
     let scope = Scope::default();
     let mut z3_scope = Z3Scope::default();
     let contract = ContractDefinition::default();
-    let z3_res = transform_expr(
-        &string,
-        &context,
-        &mut z3_scope,
-        &scope,
-        &contract,
-        &mut diagnostics,
-        &mut executor,
-    );
+    let mut params = TransformParams {
+        ctx: &context,
+        z3_scope: &mut z3_scope,
+        scope: &scope,
+        contract: &contract,
+        diagnostics: &mut diagnostics,
+        executor: &mut executor,
+    };
+    let z3_res = transform_expr(&string, &mut params);
 
     assert!(z3_res.is_ok());
     let z3_e = z3_res.expect("Should be Ok");
@@ -160,15 +163,7 @@ fn string_hex_transform() {
         element: hex::decode("AB").unwrap(),
         ty: TypeVariant::Int,
     });
-    let z3_res = transform_expr(
-        &hex,
-        &context,
-        &mut z3_scope,
-        &scope,
-        &contract,
-        &mut diagnostics,
-        &mut executor,
-    );
+    let z3_res = transform_expr(&hex, &mut params);
 
     assert!(z3_res.is_ok());
     let z3_e = z3_res.expect("Should be Ok");
@@ -209,15 +204,15 @@ fn list_transform() {
     let scope = Scope::default();
     let mut z3_scope = Z3Scope::default();
     let contract = ContractDefinition::default();
-    let z3_res = transform_expr(
-        &list,
-        &context,
-        &mut z3_scope,
-        &scope,
-        &contract,
-        &mut diagnostics,
-        &mut executor,
-    );
+    let mut params = TransformParams {
+        ctx: &context,
+        z3_scope: &mut z3_scope,
+        scope: &scope,
+        contract: &contract,
+        diagnostics: &mut diagnostics,
+        executor: &mut executor,
+    };
+    let z3_res = transform_expr(&list, &mut params);
 
     assert!(z3_res.is_ok());
     let z3_e = z3_res.expect("Should be Ok");
@@ -309,18 +304,18 @@ fn in_transform() {
     let scope = Scope::default();
     let mut z3_scope = Z3Scope::default();
     let contract = ContractDefinition::default();
+    let mut params = TransformParams {
+        ctx: &context,
+        z3_scope: &mut z3_scope,
+        scope: &scope,
+        contract: &contract,
+        diagnostics: &mut diagnostics,
+        executor: &mut executor,
+    };
 
     // verify that `30` is in the list.
     let solver = Solver::new(&context);
-    let z3_res = transform_expr(
-        &in_true,
-        &context,
-        &mut z3_scope,
-        &scope,
-        &contract,
-        &mut diagnostics,
-        &mut executor,
-    );
+    let z3_res = transform_expr(&in_true, &mut params);
     assert!(z3_res.is_ok());
     let z3_in_true = z3_res.expect("Ok");
     solver.push();
@@ -331,15 +326,7 @@ fn in_transform() {
     solver.push();
 
     // verify that `40` is not in the list.
-    let z3_res = transform_expr(
-        &in_false,
-        &context,
-        &mut z3_scope,
-        &scope,
-        &contract,
-        &mut diagnostics,
-        &mut executor,
-    );
+    let z3_res = transform_expr(&in_false, &mut params);
     assert!(z3_res.is_ok());
     let z3_in_true = z3_res.expect("Ok");
     solver.assert(&z3_in_true.element.as_bool().expect("Should be bool.").not());

@@ -24,7 +24,10 @@ use crate::{
         Z3Scope,
     },
     solver::verify_constraints,
-    transformer::type_to_sort,
+    transformer::{
+        type_to_sort,
+        TransformParams,
+    },
     Diagnostics,
 };
 #[derive(Debug)]
@@ -254,16 +257,16 @@ impl<'ctx> SymbolicExecutor<'ctx> {
                 &mut z3_scope,
                 &mut self.declarations.get_mut(&sym).expect("should exist").scope,
             );
+            let mut params = TransformParams {
+                ctx: self.context,
+                z3_scope: &mut z3_scope,
+                scope,
+                contract,
+                diagnostics: &mut diagnostics,
+                executor: self,
+            };
             for e in &bounds.exprs {
-                match Constraint::from_expr(
-                    e,
-                    self.context,
-                    &mut z3_scope,
-                    scope,
-                    contract,
-                    &mut diagnostics,
-                    self,
-                ) {
+                match Constraint::from_expr(e, &mut params) {
                     Ok(c) => constraints.insert(c.binding_sym, c),
                     Err(_) => {
                         error = true;
@@ -293,16 +296,16 @@ impl<'ctx> SymbolicExecutor<'ctx> {
                 &mut z3_scope,
                 &mut self.declarations.get_mut(&sym).expect("should exist").scope,
             );
+            let mut params = TransformParams {
+                ctx: self.context,
+                z3_scope: &mut z3_scope,
+                scope,
+                contract,
+                diagnostics: &mut diagnostics,
+                executor: self,
+            };
             for e in &bounds.exprs {
-                match Constraint::from_expr(
-                    e,
-                    self.context,
-                    &mut z3_scope,
-                    scope,
-                    contract,
-                    &mut diagnostics,
-                    self,
-                ) {
+                match Constraint::from_expr(e, &mut params) {
                     Ok(c) => constraints.insert(c.binding_sym, c),
                     Err(_) => {
                         error = true;
@@ -332,16 +335,16 @@ impl<'ctx> SymbolicExecutor<'ctx> {
                 &mut z3_scope,
                 &mut self.declarations.get_mut(&sym).expect("should exist").scope,
             );
+            let mut params = TransformParams {
+                ctx: self.context,
+                z3_scope: &mut z3_scope,
+                scope,
+                contract,
+                diagnostics: &mut diagnostics,
+                executor: self,
+            };
             for e in &bounds.exprs {
-                match Constraint::from_expr(
-                    e,
-                    self.context,
-                    &mut z3_scope,
-                    scope,
-                    contract,
-                    &mut diagnostics,
-                    self,
-                ) {
+                match Constraint::from_expr(e, &mut params) {
                     Ok(c) => constraints.insert(c.binding_sym, c),
                     Err(_) => {
                         error = true;

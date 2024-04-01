@@ -5,8 +5,6 @@ use folidity_semantics::{
         Function,
         StateDeclaration,
     },
-    symtable::Scope,
-    ContractDefinition,
     DelayedDeclaration,
     GlobalSymbol,
     Span,
@@ -28,8 +26,8 @@ use crate::{
     transformer::{
         create_constraint_const,
         transform_expr,
+        TransformParams,
     },
-    Diagnostics,
 };
 
 #[derive(Debug, Default, Clone)]
@@ -138,23 +136,17 @@ impl<'ctx> Constraint<'ctx> {
 
     pub fn from_expr(
         expr: &Expression,
-        ctx: &'ctx Context,
-        z3_scope: &mut Z3Scope,
-        scope: &Scope,
-        contract: &ContractDefinition,
-        diagnostics: &mut Diagnostics,
-        executor: &mut SymbolicExecutor<'ctx>,
+        params: &mut TransformParams<'ctx, '_>,
     ) -> Result<Constraint<'ctx>, ()> {
-        let resolve_e =
-            transform_expr(expr, ctx, z3_scope, scope, contract, diagnostics, executor)?;
+        let resolve_e = transform_expr(expr, params)?;
         let Some(bool_expr) = resolve_e.element.as_bool() else {
-            diagnostics.push(Report::ver_error(
+            params.diagnostics.push(Report::ver_error(
                 resolve_e.loc.clone(),
                 String::from("Expression must be boolean."),
             ));
             return Err(());
         };
-        let (binding_const, n) = create_constraint_const(ctx, executor);
+        let (binding_const, n) = create_constraint_const(&params.ctx, params.executor);
 
         // create a binding boolean constant: `c => expr`, to track each constraint.
         let binding_expr = binding_const.implies(&bool_expr);
