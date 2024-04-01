@@ -1,3 +1,4 @@
+use folidity_parser::ast::Identifier;
 use folidity_semantics::{
     ast::{
         BinaryExpression,
@@ -5,6 +6,13 @@ use folidity_semantics::{
         TypeVariant,
         UnaryExpression,
     },
+    symtable::{
+        Scope,
+        VariableKind,
+    },
+    CompilationError,
+    ContractDefinition,
+    Runner,
     Span,
 };
 use num_bigint::{
@@ -26,6 +34,7 @@ use z3::{
 };
 
 use crate::{
+    ast::Z3Scope,
     executor::SymbolicExecutor,
     transformer::transform_expr,
     z3_cfg,
@@ -54,7 +63,18 @@ fn mul_transform() {
     let context = Context::new(&z3_cfg());
     let mut executor = SymbolicExecutor::new(&context);
     let mut diagnostics = vec![];
-    let z3_res = transform_expr(&mul, &context, &mut diagnostics, &mut executor);
+    let scope = Scope::default();
+    let mut z3_scope = Z3Scope::default();
+    let contract = ContractDefinition::default();
+    let z3_res = transform_expr(
+        &mul,
+        &context,
+        &mut z3_scope,
+        &scope,
+        &contract,
+        &mut diagnostics,
+        &mut executor,
+    );
 
     assert!(z3_res.is_ok());
     let z3_e = z3_res.expect("Should be Ok");
@@ -76,7 +96,27 @@ fn var_transform() {
     let context = Context::new(&z3_cfg());
     let mut executor = SymbolicExecutor::new(&context);
     let mut diagnostics = vec![];
-    let z3_res = transform_expr(&var, &context, &mut diagnostics, &mut executor);
+    let mut scope = Scope::default();
+    let mut contract = ContractDefinition::default();
+    scope.add(
+        &Identifier::new(0, 0, "a".to_string()),
+        TypeVariant::Int,
+        None,
+        VariableKind::Param,
+        false,
+        0,
+        &mut contract,
+    );
+    let mut z3_scope = Z3Scope::default();
+    let z3_res = transform_expr(
+        &var,
+        &context,
+        &mut z3_scope,
+        &scope,
+        &contract,
+        &mut diagnostics,
+        &mut executor,
+    );
 
     assert!(z3_res.is_ok());
     let z3_e = z3_res.expect("Should be Ok");
@@ -95,7 +135,18 @@ fn string_hex_transform() {
     let context = Context::new(&z3_cfg());
     let mut executor = SymbolicExecutor::new(&context);
     let mut diagnostics = vec![];
-    let z3_res = transform_expr(&string, &context, &mut diagnostics, &mut executor);
+    let scope = Scope::default();
+    let mut z3_scope = Z3Scope::default();
+    let contract = ContractDefinition::default();
+    let z3_res = transform_expr(
+        &string,
+        &context,
+        &mut z3_scope,
+        &scope,
+        &contract,
+        &mut diagnostics,
+        &mut executor,
+    );
 
     assert!(z3_res.is_ok());
     let z3_e = z3_res.expect("Should be Ok");
@@ -109,7 +160,15 @@ fn string_hex_transform() {
         element: hex::decode("AB").unwrap(),
         ty: TypeVariant::Int,
     });
-    let z3_res = transform_expr(&hex, &context, &mut diagnostics, &mut executor);
+    let z3_res = transform_expr(
+        &hex,
+        &context,
+        &mut z3_scope,
+        &scope,
+        &contract,
+        &mut diagnostics,
+        &mut executor,
+    );
 
     assert!(z3_res.is_ok());
     let z3_e = z3_res.expect("Should be Ok");
@@ -147,7 +206,18 @@ fn list_transform() {
     let context = Context::new(&z3_cfg());
     let mut executor = SymbolicExecutor::new(&context);
     let mut diagnostics = vec![];
-    let z3_res = transform_expr(&list, &context, &mut diagnostics, &mut executor);
+    let scope = Scope::default();
+    let mut z3_scope = Z3Scope::default();
+    let contract = ContractDefinition::default();
+    let z3_res = transform_expr(
+        &list,
+        &context,
+        &mut z3_scope,
+        &scope,
+        &contract,
+        &mut diagnostics,
+        &mut executor,
+    );
 
     assert!(z3_res.is_ok());
     let z3_e = z3_res.expect("Should be Ok");
@@ -236,10 +306,21 @@ fn in_transform() {
     let context = Context::new(&z3_cfg());
     let mut executor = SymbolicExecutor::new(&context);
     let mut diagnostics = vec![];
+    let scope = Scope::default();
+    let mut z3_scope = Z3Scope::default();
+    let contract = ContractDefinition::default();
 
     // verify that `30` is in the list.
     let solver = Solver::new(&context);
-    let z3_res = transform_expr(&in_true, &context, &mut diagnostics, &mut executor);
+    let z3_res = transform_expr(
+        &in_true,
+        &context,
+        &mut z3_scope,
+        &scope,
+        &contract,
+        &mut diagnostics,
+        &mut executor,
+    );
     assert!(z3_res.is_ok());
     let z3_in_true = z3_res.expect("Ok");
     solver.push();
@@ -250,9 +331,147 @@ fn in_transform() {
     solver.push();
 
     // verify that `40` is not in the list.
-    let z3_res = transform_expr(&in_false, &context, &mut diagnostics, &mut executor);
+    let z3_res = transform_expr(
+        &in_false,
+        &context,
+        &mut z3_scope,
+        &scope,
+        &contract,
+        &mut diagnostics,
+        &mut executor,
+    );
     assert!(z3_res.is_ok());
     let z3_in_true = z3_res.expect("Ok");
     solver.assert(&z3_in_true.element.as_bool().expect("Should be bool.").not());
     assert_eq!(solver.check(), SatResult::Sat);
+}
+
+const WORKING: &str = r#"
+
+model ParentModel {
+    a: address,
+    b: list<int>    
+}
+
+model MyModel: ParentModel {
+    c: int,
+    d: string
+} st [
+    a == a"2FMLYJHYQWRHMFKRHKTKX5UNB5DGO65U57O3YVLWUJWKRE4YYJYC2CWWBY",
+    c > -10,
+    d == s"Hello World"
+]
+
+state StartState(MyModel) st [
+    c < 1000
+]
+
+@init
+@(any)
+fn (r: bool) start(init: int) when () -> (StartState s) 
+st [
+    r == true,
+    s.c < 10,
+]
+{
+    let a = a"2FMLYJHYQWRHMFKRHKTKX5UNB5DGO65U57O3YVLWUJWKRE4YYJYC2CWWBY";
+    let h = hex"1234";
+    let b = [1, 2, 3];
+    let c = -5;
+    let d = s"Hello World";
+
+    move StartState : { a, b, c, d };
+    return true;
+}
+
+@(any)
+view(StartState s) fn int get_value() {
+    return s.c;
+}
+"#;
+
+#[test]
+fn test_correct_bounds() {
+    folidity_diagnostics::disable_pretty_print();
+    let result = folidity_parser::parse(WORKING);
+    let Ok(tree) = &result else {
+        panic!("{:#?}", &result.err().unwrap());
+    };
+
+    let res = ContractDefinition::run(tree);
+    assert!(res.is_ok(), "{:#?}", res.err().unwrap());
+    let contract = res.unwrap();
+
+    let runner = SymbolicExecutor::run(&contract);
+
+    assert!(runner.is_ok(), "{:#?}", runner.err().unwrap());
+}
+
+const NOT_WORKING: &str = r#"
+
+model ParentModel {
+    a: address,
+    b: list<int>,
+    c: int
+}
+
+model MyModel: ParentModel {
+    d: int,
+    e: string
+} st [
+    a == a"2FMLYJHYQWRHMFKRHKTKX5UNB5DGO65U57O3YVLWUJWKRE4YYJYC2CWWBY",
+    c > 10,
+    d > c,
+    d < 5,
+    e == s"Hello World"
+]
+
+state StartState(MyModel) st [
+    c < 1000
+]
+
+@init
+@(any)
+fn (r: bool) start(init: int) when () -> (StartState s) 
+st [
+    r == true,
+    s.c < 10,
+]
+{
+    let a = a"2FMLYJHYQWRHMFKRHKTKX5UNB5DGO65U57O3YVLWUJWKRE4YYJYC2CWWBY";
+    let h = hex"1234";
+    let b = [1, 2, 3];
+    let c = -5;
+    let d = 10;
+    let e = s"Hello World";
+
+    move StartState : { a, b, c, d, e };
+    return true;
+}
+"#;
+
+#[test]
+fn test_incorrect_bounds() {
+    folidity_diagnostics::disable_pretty_print();
+    let result = folidity_parser::parse(NOT_WORKING);
+    let Ok(tree) = &result else {
+        panic!("{:#?}", &result.err().unwrap());
+    };
+
+    let res = ContractDefinition::run(tree);
+    assert!(res.is_ok(), "{:#?}", res.err().unwrap());
+    let contract = res.unwrap();
+
+    let runner = SymbolicExecutor::run(&contract);
+
+    let Err(CompilationError::Formal(reports)) = runner else {
+        panic!("Expected error");
+    };
+
+    let error = reports.first().expect("contain error");
+    assert_eq!(
+        &error.message,
+        "model MyModel has unsatisfiable constraints."
+    );
+    assert_eq!(error.additional_info.len(), 4);
 }

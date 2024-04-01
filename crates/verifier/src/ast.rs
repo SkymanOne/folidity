@@ -1,9 +1,15 @@
 use folidity_diagnostics::Report;
 use folidity_semantics::{
-    ast::Expression,
+    ast::{
+        Expression,
+        Function,
+        StateDeclaration,
+    },
+    symtable::Scope,
+    ContractDefinition,
+    DelayedDeclaration,
     GlobalSymbol,
     Span,
-    SymbolInfo,
 };
 use indexmap::IndexMap;
 use z3::{
@@ -25,18 +31,61 @@ use crate::{
     },
     Diagnostics,
 };
-/// A declaration in the code AST.
-#[derive(Debug, Default)]
-pub struct Declaration<'ctx> {
-    /// Info about the declaration
-    pub decl_sym: GlobalSymbol,
-    /// Parent of the declaration.
-    pub parent: Option<SymbolInfo>,
-    /// Constraint block of the declaration.
-    pub constraints: IndexMap<u32, Constraint<'ctx>>,
+
+#[derive(Debug, Default, Clone)]
+pub struct Z3Scope {
+    pub consts: IndexMap<String, u32>,
 }
 
-impl<'ctx> Declaration<'ctx> {
+impl Z3Scope {
+    pub fn create_or_get<'ctx>(
+        &mut self,
+        ident: &str,
+        sort: Sort<'ctx>,
+        ctx: &'ctx Context,
+        executor: &mut SymbolicExecutor<'ctx>,
+    ) -> Dynamic<'ctx> {
+        if let Some(i) = self.consts.get(ident) {
+            Dynamic::new_const(ctx, *i, &sort)
+        } else {
+            let (c, i) = executor.create_constant(&sort);
+            self.consts.insert(ident.to_string(), i);
+            c
+        }
+    }
+
+    pub fn get<'ctx>(
+        &self,
+        ident: &str,
+        sort: Sort<'ctx>,
+        ctx: &'ctx Context,
+    ) -> Option<Dynamic<'ctx>> {
+        self.consts
+            .get(ident)
+            .map(|i| Dynamic::new_const(ctx, *i, &sort))
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct Delays<'a> {
+    pub state_delay: Vec<DelayedDeclaration<&'a StateDeclaration>>,
+    pub func_delay: Vec<DelayedDeclaration<&'a Function>>,
+}
+
+/// A declaration in the code AST.
+#[derive(Debug, Default)]
+pub struct DeclarationBounds<'ctx> {
+    /// `st` location block.
+    pub loc: Span,
+    /// Links of others declaration.
+    pub links: Vec<GlobalSymbol>,
+    /// Constraint block of the declaration.
+    pub constraints: IndexMap<u32, Constraint<'ctx>>,
+    /// Scope of the local constraints.
+    pub scope: Z3Scope,
+}
+
+impl<'ctx> DeclarationBounds<'ctx> {
     /// Translate context to the new solver.
     pub fn translate_to_solver<'src_ctx>(
         &self,
@@ -51,7 +100,7 @@ impl<'ctx> Declaration<'ctx> {
             .map(|(n, c)| {
                 Constraint {
                     loc: c.loc.clone(),
-                    binding_sym: c.binding_sym,
+                    binding_sym: *n,
                     expr: c.expr.translate(new_ctx).clone(),
                 }
             })
@@ -62,7 +111,7 @@ impl<'ctx> Declaration<'ctx> {
     pub fn constraint_consts<'a>(&self, ctx: &'a Context) -> Vec<Bool<'a>> {
         self.constraints
             .iter()
-            .map(|(n, c)| c.sym_to_const(ctx))
+            .map(|(_, c)| c.sym_to_const(ctx))
             .collect()
     }
 }
@@ -90,10 +139,14 @@ impl<'ctx> Constraint<'ctx> {
     pub fn from_expr(
         expr: &Expression,
         ctx: &'ctx Context,
+        z3_scope: &mut Z3Scope,
+        scope: &Scope,
+        contract: &ContractDefinition,
         diagnostics: &mut Diagnostics,
         executor: &mut SymbolicExecutor<'ctx>,
     ) -> Result<Constraint<'ctx>, ()> {
-        let resolve_e = transform_expr(expr, ctx, diagnostics, executor)?;
+        let resolve_e =
+            transform_expr(expr, ctx, z3_scope, scope, contract, diagnostics, executor)?;
         let Some(bool_expr) = resolve_e.element.as_bool() else {
             diagnostics.push(Report::ver_error(
                 resolve_e.loc.clone(),

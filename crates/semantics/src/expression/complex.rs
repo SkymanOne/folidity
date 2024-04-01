@@ -39,10 +39,7 @@ use crate::{
     },
 };
 
-use super::{
-    expression,
-    resolve_nested_fields,
-};
+use super::expression;
 
 /// Resolve variable to a AST expression.
 ///
@@ -432,19 +429,8 @@ pub fn resolve_member_access(
         let (mty, pos) = match &var.ty {
             TypeVariant::State(s) => {
                 let state_decl = &contract.states[s.i].clone();
-                if let Some(body) = &state_decl.body {
-                    let members = match body {
-                        StateBody::Raw(params) => params.clone(),
-                        StateBody::Model(s) => {
-                            let mut fields = Vec::new();
-                            let parent = contract.models[s.i].parent.clone();
-
-                            resolve_nested_fields(&parent, &mut fields, contract);
-
-                            fields.extend(contract.models[s.i].fields.clone());
-                            fields
-                        }
-                    };
+                if state_decl.body.is_some() {
+                    let members = state_decl.fields(contract);
 
                     if let Some(pos) = members.iter().position(|m| m.name.name == member.name) {
                         let field = &members[pos];
@@ -482,12 +468,7 @@ pub fn resolve_member_access(
                 }
             }
             TypeVariant::Model(s) => {
-                let mut members = Vec::new();
-                let parent = contract.models[s.i].parent.clone();
-
-                resolve_nested_fields(&parent, &mut members, contract);
-
-                members.extend(contract.models[s.i].fields.clone());
+                let members = contract.models[s.i].fields(contract);
 
                 if let Some(pos) = members.iter().position(|m| m.name.name == member.name) {
                     let field = &members[pos];
@@ -628,12 +609,8 @@ pub fn resolve_struct_init(
                          contract: &mut ContractDefinition|
      -> Result<(Vec<Expression>, Option<SymbolInfo>), ()> {
         let model_decl = contract.models[s.i].clone();
-        let mut fields = Vec::new();
+        let fields = &model_decl.fields(contract);
         let parent = model_decl.parent;
-
-        resolve_nested_fields(&parent, &mut fields, contract);
-
-        fields.extend(model_decl.fields);
 
         if fields.len() != args.len() {
             report_mismatched_args_len(&loc, fields.len(), args.len(), contract);

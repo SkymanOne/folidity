@@ -175,8 +175,7 @@ fn test_program() {
         .unwrap();
 
     let Some(bounds) = &model.bounds else {
-        assert!(false, "Model should have bounds");
-        return;
+        panic!("Model should have bounds");
     };
     assert_eq!(bounds.exprs.len(), 3);
 

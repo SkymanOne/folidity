@@ -8,6 +8,8 @@ pub use global_symbol::{
     GlobalSymbol,
     SymbolInfo,
 };
+pub use types::DelayedDeclaration;
+
 use types::check_inheritance;
 
 pub mod ast;
@@ -17,7 +19,7 @@ mod expression;
 mod functions;
 mod global_symbol;
 mod statement;
-mod symtable;
+pub mod symtable;
 mod types;
 
 #[cfg(test)]

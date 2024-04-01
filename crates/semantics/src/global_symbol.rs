@@ -17,7 +17,7 @@ pub enum SymbolKind {
     Function,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub enum GlobalSymbol {
     Struct(SymbolInfo),
     Model(SymbolInfo),
@@ -48,6 +48,7 @@ impl GlobalSymbol {
         }
     }
 
+    /// Extract location.
     pub fn loc(&self) -> &Span {
         match self {
             GlobalSymbol::Struct(s) => &s.loc,
@@ -55,6 +56,17 @@ impl GlobalSymbol {
             GlobalSymbol::Enum(s) => &s.loc,
             GlobalSymbol::State(s) => &s.loc,
             GlobalSymbol::Function(s) => &s.loc,
+        }
+    }
+
+    /// Extract symbol info.
+    pub fn symbol_info(&self) -> &SymbolInfo {
+        match self {
+            GlobalSymbol::Struct(s) => s,
+            GlobalSymbol::Model(s) => s,
+            GlobalSymbol::Enum(s) => s,
+            GlobalSymbol::State(s) => s,
+            GlobalSymbol::Function(s) => s,
         }
     }
 }
@@ -86,7 +98,7 @@ impl Display for SymbolKind {
 }
 
 /// Global user defined symbol info.
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Default, Hash, Eq)]
 pub struct SymbolInfo {
     /// Locations of the global symbol.
     pub loc: Span,

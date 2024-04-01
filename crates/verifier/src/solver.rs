@@ -1,4 +1,3 @@
-use indexmap::IndexMap;
 use z3::{
     ast::Bool,
     Context,
@@ -6,11 +5,12 @@ use z3::{
     Solver,
 };
 
-use crate::{
-    ast::Constraint,
-    Diagnostics,
-};
+use crate::ast::Constraint;
 
+/// Verify the slice of constraints for satisfiability.
+///
+/// # Errors
+/// - List of ids of constraints that contradict each other.
 pub fn verify_constraints<'ctx>(
     constraints: &[&Constraint],
     context: &'ctx Context,
@@ -25,7 +25,7 @@ pub fn verify_constraints<'ctx>(
         solver.assert(&c.expr);
     }
 
-    match solver.check_assumptions(&binding_consts) {
+    let res = match solver.check_assumptions(&binding_consts) {
         SatResult::Sat => Ok(()),
         SatResult::Unsat | SatResult::Unknown => {
             let consts = solver
@@ -35,9 +35,12 @@ pub fn verify_constraints<'ctx>(
                 .collect();
             Err(consts)
         }
-    }
+    };
+    solver.reset();
+    res
 }
 
+/// Z3 converts integer names to `k!_` format, we need to parse it back to integers.
 fn bool_const_to_id(c: &Bool) -> Option<u32> {
     c.to_string().replace("k!", "").parse().ok()
 }

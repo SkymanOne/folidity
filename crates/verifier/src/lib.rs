@@ -38,7 +38,11 @@ impl<'ctx> Runner<ContractDefinition, ()> for SymbolicExecutor<'ctx> {
 
         let mut executor = SymbolicExecutor::new(&context);
 
-        let mut err = executor.resolve_declarations(source).is_err();
+        let mut err = false;
+        let delays = executor.resolve_declarations(source);
+        executor.resolve_links(delays, source);
+
+        err |= executor.resolve_bounds(source).is_err();
 
         err |= executor.verify_individual_blocks(source).is_err();
 

@@ -22,3 +22,6 @@ algonaut_core = { workspace = true }
 z3 = { workspace = true }
 hex = { workspace = true }
 indexmap = { workspace = true }
+
+[dev-dependencies]
+folidity-parser = { workspace = true }

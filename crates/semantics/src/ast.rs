@@ -17,6 +17,7 @@ use num_rational::BigRational;
 
 use crate::{
     contract::ContractDefinition,
+    expression::resolve_nested_fields,
     global_symbol::SymbolInfo,
     symtable::Scope,
 };
@@ -279,6 +280,16 @@ pub struct ModelDeclaration {
     pub scope: Scope,
 }
 
+impl ModelDeclaration {
+    /// Extract fields and any nested fields from parents.
+    pub fn fields(&self, contract: &ContractDefinition) -> Vec<Param> {
+        let mut fields = vec![];
+        resolve_nested_fields(&self.parent, &mut fields, contract);
+        fields.extend_from_slice(&self.fields);
+        fields
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum StateBody {
     /// Fields are specified manually.
@@ -304,6 +315,20 @@ pub struct StateDeclaration {
     pub recursive_parent: bool,
     /// Scope table for the bounds context.
     pub scope: Scope,
+}
+
+impl StateDeclaration {
+    /// Extract fields of the state and any nested fields that can come from the model.
+    pub fn fields(&self, contract: &ContractDefinition) -> Vec<Param> {
+        match &self.body {
+            Some(StateBody::Raw(params)) => params.clone(),
+            Some(StateBody::Model(s)) => {
+                let model = &contract.models[s.i];
+                model.fields(contract)
+            }
+            None => vec![],
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]
