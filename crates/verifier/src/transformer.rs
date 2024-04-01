@@ -57,20 +57,14 @@ pub fn transform_expr<'ctx>(
 ) -> Result<Z3Expression<'ctx>, ()> {
     match expr {
         // literals
-        Expression::Int(u) => Ok(int(&u.element, &u.loc, &params.ctx)),
-        Expression::UInt(u) => Ok(int(&u.element.clone().into(), &u.loc, &params.ctx)),
-        Expression::Float(u) => Ok(real(&u.element, &u.loc, &params.ctx)),
-        Expression::Boolean(u) => Ok(bool(u.element, &u.loc, &params.ctx)),
-        Expression::String(u) => Ok(string(u.element.as_str(), &u.loc, &params.ctx)),
-        Expression::Char(u) => Ok(char(u.element, &u.loc, &params.ctx)),
-        Expression::Hex(u) => {
-            Ok(string(
-                hex::encode(&u.element).as_str(),
-                &u.loc,
-                &params.ctx,
-            ))
-        }
-        Expression::Address(u) => Ok(string(u.element.to_string().as_str(), &u.loc, &params.ctx)),
+        Expression::Int(u) => Ok(int(&u.element, &u.loc, params.ctx)),
+        Expression::UInt(u) => Ok(int(&u.element.clone().into(), &u.loc, params.ctx)),
+        Expression::Float(u) => Ok(real(&u.element, &u.loc, params.ctx)),
+        Expression::Boolean(u) => Ok(bool(u.element, &u.loc, params.ctx)),
+        Expression::String(u) => Ok(string(u.element.as_str(), &u.loc, params.ctx)),
+        Expression::Char(u) => Ok(char(u.element, &u.loc, params.ctx)),
+        Expression::Hex(u) => Ok(string(hex::encode(&u.element).as_str(), &u.loc, params.ctx)),
+        Expression::Address(u) => Ok(string(u.element.to_string().as_str(), &u.loc, params.ctx)),
         Expression::Enum(u) => Ok(enum_(u, params)),
 
         // binary operations
@@ -127,7 +121,7 @@ fn list<'ctx>(
     u: &UnaryExpression<Vec<Expression>>,
     params: &mut TransformParams<'ctx, '_>,
 ) -> Result<Z3Expression<'ctx>, ()> {
-    let mut set = Set::empty(&params.ctx, &type_to_sort(&u.ty, &params.ctx));
+    let mut set = Set::empty(params.ctx, &type_to_sort(&u.ty, params.ctx));
     for e in &u.element {
         let z3_e = transform_expr(e, params)?;
         set = set.add(&z3_e.element);
