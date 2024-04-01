@@ -36,7 +36,7 @@ pub fn resolve_bounds(contract: &mut ContractDefinition, delay: &DelayedDeclarat
             }),
             ScopeContext::DeclarationBounds,
         );
-        let fields = contract.models[model_delay.i].fields(&contract);
+        let fields = contract.models[model_delay.i].fields(contract);
 
         for f in fields {
             scope.add(

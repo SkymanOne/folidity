@@ -88,7 +88,7 @@ pub fn transform_expr<'ctx>(
         Expression::MemberAccess(m) => {
             member_access(m, ctx, scope, z3_scope, contract, diagnostics, executor)
         }
-        Expression::List(u) => list(u, &ctx, scope, z3_scope, contract, diagnostics, executor),
+        Expression::List(u) => list(u, ctx, scope, z3_scope, contract, diagnostics, executor),
         Expression::In(b) => in_(b, ctx, scope, z3_scope, contract, diagnostics, executor),
 
         Expression::FunctionCall(_) => {
