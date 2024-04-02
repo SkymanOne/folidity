@@ -408,9 +408,7 @@ impl ContractDefinition {
                 format!("Expected to find {}, found {}", expected, found),
             ));
         };
-        let Some(sym) = GlobalSymbol::lookup(self, ident) else {
-            return None;
-        };
+        let sym = GlobalSymbol::lookup(self, ident)?;
         match &kind {
             SymbolKind::Struct => {
                 if let GlobalSymbol::Struct(s) = sym {

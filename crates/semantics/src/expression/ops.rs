@@ -358,7 +358,7 @@ pub fn resolve_equality(
             match ty {
                 TypeVariant::Bool => {
                     let concrete =
-                        coerce_type(left, right, &loc, &vec![], allowed_tys, scope, contract)?;
+                        coerce_type(left, right, &loc, &[], allowed_tys, scope, contract)?;
 
                     let resolved_left = expression(left, concrete.clone(), scope, contract);
                     let resolved_right = expression(right, concrete.clone(), scope, contract);
@@ -444,7 +444,7 @@ pub fn resolve_inequality(
             match ty {
                 TypeVariant::Bool => {
                     let concrete =
-                        coerce_type(left, right, &loc, &vec![], allowed_tys, scope, contract)?;
+                        coerce_type(left, right, &loc, &[], allowed_tys, scope, contract)?;
 
                     let resolved_left = expression(left, concrete.clone(), scope, contract);
                     let resolved_right = expression(right, concrete.clone(), scope, contract);
@@ -526,7 +526,7 @@ pub fn resolve_greater(
             match ty {
                 TypeVariant::Bool => {
                     let concrete =
-                        coerce_type(left, right, &loc, &vec![], allowed_tys, scope, contract)?;
+                        coerce_type(left, right, &loc, &[], allowed_tys, scope, contract)?;
 
                     let resolved_left = expression(left, concrete.clone(), scope, contract);
                     let resolved_right = expression(right, concrete.clone(), scope, contract);
@@ -608,7 +608,7 @@ pub fn resolve_less(
             match ty {
                 TypeVariant::Bool => {
                     let concrete =
-                        coerce_type(left, right, &loc, &vec![], allowed_tys, scope, contract)?;
+                        coerce_type(left, right, &loc, &[], allowed_tys, scope, contract)?;
 
                     let resolved_left = expression(left, concrete.clone(), scope, contract);
                     let resolved_right = expression(right, concrete.clone(), scope, contract);
@@ -690,7 +690,7 @@ pub fn resolve_greater_eq(
             match ty {
                 TypeVariant::Bool => {
                     let concrete =
-                        coerce_type(left, right, &loc, &vec![], allowed_tys, scope, contract)?;
+                        coerce_type(left, right, &loc, &[], allowed_tys, scope, contract)?;
 
                     let resolved_left = expression(left, concrete.clone(), scope, contract);
                     let resolved_right = expression(right, concrete.clone(), scope, contract);
@@ -772,7 +772,7 @@ pub fn resolve_less_eq(
             match ty {
                 TypeVariant::Bool => {
                     let concrete =
-                        coerce_type(left, right, &loc, &vec![], allowed_tys, scope, contract)?;
+                        coerce_type(left, right, &loc, &[], allowed_tys, scope, contract)?;
 
                     let resolved_left = expression(left, concrete.clone(), scope, contract);
                     let resolved_right = expression(right, concrete.clone(), scope, contract);
@@ -1147,7 +1147,7 @@ fn coerce_type(
     left: &parsed_ast::Expression,
     right: &parsed_ast::Expression,
     loc: &Span,
-    tys: &Vec<TypeVariant>,
+    tys: &[TypeVariant],
     allowed_tys: &[TypeVariant],
     scope: &mut Scope,
     contract: &mut ContractDefinition,

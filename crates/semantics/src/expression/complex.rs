@@ -218,7 +218,7 @@ pub fn resolve_variable(
 /// - Return types mismatch
 pub fn resolve_func_call(
     ident: &Identifier,
-    args: &Vec<parsed_ast::Expression>,
+    args: &[parsed_ast::Expression],
     loc: Span,
     scope: &mut Scope,
     contract: &mut ContractDefinition,
@@ -585,7 +585,7 @@ pub fn resolve_pipe(
 /// - Invalid number of type of arguments.
 pub fn resolve_struct_init(
     ident: &Identifier,
-    args: &Vec<parsed_ast::Expression>,
+    args: &[parsed_ast::Expression],
     auto_object: &Option<Identifier>,
     loc: Span,
     contract: &mut ContractDefinition,
