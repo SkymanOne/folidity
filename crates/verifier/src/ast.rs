@@ -146,7 +146,7 @@ impl<'ctx> Constraint<'ctx> {
             ));
             return Err(());
         };
-        let (binding_const, n) = create_constraint_const(&params.ctx, params.executor);
+        let (binding_const, n) = create_constraint_const(params.ctx, params.executor);
 
         // create a binding boolean constant: `c => expr`, to track each constraint.
         let binding_expr = binding_const.implies(&bool_expr);

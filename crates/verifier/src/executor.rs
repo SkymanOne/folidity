@@ -241,7 +241,11 @@ impl<'ctx> SymbolicExecutor<'ctx> {
         }
     }
 
-    pub fn resolve_bounds(&mut self, contract: &ContractDefinition) -> Result<(), ()> {
+    /// Resolve expression in `st` blocks into concrete Z3 constraints.
+    ///
+    /// # Return
+    /// - true if execution did not have any errors.
+    pub fn resolve_bounds(&mut self, contract: &ContractDefinition) -> bool {
         let mut error = false;
         let mut diagnostics: Diagnostics = vec![];
 
@@ -364,13 +368,16 @@ impl<'ctx> SymbolicExecutor<'ctx> {
 
         if error {
             self.diagnostics.extend(diagnostics);
-            return Err(());
         }
-        Ok(())
+
+        !error
     }
 
     /// Verify individual blocks of constraints for satisfiability.
-    pub fn verify_individual_blocks(&mut self, contract: &ContractDefinition) -> Result<(), ()> {
+    ///
+    /// # Return
+    /// - true if execution did not have any errors.
+    pub fn verify_individual_blocks(&mut self, contract: &ContractDefinition) -> bool {
         let mut diagnostics: Diagnostics = vec![];
         let mut error = false;
 
@@ -395,10 +402,6 @@ impl<'ctx> SymbolicExecutor<'ctx> {
                     ))
                 }
 
-                notes.push(Report::ver_info(
-                    "Consider rewriting logical bounds to satisfy all constraints.".to_string(),
-                ));
-
                 diagnostics.push(Report::ver_error_with_extra(
                     d.loc.clone(),
                     format!(
@@ -406,6 +409,7 @@ impl<'ctx> SymbolicExecutor<'ctx> {
                         symbol_name(sym, contract)
                     ),
                     notes,
+                    "Consider rewriting logical bounds to satisfy all constraints.".to_string(),
                 ));
 
                 error = true;
@@ -413,10 +417,9 @@ impl<'ctx> SymbolicExecutor<'ctx> {
         }
         if error {
             self.diagnostics.extend(diagnostics);
-            return Err(());
         }
 
-        Ok(())
+        !error
     }
 
     /// Create a Z3 constant with the current symbol counter as a name while increasing

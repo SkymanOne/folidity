@@ -64,8 +64,10 @@ pub struct Report {
     pub level: Level,
     /// Message of an error
     pub message: String,
-
+    /// Additional error.
     pub additional_info: Vec<Report>,
+    /// Helping note for the message.
+    pub note: String,
 }
 
 impl Report {
@@ -77,6 +79,7 @@ impl Report {
             level: Level::Error,
             message,
             additional_info: vec![],
+            note: String::from("Consider changing structure to adhere to language grammar."),
         }
     }
 
@@ -88,6 +91,7 @@ impl Report {
             level: Level::Error,
             message,
             additional_info: vec![],
+            note: String::from("Consider changing structure to adhere to language grammar."),
         }
     }
 
@@ -99,6 +103,7 @@ impl Report {
             level: Level::Error,
             message,
             additional_info: vec![],
+            note: String::from("Consider changing structure to adhere to language grammar."),
         }
     }
 
@@ -110,6 +115,7 @@ impl Report {
             level: Level::Warning,
             message,
             additional_info: vec![],
+            note: String::from("Consider rewriting the code block to reduce syntactical overhead."),
         }
     }
 
@@ -121,6 +127,7 @@ impl Report {
             level: Level::Error,
             message,
             additional_info: vec![],
+            note: String::from("Consider rewriting the expression to match the types."),
         }
     }
 
@@ -132,28 +139,24 @@ impl Report {
             level: Level::Error,
             message,
             additional_info: vec![],
-        }
-    }
-
-    /// Build a report from the verification suggestion.
-    pub fn ver_info(message: String) -> Self {
-        Self {
-            loc: Default::default(),
-            error_type: ErrorType::Verification,
-            level: Level::Info,
-            message,
-            additional_info: vec![],
+            note: String::from("Consider revising the constraints for validity."),
         }
     }
 
     /// Build a report from the verification error with additional info.
-    pub fn ver_error_with_extra(loc: Span, message: String, errs: Vec<Report>) -> Self {
+    pub fn ver_error_with_extra(
+        loc: Span,
+        message: String,
+        errs: Vec<Report>,
+        note: String,
+    ) -> Self {
         Self {
             loc,
             error_type: ErrorType::Verification,
             level: Level::Error,
             message,
             additional_info: errs,
+            note,
         }
     }
 }

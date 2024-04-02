@@ -1,4 +1,4 @@
-use executor::SymbolicExecutor;
+pub use executor::SymbolicExecutor;
 use folidity_diagnostics::Report;
 use folidity_semantics::{
     CompilationError,
@@ -18,7 +18,7 @@ mod transformer;
 #[cfg(test)]
 mod tests;
 
-pub type Diagnostics = Vec<Report>;
+type Diagnostics = Vec<Report>;
 
 /// Create config for the Z3 context.
 pub fn z3_cfg() -> Config {
@@ -42,9 +42,9 @@ impl<'ctx> Runner<ContractDefinition, ()> for SymbolicExecutor<'ctx> {
         let delays = executor.resolve_declarations(source);
         executor.resolve_links(delays, source);
 
-        err |= executor.resolve_bounds(source).is_err();
+        err |= !executor.resolve_bounds(source);
 
-        err |= executor.verify_individual_blocks(source).is_err();
+        err |= !executor.verify_individual_blocks(source);
 
         if err {
             return Err(CompilationError::Formal(executor.diagnostics));

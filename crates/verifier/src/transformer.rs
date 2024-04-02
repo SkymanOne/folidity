@@ -1,4 +1,5 @@
 use folidity_diagnostics::{
+    Paint,
     Report,
     Span,
 };
@@ -278,6 +279,10 @@ fn int_real_op<'ctx>(
                 b.loc.clone(),
                 String::from("Can not apply arithmetic operation on these data ."),
                 reports,
+                format!(
+                    "Make sure expression uses supported types: {}",
+                    "int, float".yellow().bold()
+                ),
             ));
             return Err(());
         }
@@ -308,6 +313,10 @@ fn modulo<'ctx>(
                 b.loc.clone(),
                 String::from("Can not perform modulo operation."),
                 reports,
+                format!(
+                    "Make sure expression uses supported types: {}",
+                    "int".yellow().bold()
+                ),
             ));
             Err(())
         }
@@ -374,6 +383,10 @@ fn or<'ctx>(
                 b.loc.clone(),
                 String::from("Can not perform boolean OR."),
                 reports,
+                format!(
+                    "Make sure expression uses supported types: {}",
+                    "bool".yellow().bold()
+                ),
             ));
             Err(())
         }
@@ -400,6 +413,10 @@ fn and<'ctx>(
                 b.loc.clone(),
                 String::from("Can not perform boolean AND."),
                 reports,
+                format!(
+                    "Make sure expression uses supported types: {}",
+                    "bool".yellow().bold()
+                ),
             ));
             Err(())
         }
