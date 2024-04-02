@@ -460,5 +460,5 @@ fn test_incorrect_bounds() {
         &error.message,
         "model MyModel has unsatisfiable constraints."
     );
-    assert_eq!(error.additional_info.len(), 4);
+    assert_eq!(error.additional_info.len(), 3);
 }
