@@ -247,8 +247,10 @@ fn int_real_op<'ctx>(
     let int2 = to_z3_int(&e2, &mut reports);
     let real1 = to_z3_real(&e1, &mut reports);
     let real2 = to_z3_real(&e2, &mut reports);
-    let res = match (int1, int2, real1, real2) {
-        (Ok(n1), Ok(n2), _, _) => {
+    let s1 = to_z3_string(&e1, &mut reports);
+    let s2 = to_z3_string(&e2, &mut reports);
+    let res = match (int1, int2, real1, real2, s1, s2) {
+        (Ok(n1), Ok(n2), _, _, _, _) => {
             match e {
                 Expression::Add(_) => Dynamic::from_ast(&(n1 + n2)),
                 Expression::Subtract(_) => Dynamic::from_ast(&(n1 - n2)),
@@ -261,7 +263,7 @@ fn int_real_op<'ctx>(
                 _ => unreachable!(),
             }
         }
-        (_, _, Ok(n1), Ok(n2)) => {
+        (_, _, Ok(n1), Ok(n2), _, _) => {
             match e {
                 Expression::Add(_) => Dynamic::from_ast(&(n1 + n2)),
                 Expression::Subtract(_) => Dynamic::from_ast(&(n1 - n2)),
@@ -271,16 +273,28 @@ fn int_real_op<'ctx>(
                 Expression::LessEq(_) => Dynamic::from_ast(&n1.le(&n2)),
                 Expression::Greater(_) => Dynamic::from_ast(&n1.gt(&n2)),
                 Expression::GreaterEq(_) => Dynamic::from_ast(&n1.ge(&n2)),
+                _ => unreachable!(),
+            }
+        }
+        (_, _, _, _, Ok(s1), Ok(s2)) => {
+            let s1 = s1.as_string().expect("valid string");
+            let s2 = s2.as_string().expect("valid string");
+            match e {
+                Expression::Add(_) => {
+                    Dynamic::from_ast(
+                        &Z3String::from_str(params.ctx, &(s1 + &s2)).expect("valid string"),
+                    )
+                }
                 _ => unreachable!(),
             }
         }
         _ => {
             params.diagnostics.push(Report::ver_error_with_extra(
                 b.loc.clone(),
-                String::from("Can not apply arithmetic operation on these data ."),
+                String::from("Can not apply arithmetic operation on these data."),
                 reports,
                 format!(
-                    "Make sure expression uses supported types: {}",
+                    "Make sure expression uses supported types: {}. strings can only be added together.",
                     "int, float".yellow().bold()
                 ),
             ));
