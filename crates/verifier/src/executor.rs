@@ -32,14 +32,15 @@ use crate::{
 };
 #[derive(Debug)]
 pub struct SymbolicExecutor<'ctx> {
-    /// Global solver of the executor.
+    /// Global context of the executor.
     ///
-    /// We encapsulate it as it can't be easily transferred between scopes.
+    /// Sealed for save use.
     context: &'ctx Context,
     /// List of resolved declaration to verify.
     pub declarations: IndexMap<GlobalSymbol, DeclarationBounds<'ctx>>,
     /// Symbol counter to track boolean constants across the program.
     pub symbol_counter: u32,
+    /// List of diagnostics messages associated with the verifier.
     pub diagnostics: Vec<Report>,
 }
 

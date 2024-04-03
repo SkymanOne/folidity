@@ -82,11 +82,7 @@ pub fn build_report(content: &str, diagnostics: &[Report], file_name: &str) {
                     .with_color(Color::Yellow)
             })
             .collect();
-        let title = format!(
-            "{} detected.\n{}",
-            r.error_type.cyan().underline(),
-            r.message.clone().yellow()
-        );
+        let title = format!("{} detected.", r.error_type.cyan().underline(),);
         PrettyReport::build(r.level.clone().into(), file_name, r.loc.start)
             .with_message(title)
             .with_label(
