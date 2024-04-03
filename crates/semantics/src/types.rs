@@ -219,7 +219,7 @@ pub fn find_user_type_recursion(contract: &mut ContractDefinition) {
 fn collect_edges(edges: &mut HashSet<(usize, usize, usize)>, fields: &[Param], struct_no: usize) {
     for (no, field) in fields.iter().enumerate() {
         for dependency in field.ty.ty.custom_type_dependencies() {
-            if edges.insert((no, dependency, struct_no)) {
+            if edges.insert((struct_no, dependency, no)) {
                 collect_edges(edges, fields, struct_no)
             }
         }

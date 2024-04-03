@@ -6,7 +6,6 @@ use folidity_semantics::{
         StateDeclaration,
     },
     DelayedDeclaration,
-    GlobalSymbol,
     Span,
 };
 use indexmap::IndexMap;
@@ -76,7 +75,7 @@ pub struct DeclarationBounds<'ctx> {
     /// `st` location block.
     pub loc: Span,
     /// Links of others declaration.
-    pub links: Vec<GlobalSymbol>,
+    pub links: Vec<usize>,
     /// Constraint block of the declaration.
     pub constraints: IndexMap<u32, Constraint<'ctx>>,
     /// Scope of the local constraints.

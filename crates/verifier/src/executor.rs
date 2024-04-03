@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use folidity_diagnostics::{
     Paint,
     Report,
@@ -7,6 +9,7 @@ use folidity_semantics::{
     ContractDefinition,
     DelayedDeclaration,
     GlobalSymbol,
+    Span,
     SymbolInfo,
 };
 use indexmap::IndexMap;
@@ -23,7 +26,11 @@ use crate::{
         Delays,
         Z3Scope,
     },
-    solver::verify_constraints,
+    links::build_constraint_blocks,
+    solver::{
+        verify_constraint_blocks,
+        verify_constraints,
+    },
     transformer::{
         type_to_sort,
         TransformParams,
@@ -195,7 +202,7 @@ impl<'ctx> SymbolicExecutor<'ctx> {
     pub fn resolve_links(&mut self, delays: Delays<'_>, contract: &ContractDefinition) {
         for s in &delays.state_delay {
             if let Some(StateBody::Model(model_sym)) = &s.decl.body {
-                let mut links: Vec<GlobalSymbol> = vec![];
+                let mut links: Vec<usize> = vec![];
                 let (m_sym, model_bound) = self
                     .declarations
                     .get_key_value(&GlobalSymbol::Model(model_sym.clone()))
@@ -207,7 +214,9 @@ impl<'ctx> SymbolicExecutor<'ctx> {
                     let Some(sym) = &m_sym else {
                         break;
                     };
-                    links.push(sym.clone());
+                    if let Some(id) = self.declarations.get_index_of(sym) {
+                        links.push(id);
+                    }
                     let model_decl = &contract.models[sym.symbol_info().i];
                     m_sym = model_decl
                         .parent
@@ -215,30 +224,44 @@ impl<'ctx> SymbolicExecutor<'ctx> {
                         .map(|info| GlobalSymbol::Model(info.clone()))
                         .clone();
                 }
+                if let Some(from) = &s.decl.from {
+                    if let Some(id) = self
+                        .declarations
+                        .get_index_of(&GlobalSymbol::State(from.0.clone()))
+                    {
+                        links.push(id);
+                    }
+                }
 
                 let s_bound = &mut self.declarations[s.i];
                 s_bound.scope.consts.extend(m_scope);
 
-                if let Some(from) = &s.decl.from {
-                    links.push(GlobalSymbol::State(from.0.clone()))
-                }
                 s_bound.links = links;
             }
         }
 
         for m in &delays.func_delay {
-            let f_bound = &mut self.declarations[m.i];
-            let mut links: Vec<GlobalSymbol> = vec![];
+            let mut links: Vec<usize> = vec![];
             if let Some(sb) = &m.decl.state_bound {
                 if let Some(from) = &sb.from {
-                    links.push(GlobalSymbol::State(from.ty.clone()));
+                    if let Some(id) = self
+                        .declarations
+                        .get_index_of(&GlobalSymbol::State(from.ty.clone()))
+                    {
+                        links.push(id);
+                    }
                 }
 
                 for t in &sb.to {
-                    links.push(GlobalSymbol::State(t.ty.clone()));
+                    if let Some(id) = self
+                        .declarations
+                        .get_index_of(&GlobalSymbol::State(t.ty.clone()))
+                    {
+                        links.push(id);
+                    }
                 }
             }
-            f_bound.links = links;
+            self.declarations[m.i].links = links;
         }
     }
 
@@ -416,6 +439,69 @@ impl<'ctx> SymbolicExecutor<'ctx> {
                 error = true;
             }
         }
+        if error {
+            self.diagnostics.extend(diagnostics);
+        }
+
+        !error
+    }
+
+    /// Verify linked constraint blocks to ensure their constraints don't contradict each
+    /// other.
+    pub fn verify_linked_blocks(&mut self, contract: &ContractDefinition) -> bool {
+        let mut error = false;
+        let mut diagnostics: Diagnostics = vec![];
+
+        let blocks = build_constraint_blocks(self);
+        for b in &blocks {
+            if let Err(errs) = verify_constraint_blocks(b.as_slice(), self.context) {
+                error = true;
+                let mut notes: Diagnostics = vec![];
+
+                let syms: HashSet<GlobalSymbol> = errs.iter().map(|x| x.1.clone()).collect();
+                let mut syms: Vec<GlobalSymbol> = syms.into_iter().collect();
+                syms.sort_by(|x, y| x.loc().start.cmp(&y.loc().start));
+
+                let consts: Vec<u32> = errs.iter().map(|x| x.0).collect();
+                for (i, (cid, g)) in errs.iter().enumerate() {
+                    let decl = &self.declarations.get(g).expect("should exist");
+                    let c = decl.constraints.get(cid).expect("constraints exists");
+                    let other_consts = remove_element(&consts, i);
+
+                    notes.push(Report::ver_error(
+                        c.loc.clone(),
+                        format!(
+                            "This is a constraint {} in {}. It contradicts {:?}",
+                            cid.yellow().bold(),
+                            &symbol_name(g, contract).bold(),
+                            &other_consts.red(),
+                        ),
+                    ))
+                }
+
+                let sym_strs: String = syms
+                    .iter()
+                    .fold(String::new(), |init, x| {
+                        format!("{}, {}", init, symbol_name(x, contract).bold())
+                    })
+                    .trim_start_matches(", ")
+                    .to_string();
+                // just get the span from start till end.
+                let start = errs
+                    .iter()
+                    .map(|x| x.1.loc().start)
+                    .min_by(|x, y| x.cmp(y))
+                    .unwrap_or(0);
+                let end = errs
+                    .iter()
+                    .map(|x| x.1.loc().end)
+                    .max_by(|x, y| x.cmp(y))
+                    .unwrap_or(0);
+                let loc = Span { start, end };
+                diagnostics.push(Report::ver_error_with_extra(loc, format!("Detected conflicting constraints in linked blocks. These are the linked blocks: {}", sym_strs), notes, String::from("Consider rewriting logical bounds to be consistent with other entities.")));
+            }
+        }
+
         if error {
             self.diagnostics.extend(diagnostics);
         }

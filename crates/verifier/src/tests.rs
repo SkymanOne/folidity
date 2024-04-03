@@ -462,3 +462,70 @@ fn test_incorrect_bounds() {
     );
     assert_eq!(error.additional_info.len(), 3);
 }
+
+const NOT_WORKING_LINKED: &str = r#"
+model ParentModel {
+    x: int,
+} st [
+    x > -1000
+]
+
+state StartState(ParentModel) st [
+    x < 1000
+]
+
+@init
+@(any)
+fn (r: bool) start(init: int) when () -> (StartState s) 
+st [
+    r == true,
+    s.x > 1000,
+]
+{
+    let m = ParentModel : { 10 };
+
+    move StartState : { m };
+    return true;
+}
+"#;
+
+#[test]
+fn test_incorrect_linked_bounds() {
+    folidity_diagnostics::disable_pretty_print();
+    let result = folidity_parser::parse(NOT_WORKING_LINKED);
+    let Ok(tree) = &result else {
+        panic!("{:#?}", &result.err().unwrap());
+    };
+
+    let res = ContractDefinition::run(tree);
+    assert!(res.is_ok(), "{:#?}", res.err().unwrap());
+    let contract = res.unwrap();
+
+    let runner = SymbolicExecutor::run(&contract);
+
+    let Err(CompilationError::Formal(reports)) = runner else {
+        panic!("Expected error");
+    };
+
+    let error = reports.first().expect("contain error");
+    assert_eq!(
+        &error.message,
+        "Detected conflicting constraints in linked blocks. These are the linked blocks: state StartState, function start"
+    );
+    assert_eq!(error.additional_info.len(), 2);
+    let mut errs = error.additional_info.iter();
+    let e = errs.next().unwrap();
+    assert!(
+        e.message
+            .contains("This is a constraint 3 in state StartState. It contradicts [6]"),
+        "{}",
+        e.message
+    );
+    let e = errs.next().unwrap();
+    assert!(
+        e.message
+            .contains("This is a constraint 6 in function start. It contradicts [3]"),
+        "{}",
+        e.message
+    );
+}

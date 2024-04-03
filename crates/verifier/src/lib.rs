@@ -12,6 +12,7 @@ use z3::{
 
 mod ast;
 mod executor;
+mod links;
 mod solver;
 mod transformer;
 
@@ -46,6 +47,12 @@ impl<'ctx> Runner<ContractDefinition, ()> for SymbolicExecutor<'ctx> {
 
         err |= !executor.verify_individual_blocks(source);
 
+        // report errors in individual blocks earlier to avoid catching them in linked blocks.
+        if err {
+            return Err(CompilationError::Formal(executor.diagnostics));
+        }
+
+        err = !executor.verify_linked_blocks(source);
         if err {
             return Err(CompilationError::Formal(executor.diagnostics));
         }
