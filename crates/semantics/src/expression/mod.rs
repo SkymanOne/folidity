@@ -293,7 +293,7 @@ pub fn dynamic_to_concrete_type(tys: &[TypeVariant], allowed: &[TypeVariant]) ->
 pub fn resolve_nested_fields(
     s: &Option<SymbolInfo>,
     fields: &mut Vec<Param>,
-    contract: &mut ContractDefinition,
+    contract: &ContractDefinition,
 ) {
     if let Some(parent_sym) = s {
         let parent_decl_fields = contract.models[parent_sym.i].fields.clone();

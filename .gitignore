@@ -308,5 +308,6 @@ Cargo.lock
 .DS_Store
 
 reports/ecsproject.pdf
+.vscode
 
 /auto

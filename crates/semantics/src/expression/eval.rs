@@ -586,7 +586,7 @@ where
     let a = TryGetValue::<T>::try_get(u.left.as_ref())?;
     let b = TryGetValue::<T>::try_get(u.right.as_ref())?;
     let result = func(a, b).ok_or_else(|| {
-        contract.diagnostics.push(Report::func_error(
+        contract.diagnostics.push(Report::semantic_error(
             loc.clone(),
             String::from("The operation is invalid. Probably resulted from the division by 0 or overflow/underflow."),
         ));

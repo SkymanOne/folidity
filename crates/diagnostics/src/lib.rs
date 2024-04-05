@@ -14,13 +14,13 @@ pub fn disable_pretty_print() {
     yansi::disable();
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ErrorType {
     Lexer,
     Parser,
     Semantics,
     Type,
-    Functional,
+    Verification,
 }
 
 impl Display for ErrorType {
@@ -31,12 +31,12 @@ impl Display for ErrorType {
             ErrorType::Parser => word("Parser error"),
             ErrorType::Semantics => word("Semantic error"),
             ErrorType::Type => word("Type error"),
-            ErrorType::Functional => word("Functional error"),
+            ErrorType::Verification => word("Verification error"),
         }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Level {
     Info,
     Warning,
@@ -54,7 +54,7 @@ impl<'a> From<Level> for ariadne::ReportKind<'a> {
 }
 
 /// Error report.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Report {
     /// Location of an error
     pub loc: Span,
@@ -64,6 +64,10 @@ pub struct Report {
     pub level: Level,
     /// Message of an error
     pub message: String,
+    /// Additional error.
+    pub additional_info: Vec<Report>,
+    /// Helping note for the message.
+    pub note: String,
 }
 
 impl Report {
@@ -74,6 +78,8 @@ impl Report {
             error_type: ErrorType::Lexer,
             level: Level::Error,
             message,
+            additional_info: vec![],
+            note: String::from("Consider changing structure to adhere to language grammar."),
         }
     }
 
@@ -84,6 +90,8 @@ impl Report {
             error_type: ErrorType::Parser,
             level: Level::Error,
             message,
+            additional_info: vec![],
+            note: String::from("Consider changing structure to adhere to language grammar."),
         }
     }
 
@@ -94,6 +102,8 @@ impl Report {
             error_type: ErrorType::Semantics,
             level: Level::Error,
             message,
+            additional_info: vec![],
+            note: String::from("Consider changing structure to adhere to language grammar."),
         }
     }
 
@@ -104,6 +114,8 @@ impl Report {
             error_type: ErrorType::Semantics,
             level: Level::Warning,
             message,
+            additional_info: vec![],
+            note: String::from("Consider rewriting the code block to reduce syntactical overhead."),
         }
     }
 
@@ -114,16 +126,37 @@ impl Report {
             error_type: ErrorType::Type,
             level: Level::Error,
             message,
+            additional_info: vec![],
+            note: String::from("Consider rewriting the expression to match the types."),
         }
     }
 
-    /// Build a report from the functional error.
-    pub fn func_error(loc: Span, message: String) -> Self {
+    /// Build a report from the verification error.
+    pub fn ver_error(loc: Span, message: String) -> Self {
         Self {
             loc,
-            error_type: ErrorType::Functional,
+            error_type: ErrorType::Verification,
             level: Level::Error,
             message,
+            additional_info: vec![],
+            note: String::from("Consider revising the constraints for validity."),
+        }
+    }
+
+    /// Build a report from the verification error with additional info.
+    pub fn ver_error_with_extra(
+        loc: Span,
+        message: String,
+        errs: Vec<Report>,
+        note: String,
+    ) -> Self {
+        Self {
+            loc,
+            error_type: ErrorType::Verification,
+            level: Level::Error,
+            message,
+            additional_info: errs,
+            note,
         }
     }
 }

@@ -5,7 +5,8 @@ members = [
     "crates/diagnostics",
     "crates/folidity",
     "crates/parser", 
-    "crates/semantics",
+    "crates/semantics", 
+    "crates/verifier", 
 ]
 
 [workspace.package]
@@ -21,8 +22,9 @@ version = "1.0.0"
 [workspace.dependencies]
 folidity-parser = { path = "crates/parser" }
 folidity-diagnostics = { path = "crates/diagnostics" }
-derive-node = { path = "crates/derive_node" }
 folidity-semantics = { path = "crates/semantics" }
+folidity-verifier = { path = "crates/verifier" }
+derive-node = { path = "crates/derive_node" }
 logos = "0.14"
 lalrpop-util = "0.20"
 lalrpop = "0.20"
@@ -44,3 +46,5 @@ ariadne = { version = "0.4", features = ["auto-color"] }
 anyhow = "1.0"
 walkdir = "2.5"
 yansi = "1.0"
+# we need to pin to commit as the crate version doesn't allow us to detect local `z3` binary.
+z3 =  { git = "https://github.com/prove-rs/z3.rs.git", rev = "247d308f27d8b59152ad402e2d8b13d617a1a6a1" }

@@ -182,6 +182,7 @@ fn test_factorial() -> Result<(), String> {
 fn test_factorial_tree() -> Result<(), String> {
     let tree = unwrap_tree(FACTORIAL_SRC)?;
     let parsed = Source {
+        diagnostics: vec![],
         declarations: vec![
             Declaration::StateDeclaration(Box::new(StateDeclaration {
                 loc: 1..17,
@@ -427,6 +428,7 @@ fn () lists() {
 fn test_lists() -> Result<(), String> {
     let tree = unwrap_tree(LISTS_SRC)?;
     let parsed = Source {
+        diagnostics: vec![],
         declarations: vec![Declaration::FunDeclaration(Box::new(FunctionDeclaration {
             loc: 1..148,
             is_init: false,
@@ -583,6 +585,7 @@ fn test_structs_enums() -> Result<(), String> {
     let parsed = unwrap_tree(STRUCTS_SRC)?;
 
     let tree = Source {
+        diagnostics: vec![],
         declarations: vec![
             Declaration::StructDeclaration(Box::new(StructDeclaration {
                 loc: 1..47,

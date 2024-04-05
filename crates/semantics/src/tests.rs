@@ -1,7 +1,8 @@
 use crate::{
     ast::TypeVariant,
-    resolve_semantics,
     symtable::VariableSym,
+    ContractDefinition,
+    Runner,
 };
 use folidity_parser::parse;
 
@@ -16,9 +17,13 @@ enum MyEnum {
     B
 }
 
+model ParentModel {
+    a: int
+}
+
 model MyModel: ParentModel {
     c: int,
-    b: string,
+    b: string
 }
 
 state NoState(MyModel)
@@ -28,10 +33,13 @@ state NoState(MyModel)
 fn test_first_pass() {
     let tree = parse(DECL_SRC).unwrap();
 
-    let def = resolve_semantics(&tree);
+    let res = ContractDefinition::run(&tree);
+    let Ok(def) = res else {
+        panic!("{:#?}", res.err().unwrap())
+    };
     assert_eq!(def.structs.len(), 1);
     assert_eq!(def.enums.len(), 1);
-    assert_eq!(def.models.len(), 1);
+    assert_eq!(def.models.len(), 2);
     assert_eq!(def.states.len(), 1);
 
     let e = &def.enums[0];
@@ -48,6 +56,11 @@ model ParentModel {
     b: list<int>    
 }
 
+enum MyEnum {
+    A, 
+    B
+}
+
 model MyModel: ParentModel {
     c: int,
     d: string
@@ -57,9 +70,13 @@ model MyModel: ParentModel {
     d == s"Hello World"
 ]
 
-state StartState(MyModel)
+state StartState(MyModel) st [
+    c < 1000
+]
 
-state SecondState(MyModel)
+state SecondState(MyModel) st [
+    c < 500
+]
 
 state BoundedState {
     field: int
@@ -72,7 +89,8 @@ state BoundedState {
 fn (r: bool) start(init: int) when () -> (StartState s) 
 st [
     r == true,
-    s.c < 10
+    s.c < 10,
+    MyEnum.A == MyEnum.A
 ]
 {
     let a = a"2FMLYJHYQWRHMFKRHKTKX5UNB5DGO65U57O3YVLWUJWKRE4YYJYC2CWWBY";
@@ -134,16 +152,20 @@ view(StartState s) fn int get_value() {
 
 #[test]
 fn test_program() {
+    folidity_diagnostics::disable_pretty_print();
     let result = parse(WORKING);
     let Ok(tree) = &result else {
         panic!("{:#?}", &result.err().unwrap());
     };
 
-    let contract = resolve_semantics(tree);
+    let res = ContractDefinition::run(tree);
+    assert!(res.is_ok(), "{:#?}", res.err().unwrap());
+    let contract = res.unwrap();
     assert_eq!(contract.diagnostics.len(), 0, "{:#?}", contract.diagnostics);
     assert_eq!(contract.models.len(), 2);
     assert_eq!(contract.states.len(), 3);
     assert_eq!(contract.functions.len(), 5);
+    assert_eq!(contract.enums.len(), 1);
     assert_eq!(contract.structs.len(), 0);
 
     let model = contract
@@ -152,7 +174,10 @@ fn test_program() {
         .find(|x| &x.name.name == "MyModel")
         .unwrap();
 
-    assert_eq!(model.bounds.len(), 3);
+    let Some(bounds) = &model.bounds else {
+        panic!("Model should have bounds");
+    };
+    assert_eq!(bounds.exprs.len(), 3);
 
     let func = &contract.functions[0];
     let vars: Vec<&VariableSym> = func.scope.vars.values().collect();
@@ -240,15 +265,17 @@ fn () fail_move_state() when () -> (StartState s) {
 #[test]
 fn test_err_program() {
     folidity_diagnostics::disable_pretty_print();
-
     let result = parse(NOT_WORKING);
     let Ok(tree) = &result else {
         panic!("{:#?}", &result.err().unwrap());
     };
 
-    let contract = resolve_semantics(tree);
+    let result = ContractDefinition::run(tree);
+    let Err(e) = result else {
+        panic!("The contract is expected to fail")
+    };
+    let mut errors = e.diagnostics().iter().map(|r| r.message.clone());
     // assert_eq!(contract.diagnostics.len(), 0, "{:#?}", contract.diagnostics);
-    let mut errors = contract.diagnostics.iter().map(|r| r.message.clone());
     assert_eq!(
         "Expected function to return a value of type bool",
         &errors.next().unwrap()

@@ -17,6 +17,7 @@ use num_rational::BigRational;
 
 use crate::{
     contract::ContractDefinition,
+    expression::resolve_nested_fields,
     global_symbol::SymbolInfo,
     symtable::Scope,
 };
@@ -180,6 +181,13 @@ pub struct StateBound {
     pub to: Vec<StateParam>,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct Bounds {
+    pub loc: Span,
+    /// Final state
+    pub exprs: Vec<Expression>,
+}
+
 #[derive(Clone, Debug)]
 pub struct Function {
     /// Location span of the function.
@@ -198,7 +206,7 @@ pub struct Function {
     /// List of parameters.
     pub params: IndexMap<String, Param>,
     /// Function logical bounds.
-    pub bounds: Vec<Expression>,
+    pub bounds: Option<Bounds>,
     /// Bounds for the state transition.
     pub state_bound: Option<StateBound>,
     /// The body of the function.
@@ -227,7 +235,7 @@ impl Function {
             params,
             state_bound,
             body: Vec::new(),
-            bounds: Vec::new(),
+            bounds: None,
             scope: Scope::default(),
         }
     }
@@ -253,7 +261,7 @@ pub struct StructDeclaration {
     pub fields: Vec<Param>,
 }
 
-#[derive(Clone, Debug, PartialEq, Node)]
+#[derive(Clone, Debug, Node)]
 pub struct ModelDeclaration {
     /// Location span of the model.
     pub loc: Span,
@@ -265,9 +273,21 @@ pub struct ModelDeclaration {
     /// Identified as a index in the global symbol table.
     pub parent: Option<SymbolInfo>,
     /// Model logical bounds.
-    pub bounds: Vec<Expression>,
+    pub bounds: Option<Bounds>,
     /// Is the parent model recursive.
     pub recursive_parent: bool,
+    /// Scope table for the bounds context.
+    pub scope: Scope,
+}
+
+impl ModelDeclaration {
+    /// Extract fields and any nested fields from parents.
+    pub fn fields(&self, contract: &ContractDefinition) -> Vec<Param> {
+        let mut fields = vec![];
+        resolve_nested_fields(&self.parent, &mut fields, contract);
+        fields.extend_from_slice(&self.fields);
+        fields
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -278,7 +298,7 @@ pub enum StateBody {
     Model(SymbolInfo),
 }
 
-#[derive(Clone, Debug, PartialEq, Node)]
+#[derive(Clone, Debug, Node)]
 pub struct StateDeclaration {
     /// Location span of the model.
     pub loc: Span,
@@ -289,10 +309,26 @@ pub struct StateDeclaration {
     /// From which state we can transition.
     /// e.g `StateA st`
     pub from: Option<(SymbolInfo, Option<Identifier>)>,
-    /// Model logical bounds.
-    pub bounds: Vec<Expression>,
+    /// State logical bounds.
+    pub bounds: Option<Bounds>,
     /// Is the parent state recursive.
     pub recursive_parent: bool,
+    /// Scope table for the bounds context.
+    pub scope: Scope,
+}
+
+impl StateDeclaration {
+    /// Extract fields of the state and any nested fields that can come from the model.
+    pub fn fields(&self, contract: &ContractDefinition) -> Vec<Param> {
+        match &self.body {
+            Some(StateBody::Raw(params)) => params.clone(),
+            Some(StateBody::Model(s)) => {
+                let model = &contract.models[s.i];
+                model.fields(contract)
+            }
+            None => vec![],
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Node)]
@@ -520,6 +556,7 @@ impl TypeVariant {
 
 /// Extracts literal value, `T`, from the expression, if possible.
 pub trait TryGetValue<T> {
+    #[allow(clippy::result_unit_err)]
     fn try_get(&self) -> Result<T, ()>;
 }
 

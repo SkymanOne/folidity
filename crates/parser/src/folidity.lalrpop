@@ -7,7 +7,7 @@ use lalrpop_util::ParseError;
 grammar<'input, 'err>(errors: &'err mut Vec<ErrorRecovery<usize, Token<'input>, LexicalError>>);
 
 pub FolidityTree: ast::Source = {
-    Declaration* => ast::Source { declarations: <> }
+    Declaration* => ast::Source { declarations: <>, diagnostics: vec![] }
 }
 
 Declaration: ast::Declaration = {

@@ -11,14 +11,17 @@ use folidity_parser::{
 };
 use indexmap::IndexMap;
 
-use crate::ast::{
-    EnumDeclaration,
-    Function,
-    ModelDeclaration,
-    Param,
-    StateBody,
-    StateDeclaration,
-    StructDeclaration,
+use crate::{
+    ast::{
+        EnumDeclaration,
+        Function,
+        ModelDeclaration,
+        Param,
+        StateBody,
+        StateDeclaration,
+        StructDeclaration,
+    },
+    symtable::Scope,
 };
 
 use crate::{
@@ -307,8 +310,9 @@ impl ContractDefinition {
                 name: item.name.clone(),
                 fields: Vec::new(),
                 parent: None,
-                bounds: Vec::new(),
+                bounds: None,
                 recursive_parent: false,
+                scope: Scope::default(),
             });
 
             delay
@@ -337,8 +341,9 @@ impl ContractDefinition {
                 name: item.name.clone(),
                 body: None,
                 from: None,
-                bounds: Vec::new(),
+                bounds: None,
                 recursive_parent: false,
+                scope: Scope::default(),
             });
 
             delay
@@ -403,9 +408,7 @@ impl ContractDefinition {
                 format!("Expected to find {}, found {}", expected, found),
             ));
         };
-        let Some(sym) = GlobalSymbol::lookup(self, ident) else {
-            return None;
-        };
+        let sym = GlobalSymbol::lookup(self, ident)?;
         match &kind {
             SymbolKind::Struct => {
                 if let GlobalSymbol::Struct(s) = sym {

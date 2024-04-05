@@ -2,15 +2,12 @@ use folidity_parser::ast as parsed_ast;
 
 use crate::{
     ast::{
+        Bounds,
         Expression,
-        StateBody,
         TypeVariant,
     },
     contract::ContractDefinition,
-    expression::{
-        expression,
-        resolve_nested_fields,
-    },
+    expression::expression,
     global_symbol::{
         GlobalSymbol,
         SymbolInfo,
@@ -39,12 +36,7 @@ pub fn resolve_bounds(contract: &mut ContractDefinition, delay: &DelayedDeclarat
             }),
             ScopeContext::DeclarationBounds,
         );
-        let mut fields = Vec::new();
-        let parent_sym = contract.models[model_delay.i].parent.clone();
-        resolve_nested_fields(&parent_sym, &mut fields, contract);
-        let model_fields = contract.models[model_delay.i].fields.clone();
-
-        fields.extend(model_fields);
+        let fields = contract.models[model_delay.i].fields(contract);
 
         for f in fields {
             scope.add(
@@ -62,7 +54,11 @@ pub fn resolve_bounds(contract: &mut ContractDefinition, delay: &DelayedDeclarat
             continue;
         };
 
-        contract.models[model_delay.i].bounds = bounds;
+        contract.models[model_delay.i].scope = scope;
+        contract.models[model_delay.i].bounds = Some(Bounds {
+            loc: st.loc.clone(),
+            exprs: bounds,
+        });
     }
 
     for state_delay in &delay.states {
@@ -91,30 +87,29 @@ pub fn resolve_bounds(contract: &mut ContractDefinition, delay: &DelayedDeclarat
             );
         }
 
-        if let Some(body) = &state.body {
-            let members = match body {
-                StateBody::Raw(params) => params.clone(),
-                StateBody::Model(s) => contract.models[s.i].fields.clone(),
-            };
+        let members = state.fields(contract);
 
-            members.iter().for_each(|p| {
-                scope.add(
-                    &p.name,
-                    p.ty.ty.clone(),
-                    None,
-                    VariableKind::Local,
-                    false,
-                    scope.current,
-                    contract,
-                );
-            });
-        }
+        members.iter().for_each(|p| {
+            scope.add(
+                &p.name,
+                p.ty.ty.clone(),
+                None,
+                VariableKind::Local,
+                false,
+                scope.current,
+                contract,
+            );
+        });
 
         let Ok(bounds) = resolve_bound_exprs(&st.expr, &mut scope, contract) else {
             continue;
         };
 
-        contract.states[state_delay.i].bounds = bounds;
+        contract.states[state_delay.i].bounds = Some(Bounds {
+            loc: st.loc.clone(),
+            exprs: bounds,
+        });
+        contract.states[state_delay.i].scope = scope;
     }
 
     for func_delay in &delay.functions {
@@ -127,7 +122,10 @@ pub fn resolve_bounds(contract: &mut ContractDefinition, delay: &DelayedDeclarat
             } else {
                 vec![]
             };
-            contract.functions[func_delay.i].bounds = bounds;
+            contract.functions[func_delay.i].bounds = Some(Bounds {
+                loc: st.loc.clone(),
+                exprs: bounds,
+            });
         }
 
         std::mem::swap(&mut scope, &mut contract.functions[func_delay.i].scope);

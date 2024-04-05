@@ -39,10 +39,7 @@ use crate::{
     },
 };
 
-use super::{
-    expression,
-    resolve_nested_fields,
-};
+use super::expression;
 
 /// Resolve variable to a AST expression.
 ///
@@ -122,10 +119,8 @@ pub fn resolve_variable(
                         returns: f_ty.returns.clone(),
                     }),
                 }))
-            } else {
-                let var_id = find_var(ident, contract, scope)?;
+            } else if let Some((var_id, _)) = scope.find_var_index(&ident.name) {
                 let sym = scope.find_symbol(&var_id).unwrap();
-
                 if &sym.ty != ty {
                     report_type_mismatch(&expected_ty, &[sym.ty.clone()], &ident.loc, contract);
                     return Err(());
@@ -136,25 +131,65 @@ pub fn resolve_variable(
                     element: var_id,
                     ty: sym.ty.clone(),
                 }))
+            } else if let Some(sym) = &contract.find_global_symbol(ident, SymbolKind::Enum) {
+                // todo: rewrite this to reduce code duplication.
+                let enum_ty = TypeVariant::Enum(sym.clone());
+                if &enum_ty != ty {
+                    report_type_mismatch(&expected_ty, &[enum_ty], &ident.loc, contract);
+                    return Err(());
+                } else {
+                    Ok(Expression::Variable(UnaryExpression {
+                        loc: ident.loc.clone(),
+                        element: sym.i,
+                        ty: enum_ty,
+                    }))
+                }
+            } else {
+                contract.diagnostics.push(Report::semantic_error(
+                    ident.loc.clone(),
+                    format!(
+                        "`{}`: Variable is not declared or inaccessible.",
+                        ident.name.yellow().bold()
+                    ),
+                ));
+                Err(())
             }
         }
         ExpectedType::Dynamic(tys) => {
-            let var_id = find_var(ident, contract, scope)?;
-            let sym = scope.find_symbol(&var_id).unwrap();
+            if let Some((var_id, _)) = scope.find_var_index(&ident.name) {
+                let sym = scope.find_symbol(&var_id).unwrap();
+                if !tys.is_empty() && !tys.contains(&sym.ty) {
+                    report_type_mismatch(&expected_ty, &[sym.ty.clone()], &ident.loc, contract);
+                    return Err(());
+                }
 
-            if !tys.is_empty() && !tys.contains(&sym.ty) {
-                contract.diagnostics.push(Report::type_error(
+                Ok(Expression::Variable(UnaryExpression {
+                    loc: ident.loc.clone(),
+                    element: var_id,
+                    ty: sym.ty.clone(),
+                }))
+            } else if let Some(sym) = &contract.find_global_symbol(ident, SymbolKind::Enum) {
+                let ty = TypeVariant::Enum(sym.clone());
+                if !tys.is_empty() && !tys.contains(&ty) {
+                    report_type_mismatch(&expected_ty, &[ty], &ident.loc, contract);
+                    return Err(());
+                } else {
+                    Ok(Expression::Variable(UnaryExpression {
+                        loc: ident.loc.clone(),
+                        element: sym.i,
+                        ty,
+                    }))
+                }
+            } else {
+                contract.diagnostics.push(Report::semantic_error(
                     ident.loc.clone(),
-                    String::from("Variable is not of any allowed types."),
+                    format!(
+                        "`{}`: Variable is not declared or inaccessible.",
+                        ident.name.yellow().bold()
+                    ),
                 ));
-                return Err(());
+                Err(())
             }
-
-            Ok(Expression::Variable(UnaryExpression {
-                loc: ident.loc.clone(),
-                element: var_id,
-                ty: sym.ty.clone(),
-            }))
         }
         ExpectedType::Empty => {
             contract.diagnostics.push(Report::semantic_error(
@@ -183,7 +218,7 @@ pub fn resolve_variable(
 /// - Return types mismatch
 pub fn resolve_func_call(
     ident: &Identifier,
-    args: &Vec<parsed_ast::Expression>,
+    args: &[parsed_ast::Expression],
     loc: Span,
     scope: &mut Scope,
     contract: &mut ContractDefinition,
@@ -394,19 +429,8 @@ pub fn resolve_member_access(
         let (mty, pos) = match &var.ty {
             TypeVariant::State(s) => {
                 let state_decl = &contract.states[s.i].clone();
-                if let Some(body) = &state_decl.body {
-                    let members = match body {
-                        StateBody::Raw(params) => params.clone(),
-                        StateBody::Model(s) => {
-                            let mut fields = Vec::new();
-                            let parent = contract.models[s.i].parent.clone();
-
-                            resolve_nested_fields(&parent, &mut fields, contract);
-
-                            fields.extend(contract.models[s.i].fields.clone());
-                            fields
-                        }
-                    };
+                if state_decl.body.is_some() {
+                    let members = state_decl.fields(contract);
 
                     if let Some(pos) = members.iter().position(|m| m.name.name == member.name) {
                         let field = &members[pos];
@@ -444,12 +468,7 @@ pub fn resolve_member_access(
                 }
             }
             TypeVariant::Model(s) => {
-                let mut members = Vec::new();
-                let parent = contract.models[s.i].parent.clone();
-
-                resolve_nested_fields(&parent, &mut members, contract);
-
-                members.extend(contract.models[s.i].fields.clone());
+                let members = contract.models[s.i].fields(contract);
 
                 if let Some(pos) = members.iter().position(|m| m.name.name == member.name) {
                     let field = &members[pos];
@@ -566,7 +585,7 @@ pub fn resolve_pipe(
 /// - Invalid number of type of arguments.
 pub fn resolve_struct_init(
     ident: &Identifier,
-    args: &Vec<parsed_ast::Expression>,
+    args: &[parsed_ast::Expression],
     auto_object: &Option<Identifier>,
     loc: Span,
     contract: &mut ContractDefinition,
@@ -590,18 +609,14 @@ pub fn resolve_struct_init(
                          contract: &mut ContractDefinition|
      -> Result<(Vec<Expression>, Option<SymbolInfo>), ()> {
         let model_decl = contract.models[s.i].clone();
-        let mut fields = Vec::new();
+        let fields = &model_decl.fields(contract);
         let parent = model_decl.parent;
-
-        resolve_nested_fields(&parent, &mut fields, contract);
-
-        fields.extend(model_decl.fields);
 
         if fields.len() != args.len() {
             report_mismatched_args_len(&loc, fields.len(), args.len(), contract);
             return Err(());
         }
-        let (parsed_args, error_args) = parse_args(args, &fields, scope, contract);
+        let (parsed_args, error_args) = parse_args(args, fields, scope, contract);
 
         if error_args {
             contract.diagnostics.push(Report::type_error(
@@ -831,22 +846,4 @@ fn report_mismatched_args_len(
             got.red().bold()
         ),
     ));
-}
-
-fn find_var(
-    ident: &Identifier,
-    contract: &mut ContractDefinition,
-    scope: &mut Scope,
-) -> Result<usize, ()> {
-    let Some((v_i, _)) = scope.find_var_index(&ident.name) else {
-        contract.diagnostics.push(Report::semantic_error(
-            ident.loc.clone(),
-            format!(
-                "`{}`: Variable is not declared or inaccessible.",
-                ident.name.yellow().bold()
-            ),
-        ));
-        return Err(());
-    };
-    Ok(v_i)
 }

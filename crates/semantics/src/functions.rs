@@ -324,6 +324,7 @@ pub fn resolve_func_body(
 ) -> Result<(), ()> {
     let mut scope = Scope::default();
     std::mem::swap(&mut scope, &mut contract.functions[func_i].scope);
+    scope.push(ScopeContext::FunctionBody);
 
     let mut resolved_stmts = Vec::new();
 
