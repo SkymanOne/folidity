@@ -519,6 +519,7 @@ impl<'ctx> SymbolicExecutor<'ctx> {
     }
 }
 
+/// Helper function to return an new list without the element at given index.
 fn remove_element<T: Clone>(arr: &[T], i: usize) -> Vec<T> {
     let (first_part, second_part) = arr.split_at(i);
     let mut result = first_part.to_vec();
@@ -528,6 +529,7 @@ fn remove_element<T: Clone>(arr: &[T], i: usize) -> Vec<T> {
     result
 }
 
+/// Display a declaration name with the given symbol name.
 fn symbol_name(sym: &GlobalSymbol, contract: &ContractDefinition) -> String {
     match sym {
         GlobalSymbol::Struct(s) => format!("struct {}", contract.structs[s.i].name.name.cyan()),

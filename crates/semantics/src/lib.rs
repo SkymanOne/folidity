@@ -25,14 +25,19 @@ mod types;
 #[cfg(test)]
 mod tests;
 
+/// Pipeline specific error during compilation.
 #[derive(Debug, Clone)]
 pub enum CompilationError {
+    /// Error occurred during parsing and/or semantic analysis.
     Syntax(Vec<Report>),
+    /// Error ocurred during formal verification stage.
     Formal(Vec<Report>),
+    /// Error occurred during code emission.
     Emit(Vec<Report>),
 }
 
 impl CompilationError {
+    /// Extract the list of reports from error variant.
     pub fn diagnostics(&self) -> &Vec<Report> {
         match self {
             CompilationError::Syntax(r) => r,
@@ -42,7 +47,14 @@ impl CompilationError {
     }
 }
 
-/// Recursively walk the tree and modify the program artifacts.
+/// Program runner that performs some operations on the input and output artifacts.
+///
+/// # Generic params
+/// - `I` - input type
+/// - `O` output type.
+///
+/// # Errors
+/// [`CompilationError`] variant specific to the pipeline step.
 pub trait Runner<I, O> {
     fn run(source: &I) -> Result<O, CompilationError>
     where

@@ -29,12 +29,14 @@ use crate::{
     },
 };
 
+/// Z3 specific scope of Z3 types constant to be reused in formulas.
 #[derive(Debug, Default, Clone)]
 pub struct Z3Scope {
     pub consts: IndexMap<String, u32>,
 }
 
 impl Z3Scope {
+    /// Create a constant or retrieve the existing one with the same name.
     pub fn create_or_get<'ctx>(
         &mut self,
         ident: &str,
@@ -51,6 +53,7 @@ impl Z3Scope {
         }
     }
 
+    /// Retrieve a constant with the given name.
     pub fn get<'ctx>(
         &self,
         ident: &str,
@@ -63,6 +66,7 @@ impl Z3Scope {
     }
 }
 
+/// List of delayed declaration to be resolved in consequent passes.
 #[derive(Debug, Default)]
 pub struct Delays<'a> {
     pub state_delay: Vec<DelayedDeclaration<&'a StateDeclaration>>,
