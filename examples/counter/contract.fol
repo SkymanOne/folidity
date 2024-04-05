@@ -18,7 +18,6 @@ fn () initialise() when () -> CounterState {
 fn () incr_by(value: int) when (CounterState s) -> CounterState
 st [
     value > 100,
-    value < 100
 ] {
     let value = s.counter + value;
     move CounterState : { value };
@@ -28,7 +27,6 @@ st [
 fn () decr_by(value: int) when (CounterState s) -> CounterState 
 st [
     value > 100,
-    value < 100
 ] {
     let value = s.counter - value;
     move CounterState : { value };

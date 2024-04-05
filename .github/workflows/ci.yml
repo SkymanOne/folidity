@@ -27,6 +27,7 @@ jobs:
   fmt:
     name: Check formatting
     runs-on: ubuntu-latest
+    
     steps:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
@@ -34,3 +35,22 @@ jobs:
         with: 
           components: rustfmt
       - run: cargo +nightly fmt --all -- --check --verbose
+
+  examples:
+    strategy:
+      matrix:
+        job:
+          - check
+          - verify
+    name: Compile and formally test examples
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - uses: dtolnay/rust-toolchain@stable
+      - run: | 
+           for example in examples/*/; do
+               echo "Processing example: $example";
+               cargo run ${{ matrix.job }} $example/contract.fol
+           done
+            
