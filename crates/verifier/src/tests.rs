@@ -338,7 +338,9 @@ const WORKING: &str = r#"
 model ParentModel {
     a: address,
     b: list<int>    
-}
+} st [
+    a == a"2FMLYJHYQWRHMFKRHKTKX5UNB5DGO65U57O3YVLWUJWKRE4YYJYC2CWWBY",
+]
 
 model MyModel: ParentModel {
     c: int,
@@ -400,7 +402,10 @@ model ParentModel {
     a: address,
     b: list<int>,
     c: int
-}
+} st [
+    # this works because `MyModel` refines the constraint block.
+    c < 5
+]
 
 model MyModel: ParentModel {
     d: int,
@@ -461,6 +466,28 @@ fn test_incorrect_bounds() {
         "model MyModel has unsatisfiable constraints."
     );
     assert_eq!(error.additional_info.len(), 3);
+    let mut errs = error.additional_info.iter();
+    let e = errs.next().unwrap();
+    assert!(
+        e.message
+            .contains("This is a constraint 11. It contradicts [12, 13]"),
+        "{}",
+        e.message
+    );
+    let e = errs.next().unwrap();
+    assert!(
+        e.message
+            .contains("This is a constraint 12. It contradicts [11, 13]"),
+        "{}",
+        e.message
+    );
+    let e = errs.next().unwrap();
+    assert!(
+        e.message
+            .contains("This is a constraint 13. It contradicts [11, 12]"),
+        "{}",
+        e.message
+    );
 }
 
 const NOT_WORKING_LINKED: &str = r#"
