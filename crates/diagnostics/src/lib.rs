@@ -21,6 +21,7 @@ pub enum ErrorType {
     Semantics,
     Type,
     Verification,
+    Emit,
 }
 
 impl Display for ErrorType {
@@ -32,6 +33,7 @@ impl Display for ErrorType {
             ErrorType::Semantics => word("Semantic error"),
             ErrorType::Type => word("Type error"),
             ErrorType::Verification => word("Verification error"),
+            ErrorType::Emit => word("Emitter error"),
         }
     }
 }
@@ -157,6 +159,18 @@ impl Report {
             message,
             additional_info: errs,
             note,
+        }
+    }
+
+    /// Build a report from the verification error.
+    pub fn emit_error(loc: Span, message: String) -> Self {
+        Self {
+            loc,
+            error_type: ErrorType::Emit,
+            level: Level::Error,
+            message,
+            additional_info: vec![],
+            note: String::from("Consider semantically checking the code first."),
         }
     }
 }
