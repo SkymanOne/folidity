@@ -45,6 +45,12 @@ impl Display for Chunk {
 }
 
 impl Chunk {
+    pub fn new_empty(op: Instruction) -> Self {
+        Self {
+            op,
+            constants: vec![],
+        }
+    }
     pub fn new_single(op: Instruction, c: Constant) -> Self {
         Self {
             op,
@@ -62,32 +68,58 @@ impl Chunk {
 pub enum Instruction {
     #[display(fmt = "+")]
     Plus,
+    #[display(fmt = "b+")]
+    BPlus,
     #[display(fmt = "-")]
     Minus,
+    #[display(fmt = "b-")]
+    BMinus,
+    #[display(fmt = "*")]
+    Mul,
+    #[display(fmt = "b*")]
+    BMul,
     #[display(fmt = "/")]
     Div,
+    #[display(fmt = "b/")]
+    BDiv,
     #[display(fmt = "<")]
     Less,
+    #[display(fmt = "b<")]
+    BLess,
     #[display(fmt = ">")]
     More,
+    #[display(fmt = "b>")]
+    BMore,
     #[display(fmt = "<=")]
     LessEq,
+    #[display(fmt = "b<=")]
+    BLessEq,
     #[display(fmt = ">=")]
     MoreEq,
+    #[display(fmt = "b>=")]
+    BMoreEq,
     #[display(fmt = "&&")]
     And,
     #[display(fmt = "||")]
     Or,
     #[display(fmt = "==")]
     Eq,
+    #[display(fmt = "b==")]
+    BEq,
     #[display(fmt = "!=")]
     Neq,
+    #[display(fmt = "b!=")]
+    BNeq,
     #[display(fmt = "!")]
     Not,
     #[display(fmt = "len")]
     Len,
     #[display(fmt = "&")]
     Mod,
+    #[display(fmt = "b&")]
+    BMod,
+    #[display(fmt = "concat")]
+    Concat,
     // todo: bitwise ops
     // here
     #[display(fmt = "pushint")]
