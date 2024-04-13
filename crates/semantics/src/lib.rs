@@ -7,6 +7,7 @@ use functions::resolve_func_body;
 pub use global_symbol::{
     GlobalSymbol,
     SymbolInfo,
+    SymbolKind,
 };
 pub use types::DelayedDeclaration;
 

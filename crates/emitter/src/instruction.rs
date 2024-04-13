@@ -1,6 +1,13 @@
 use std::fmt::Display;
 
 use derive_more::Display;
+use folidity_semantics::ast::TypeVariant;
+
+#[derive(Debug, Clone)]
+pub struct FuncInfo {
+    pub sig: String,
+    pub return_size: u64,
+}
 
 /// Represents a constant literal in teal bytecode.
 #[derive(Debug, Clone)]
@@ -8,7 +15,7 @@ pub enum Constant {
     Uint(u64),
     Bytes(Vec<u8>),
     String(String),
-    Addr(String),
+    StringLit(String),
 }
 
 impl Display for Constant {
@@ -20,7 +27,7 @@ impl Display for Constant {
                 write!(f, "{}", hex_str)
             }
             Constant::String(s) => write!(f, "\"{}\"", s),
-            Constant::Addr(s) => write!(f, "{}", s),
+            Constant::StringLit(s) => write!(f, "{}", s),
         }
     }
 }
@@ -120,8 +127,7 @@ pub enum Instruction {
     BMod,
     #[display(fmt = "concat")]
     Concat,
-    // todo: bitwise ops
-    // here
+
     #[display(fmt = "pushint")]
     PushInt,
     #[display(fmt = "pushbytes")]
@@ -129,8 +135,20 @@ pub enum Instruction {
     #[display(fmt = "addr")]
     PushAddr,
 
+    #[display(fmt = "bzero")]
+    ArrayInit,
     #[display(fmt = "store")]
     Store,
     #[display(fmt = "load")]
     Load,
+    #[display(fmt = "replace")]
+    Replace,
+    #[display(fmt = "extract")]
+    Extract,
+
+    #[display(fmt = "callsub")]
+    CallSub,
+
+    #[display(fmt = "assert")]
+    Assert,
 }

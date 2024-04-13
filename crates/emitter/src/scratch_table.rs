@@ -10,8 +10,8 @@ use crate::teal::TealEmitter;
 pub struct ScratchVariable {
     /// position in the scratch table.
     pub index: u8,
-    /// Type of a variable.
-    pub ty: folidity_semantics::ast::TypeVariant,
+    /// size of a variable.
+    pub size: u64,
 }
 
 /// Table of values stores in the scratch space.
@@ -35,20 +35,9 @@ impl ScratchTable {
     // }
 
     /// Add variable to the virtual scratch table.
-    pub fn add_var(
-        &mut self,
-        var_no: usize,
-        var_sym: &VariableSym,
-        emitter: &mut TealEmitter,
-    ) -> u8 {
+    pub fn add_var(&mut self, var_no: usize, size: u64, emitter: &mut TealEmitter) -> u8 {
         let index = emitter.scratch_index;
-        self.vars.insert(
-            var_no,
-            ScratchVariable {
-                index,
-                ty: var_sym.ty.clone(),
-            },
-        );
+        self.vars.insert(var_no, ScratchVariable { index, size });
         emitter.scratch_index += 1;
         index
     }

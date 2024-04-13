@@ -8,6 +8,7 @@ use indexmap::IndexMap;
 
 use crate::instruction::{
     Chunk,
+    FuncInfo,
     Instruction,
 };
 
@@ -26,7 +27,8 @@ pub struct TealEmitter<'a> {
     /// List of chunks that are emitted into the final build.
     chunks: Vec<Chunk>,
     /// Mapping from function symbol to its teal method signature.
-    func_sig: IndexMap<SymbolInfo, String>,
+    pub func_infos: IndexMap<SymbolInfo, FuncInfo>,
+    /// Errors and warning caused during emit process.
     pub diagnostics: Vec<Report>,
     /// Index for scratch space variable.
     ///
@@ -39,7 +41,7 @@ impl<'a> TealEmitter<'a> {
         Self {
             definition,
             chunks: vec![],
-            func_sig: IndexMap::new(),
+            func_infos: IndexMap::new(),
             diagnostics: vec![],
             scratch_index: 0,
         }
