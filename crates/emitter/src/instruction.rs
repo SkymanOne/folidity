@@ -10,7 +10,7 @@ pub struct FuncInfo {
 }
 
 /// Represents a constant literal in teal bytecode.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Constant {
     Uint(u64),
     Bytes(Vec<u8>),
@@ -33,7 +33,7 @@ impl Display for Constant {
 }
 
 /// Represents a chunk of code of teal AVM bytecode.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Chunk {
     pub op: Instruction,
     pub constants: Vec<Constant>,
@@ -71,7 +71,7 @@ impl Chunk {
 }
 
 /// Represents AVM teal opcode from https://developer.algorand.org/docs/get-details/dapps/avm/teal/opcodes/v10/
-#[derive(Debug, Clone, Display)]
+#[derive(Debug, Clone, Display, PartialEq)]
 pub enum Instruction {
     #[display(fmt = "")]
     Empty,

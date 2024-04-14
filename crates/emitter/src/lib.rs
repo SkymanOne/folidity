@@ -13,6 +13,9 @@ mod instruction;
 mod scratch_table;
 mod teal;
 
+#[cfg(test)]
+mod tests;
+
 impl<'a> Runner<ContractDefinition, TealArtifacts> for TealEmitter<'a> {
     fn run(source: &ContractDefinition) -> Result<TealArtifacts, CompilationError>
     where

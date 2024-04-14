@@ -41,10 +41,10 @@ use crate::{
 /// Arguments for the expression emitter.
 #[derive(Debug)]
 pub struct EmitExprArgs<'a> {
-    scratch: &'a mut ScratchTable,
-    diagnostics: &'a mut Vec<Report>,
-    emitter: &'a mut TealEmitter<'a>,
-    concrete_vars: IndexMap<usize, Vec<Chunk>>,
+    pub scratch: &'a mut ScratchTable,
+    pub diagnostics: &'a mut Vec<Report>,
+    pub emitter: &'a mut TealEmitter<'a>,
+    pub concrete_vars: IndexMap<usize, Vec<Chunk>>,
 }
 
 /// Emit expression returning the len of the type in bytes.
