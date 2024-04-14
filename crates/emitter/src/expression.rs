@@ -32,6 +32,7 @@ use crate::{
         Chunk,
         Constant,
         Instruction,
+        TypeSizeHint,
     },
     scratch_table::ScratchTable,
     teal::TealEmitter,
@@ -92,7 +93,7 @@ pub fn emit_expression(
         // Complex
         Expression::FunctionCall(f) => func_call(f, chunks, args),
         Expression::In(b) => todo!(),
-        Expression::MemberAccess(m) => todo!(),
+        Expression::MemberAccess(m) => member_access(m, chunks, args),
         Expression::StructInit(s) => struct_init(s, chunks, args),
         Expression::List(u) => list(u, chunks, args),
     }
@@ -103,7 +104,142 @@ fn member_access(
     chunks: &mut Vec<Chunk>,
     args: &mut EmitExprArgs,
 ) -> Result<u64, ()> {
-    todo!()
+    let mut load_chunks = vec![];
+    // load data arr
+    let _ = emit_expression(&m.expr, &mut load_chunks, args)?;
+
+    match m.expr.ty() {
+        TypeVariant::Struct(sym) => {
+            let struct_decl = &args.emitter.definition.structs[sym.i];
+            extract_field_data(&struct_decl.fields, m.member.0, &load_chunks, chunks, args);
+        }
+        TypeVariant::Model(sym) => {
+            let model_decl = &args.emitter.definition.models[sym.i];
+            extract_field_data(
+                &model_decl.fields(args.emitter.definition),
+                m.member.0,
+                &load_chunks,
+                chunks,
+                args,
+            );
+        }
+        TypeVariant::State(sym) => {
+            let state_decl = &args.emitter.definition.states[sym.i];
+            extract_field_data(
+                &state_decl.fields(args.emitter.definition),
+                m.member.0,
+                &load_chunks,
+                chunks,
+                args,
+            );
+        }
+        _ => unimplemented!(),
+    };
+
+    Ok(0)
+}
+
+fn extract_field_data(
+    fields: &[Param],
+    f_n: usize,
+    load_chunks: &[Chunk],
+    chunks: &mut Vec<Chunk>,
+    args: &mut EmitExprArgs,
+) {
+    let mut offset_chunks = vec![Chunk::new_single(Instruction::PushInt, Constant::Uint(0))];
+    let current_i = args.emitter.scratch_index as u64;
+
+    for (i, f) in fields.iter().enumerate() {
+        if i == f_n {
+            // load data
+            offset_chunks.extend_from_slice(load_chunks);
+            // load current offset from the temp location.
+            offset_chunks.push(Chunk::new_single(
+                Instruction::Load,
+                Constant::Uint(current_i),
+            ));
+            match &f.ty.ty {
+                // for bool and char, we can just extract u64 directly.
+                TypeVariant::Bool | TypeVariant::Char => {
+                    offset_chunks.push(Chunk::new_empty(Instruction::ExtractUint))
+                }
+                // for address we can extract 32 bytes precisely.
+                TypeVariant::Address => {
+                    offset_chunks.push(Chunk::new_single(Instruction::PushInt, Constant::Uint(32)));
+                    offset_chunks.push(Chunk::new_empty(Instruction::Extract3));
+                }
+                // for any other types, we need to read size and then read the contents.
+                _ => {
+                    // Push 8 byte offset
+                    offset_chunks.push(Chunk::new_single(Instruction::PushInt, Constant::Uint(8)));
+                    // current_offset + 8 = offset of the size value for the field.
+                    offset_chunks.push(Chunk::new_empty(Instruction::Plus));
+
+                    // extract size value.
+                    offset_chunks.push(Chunk::new_empty(Instruction::ExtractUint));
+
+                    let size_i = current_i + 1;
+                    // store the size value in the next temp location.
+                    offset_chunks
+                        .push(Chunk::new_single(Instruction::Load, Constant::Uint(size_i)));
+
+                    // load data
+                    offset_chunks.extend_from_slice(load_chunks);
+                    // load current offset from the temp location.
+                    offset_chunks.push(Chunk::new_single(
+                        Instruction::Load,
+                        Constant::Uint(current_i),
+                    ));
+                    // Push 16 byte offset
+                    offset_chunks.push(Chunk::new_single(Instruction::PushInt, Constant::Uint(16)));
+                    // current_offset + 16 = offset of the data of the field.
+                    offset_chunks.push(Chunk::new_empty(Instruction::Plus));
+                    // load the size value from scratch
+                    offset_chunks
+                        .push(Chunk::new_single(Instruction::Load, Constant::Uint(size_i)));
+                    // extract data
+                    offset_chunks.push(Chunk::new_empty(Instruction::Extract3));
+                }
+            };
+
+            break;
+        }
+
+        if let Some(size) = f.ty.ty.size_hint() {
+            offset_chunks.push(Chunk::new_single(
+                Instruction::PushInt,
+                Constant::Uint(size),
+            ));
+        } else {
+            // use current index as a temporary location.
+            // store current offset
+            offset_chunks.push(Chunk::new_single(
+                Instruction::Store,
+                Constant::Uint(current_i),
+            ));
+            // insert load instruction for the storage.
+            offset_chunks.extend_from_slice(load_chunks);
+            // load current offset
+            offset_chunks.push(Chunk::new_single(
+                Instruction::Load,
+                Constant::Uint(current_i),
+            ));
+            // duplicate offset
+            offset_chunks.push(Chunk::new_empty(Instruction::Dup));
+            // extract capacity uint64 capacity value for the field
+            offset_chunks.push(Chunk::new_empty(Instruction::ExtractUint));
+        }
+
+        // add previous two values.
+        offset_chunks.push(Chunk::new_empty(Instruction::Plus));
+        // store value in temp location.
+        offset_chunks.push(Chunk::new_single(
+            Instruction::Store,
+            Constant::Uint(current_i),
+        ));
+    }
+
+    chunks.extend(offset_chunks);
 }
 
 fn struct_init(
@@ -321,8 +457,8 @@ fn emit_init_args(
             ));
             start_i += 8;
 
-            // the actual size of the field has increased by 16 bytes.
-            size += 16;
+            // the actual size of the field has increased twice + 16 bytes.
+            size = (size * 2) + 16;
         }
 
         // push expression.
@@ -354,12 +490,27 @@ fn list(
     chunks: &mut Vec<Chunk>,
     args: &mut EmitExprArgs,
 ) -> Result<u64, ()> {
+    if u.element.is_empty() {
+        chunks.push(Chunk::new_single(Instruction::PushInt, Constant::Uint(0)));
+        chunks.push(Chunk::new_empty(Instruction::ArrayInit));
+        return Ok(0);
+    }
+
     let mut list_chunks: Vec<Chunk> = vec![];
     let mut error = false;
     let mut size = 0;
+    let first_elem = &u.element[0];
+    if let Ok(s) = emit_expression(first_elem, &mut list_chunks, args) {
+        // after every second element we want to concat them together
+        size += s;
+    } else {
+        error |= true;
+    }
 
-    for e in &u.element {
+    for e in u.element.iter().skip(1) {
         if let Ok(s) = emit_expression(e, &mut list_chunks, args) {
+            // after first element we want to concat with the previous result.
+            list_chunks.push(Chunk::new_empty(Instruction::Concat));
             size += s;
         } else {
             error |= true;
@@ -857,7 +1008,7 @@ fn address(
     Ok(32)
 }
 
-/// Handle enum literals, we construct it from `bytes(enums_name + byte(variant_number)`
+/// Handle enum literals, we construct it from `bytes(enums_name) + byte(variant_number)`
 fn enum_(
     u: &UnaryExpression<usize>,
     chunks: &mut Vec<Chunk>,

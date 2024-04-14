@@ -160,4 +160,24 @@ pub enum Instruction {
     Assert,
     #[display(fmt = "itob")]
     Itob,
+    #[display(fmt = "dup")]
+    Dup,
+}
+
+pub trait TypeSizeHint {
+    /// Hints the compiler the type size if known at compile time.
+    fn size_hint(&self) -> Option<u64>;
+}
+
+impl TypeSizeHint for TypeVariant {
+    fn size_hint(&self) -> Option<u64> {
+        match self {
+            TypeVariant::Char => Some(8),
+            TypeVariant::Address => Some(32),
+            TypeVariant::Unit => Some(0),
+            TypeVariant::Bool => Some(8),
+            TypeVariant::Function(f) => f.returns.size_hint(),
+            _ => None,
+        }
+    }
 }
