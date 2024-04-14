@@ -6,17 +6,17 @@ use folidity_diagnostics::{
 use folidity_semantics::{
     ast::{
         BinaryExpression,
+        Bounds,
         Expression,
         FunctionCall,
+        MemberAccess,
+        Param,
+        StateBody,
         StructInit,
-        Type,
         TypeVariant,
         UnaryExpression,
     },
     symtable::Scope,
-    ContractDefinition,
-    SymbolInfo,
-    SymbolKind,
 };
 use indexmap::IndexMap;
 use num_bigint::{
@@ -92,10 +92,18 @@ pub fn emit_expression(
         // Complex
         Expression::FunctionCall(f) => func_call(f, chunks, args),
         Expression::In(b) => todo!(),
-        Expression::MemberAccess(_) => todo!(),
+        Expression::MemberAccess(m) => todo!(),
         Expression::StructInit(s) => struct_init(s, chunks, args),
         Expression::List(u) => list(u, chunks, args),
     }
+}
+
+fn member_access(
+    m: &MemberAccess,
+    chunks: &mut Vec<Chunk>,
+    args: &mut EmitExprArgs,
+) -> Result<u64, ()> {
+    todo!()
 }
 
 fn struct_init(
@@ -109,69 +117,152 @@ fn struct_init(
         }
         TypeVariant::Model(sym) => {
             let mut local_chunks = vec![];
-            let sizes = emit_init_args(s, &mut local_chunks, args)?;
-
             let model_decl = &args.emitter.definition.models[sym.i];
-            if let Some(bounds) = &model_decl.bounds {
-                let arr_index = args.emitter.scratch_index as u64;
-                local_chunks.push(Chunk::new_single(
-                    Instruction::Store,
-                    Constant::Uint(arr_index),
-                ));
+            struct_arr_load(
+                s,
+                &model_decl.scope,
+                &model_decl.fields(args.emitter.definition),
+                &model_decl.bounds,
+                &mut local_chunks,
+                args,
+            )?;
 
-                for (i, f) in model_decl
-                    .fields(args.emitter.definition)
-                    .iter()
-                    .enumerate()
-                {
-                    let (var_n, _) = &model_decl
-                        .scope
-                        .find_var_index(&f.name.name)
-                        .expect("should exist");
-
-                    let skip_size: u64 = sizes.iter().take(i).sum();
-                    let take_size = sizes[i];
-                    let var_access_chunks = vec![
-                        Chunk::new_single(Instruction::Load, Constant::Uint(arr_index)),
-                        Chunk::new_multiple(
-                            Instruction::Extract,
-                            vec![Constant::Uint(skip_size), Constant::Uint(take_size)],
-                        ),
-                    ];
-
-                    args.concrete_vars.insert(*var_n, var_access_chunks);
-                }
-
-                let mut bounds_chunks = vec![];
-                let mut err = false;
-                for e in &bounds.exprs {
-                    err |= emit_expression(e, &mut bounds_chunks, args).is_err();
-                    bounds_chunks.push(Chunk::new_empty(Instruction::Assert));
-                }
-
-                if err {
-                    args.diagnostics.push(Report::ver_error(
-                        s.loc.clone(),
-                        "Error bounds in initialisation of a model.".to_string(),
-                    ));
-                    return Err(());
-                }
-
-                local_chunks.extend(bounds_chunks);
-
-                local_chunks.push(Chunk::new_single(
-                    Instruction::Load,
-                    Constant::Uint(arr_index),
-                ));
-
-                chunks.extend(local_chunks);
-            }
+            add_padding(&mut local_chunks);
+            chunks.extend(local_chunks);
 
             Ok(0)
         }
-        TypeVariant::State(sym) => todo!(),
+        TypeVariant::State(sym) => {
+            let state_decl = &args.emitter.definition.states[sym.i];
+            let Some(body) = &state_decl.body else {
+                // todo: init state.
+                return Ok(0);
+            };
+
+            match body {
+                StateBody::Raw(fields) => {
+                    let mut local_chunks = vec![];
+                    struct_arr_load(
+                        s,
+                        &state_decl.scope,
+                        fields,
+                        &state_decl.bounds,
+                        &mut local_chunks,
+                        args,
+                    )?;
+                }
+                // todo: rethink approach
+                StateBody::Model(sym_m) => {
+                    let mut local_chunks = vec![];
+                    let model_decl = &args.emitter.definition.models[sym_m.i];
+                    struct_arr_load(
+                        s,
+                        &model_decl.scope,
+                        &model_decl.fields(args.emitter.definition),
+                        &model_decl.bounds,
+                        &mut local_chunks,
+                        args,
+                    )?;
+
+                    add_padding(&mut local_chunks);
+                    chunks.extend(local_chunks);
+                }
+            };
+
+            Ok(0)
+        }
         _ => unreachable!(),
     }
+}
+
+fn struct_arr_load(
+    s: &StructInit,
+    scope: &Scope,
+    fields: &[Param],
+    bounds: &Option<Bounds>,
+    chunks: &mut Vec<Chunk>,
+    args: &mut EmitExprArgs,
+) -> Result<(), ()> {
+    let sizes = emit_init_args(s, chunks, args)?;
+
+    if let Some(bounds) = &bounds {
+        let arr_index = args.emitter.scratch_index as u64;
+        chunks.push(Chunk::new_single(
+            Instruction::Store,
+            Constant::Uint(arr_index),
+        ));
+
+        for (i, f) in fields.iter().enumerate() {
+            let (var_n, _) = &scope.find_var_index(&f.name.name).expect("should exist");
+
+            let load_chunk = Chunk::new_single(Instruction::Load, Constant::Uint(arr_index));
+
+            if f.ty.ty.is_resizable() {
+                let mut skip_size = sizes.iter().take(i).sum::<u64>() + 8;
+                // get size int
+                let skip_size_chunk =
+                    Chunk::new_single(Instruction::PushInt, Constant::Uint(skip_size));
+                let extract_int_chunk = Chunk::new_empty(Instruction::ExtractUint);
+                skip_size += 8;
+                let skip_data_chunk =
+                    Chunk::new_single(Instruction::PushInt, Constant::Uint(skip_size));
+
+                // load arr -> push start position -> (load arr -> push size chunk pos -> extract
+                // u64) -> extract3
+                let var_access_chunks = vec![
+                    // load arr_index
+                    load_chunk.clone(),
+                    // pushint pos+16
+                    skip_data_chunk,
+                    // load arr_index
+                    load_chunk,
+                    // pushint pos+8
+                    skip_size_chunk,
+                    // extract_uint64
+                    extract_int_chunk,
+                    // extract 3 (arr )
+                    Chunk::new_empty(Instruction::Extract3),
+                ];
+
+                args.concrete_vars.insert(*var_n, var_access_chunks);
+            } else {
+                let skip_size: u64 = sizes.iter().take(i).sum();
+                let take_size = sizes[i];
+                let var_access_chunks = vec![
+                    load_chunk,
+                    Chunk::new_multiple(
+                        Instruction::Extract,
+                        vec![Constant::Uint(skip_size), Constant::Uint(take_size)],
+                    ),
+                ];
+
+                args.concrete_vars.insert(*var_n, var_access_chunks);
+            }
+        }
+
+        let mut bounds_chunks = vec![];
+        let mut err = false;
+        for e in &bounds.exprs {
+            err |= emit_expression(e, &mut bounds_chunks, args).is_err();
+            bounds_chunks.push(Chunk::new_empty(Instruction::Assert));
+        }
+
+        if err {
+            args.diagnostics.push(Report::ver_error(
+                s.loc.clone(),
+                "Error bounds in initialisation of a model.".to_string(),
+            ));
+            return Err(());
+        }
+
+        chunks.extend(bounds_chunks);
+
+        chunks.push(Chunk::new_single(
+            Instruction::Load,
+            Constant::Uint(arr_index),
+        ));
+    }
+    Ok(())
 }
 
 fn emit_init_args(
@@ -198,23 +289,64 @@ fn emit_init_args(
         return Err(());
     }
 
-    local_chunks = vec![Chunk::new_single(
-        Instruction::ArrayInit,
-        Constant::Uint(args_sizes.iter().sum()),
-    )];
+    local_chunks = vec![];
 
     let mut start_i = 0;
-    for e in &s.args {
-        let s = emit_expression(e, &mut local_chunks, args).expect("should be valid");
+    let mut storage_sizes = vec![];
+    for (e, s) in s.args.iter().zip(&args_sizes) {
+        // actual size of the field.
+        let mut size = *s;
+
+        // add dynamic sizing for the resizable types.
+        if e.ty().is_resizable() {
+            let capacity_chunk = Chunk::new_single(Instruction::PushInt, Constant::Uint(*s * 2));
+            let size_chunk = Chunk::new_single(Instruction::PushInt, Constant::Uint(*s));
+            let itob = Chunk::new_empty(Instruction::Itob);
+
+            // first push capacity chunk
+            local_chunks.push(capacity_chunk);
+            local_chunks.push(itob.clone());
+            local_chunks.push(Chunk::new_single(
+                Instruction::Replace,
+                Constant::Uint(start_i),
+            ));
+            start_i += 8;
+
+            // then push size chunk
+            local_chunks.push(size_chunk);
+            local_chunks.push(itob);
+            local_chunks.push(Chunk::new_single(
+                Instruction::Replace,
+                Constant::Uint(start_i),
+            ));
+            start_i += 8;
+
+            // the actual size of the field has increased by 16 bytes.
+            size += 16;
+        }
+
+        // push expression.
+        let _ = emit_expression(e, &mut local_chunks, args).expect("should be valid");
         local_chunks.push(Chunk::new_single(
             Instruction::Replace,
             Constant::Uint(start_i),
         ));
         start_i += s;
+
+        storage_sizes.push(size);
     }
 
+    local_chunks.insert(
+        0,
+        Chunk::new_single(
+            Instruction::ArrayInit,
+            Constant::Uint(storage_sizes.iter().sum()),
+        ),
+    );
+
+    add_padding(&mut local_chunks);
     chunks.extend(local_chunks);
-    Ok(args_sizes)
+    Ok(storage_sizes)
 }
 
 fn list(
@@ -306,6 +438,7 @@ fn add(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -
     };
 
     local_chunks.push(Chunk::new_empty(op));
+    add_padding(&mut local_chunks);
     chunks.extend(local_chunks);
 
     Ok(s1.max(s2))
@@ -330,6 +463,7 @@ fn sub(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -
     };
 
     local_chunks.push(Chunk::new_empty(op));
+    add_padding(&mut local_chunks);
     chunks.extend(local_chunks);
 
     Ok(s1.max(s2))
@@ -354,6 +488,7 @@ fn mul(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -
     };
 
     local_chunks.push(Chunk::new_empty(op));
+    add_padding(&mut local_chunks);
     chunks.extend(local_chunks);
 
     Ok(s1.max(s2))
@@ -378,6 +513,7 @@ fn div(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -
     };
 
     local_chunks.push(Chunk::new_empty(op));
+    add_padding(&mut local_chunks);
     chunks.extend(local_chunks);
 
     Ok(s1.max(s2))
@@ -404,6 +540,7 @@ fn modulo(
     };
 
     local_chunks.push(Chunk::new_empty(op));
+    add_padding(&mut local_chunks);
     chunks.extend(local_chunks);
 
     Ok(s1.max(s2))
@@ -426,6 +563,7 @@ fn le(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) ->
     };
 
     local_chunks.push(Chunk::new_empty(op));
+    add_padding(&mut local_chunks);
     chunks.extend(local_chunks);
 
     Ok(8)
@@ -448,6 +586,7 @@ fn leq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -
     };
 
     local_chunks.push(Chunk::new_empty(op));
+    add_padding(&mut local_chunks);
     chunks.extend(local_chunks);
 
     Ok(8)
@@ -470,6 +609,7 @@ fn ge(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) ->
     };
 
     local_chunks.push(Chunk::new_empty(op));
+    add_padding(&mut local_chunks);
     chunks.extend(local_chunks);
 
     Ok(8)
@@ -492,6 +632,7 @@ fn geq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -
     };
 
     local_chunks.push(Chunk::new_empty(op));
+    add_padding(&mut local_chunks);
     chunks.extend(local_chunks);
 
     Ok(8)
@@ -504,6 +645,7 @@ fn eq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) ->
     emit_expression(&b.right, &mut local_chunks, args)?;
 
     local_chunks.push(Chunk::new_empty(Instruction::BEq));
+    add_padding(&mut local_chunks);
     chunks.extend(local_chunks);
 
     Ok(8)
@@ -516,6 +658,7 @@ fn neq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -
     emit_expression(&b.right, &mut local_chunks, args)?;
 
     local_chunks.push(Chunk::new_empty(Instruction::BNeq));
+    add_padding(&mut local_chunks);
     chunks.extend(local_chunks);
 
     Ok(8)
@@ -541,6 +684,7 @@ fn not(
     };
 
     local_chunks.push(Chunk::new_empty(op));
+    add_padding(&mut local_chunks);
     chunks.extend(local_chunks);
 
     Ok(8)
@@ -563,6 +707,7 @@ fn or(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) ->
     };
 
     local_chunks.push(Chunk::new_empty(op));
+    add_padding(&mut local_chunks);
     chunks.extend(local_chunks);
 
     Ok(8)
@@ -585,6 +730,7 @@ fn and(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -
     };
 
     local_chunks.push(Chunk::new_empty(op));
+    add_padding(&mut local_chunks);
     chunks.extend(local_chunks);
 
     Ok(8)
@@ -775,4 +921,9 @@ fn add_one_to_integer(bytes: &mut [u8]) -> bool {
 
     // If carry is still 1 here, it means the addition resulted in an overflow.
     carry == 1
+}
+
+fn add_padding(chunks: &mut Vec<Chunk>) {
+    chunks.insert(0, Chunk::new_empty(Instruction::Empty));
+    chunks.push(Chunk::new_empty(Instruction::Empty));
 }

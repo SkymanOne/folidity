@@ -73,6 +73,9 @@ impl Chunk {
 /// Represents AVM teal opcode from https://developer.algorand.org/docs/get-details/dapps/avm/teal/opcodes/v10/
 #[derive(Debug, Clone, Display)]
 pub enum Instruction {
+    #[display(fmt = "")]
+    Empty,
+
     #[display(fmt = "+")]
     Plus,
     #[display(fmt = "b+")]
@@ -145,10 +148,16 @@ pub enum Instruction {
     Replace,
     #[display(fmt = "extract")]
     Extract,
+    #[display(fmt = "extract3")]
+    Extract3,
+    #[display(fmt = "extract_uint64")]
+    ExtractUint,
 
     #[display(fmt = "callsub")]
     CallSub,
 
     #[display(fmt = "assert")]
     Assert,
+    #[display(fmt = "itob")]
+    Itob,
 }
