@@ -2,9 +2,11 @@ use folidity_diagnostics::Report;
 use folidity_semantics::{
     ContractDefinition,
     GlobalSymbol,
+    Span,
     SymbolInfo,
 };
 use indexmap::IndexMap;
+use num_traits::CheckedAdd;
 
 use crate::instruction::{
     Chunk,
@@ -45,5 +47,17 @@ impl<'a> TealEmitter<'a> {
             diagnostics: vec![],
             scratch_index: 0,
         }
+    }
+
+    pub fn scratch_index_incr(&mut self) -> Result<u8, ()> {
+        let i = self.scratch_index;
+        self.scratch_index.checked_add(1).ok_or_else(|| {
+            self.diagnostics.push(Report::emit_error(
+                Span::default(),
+                "Exceeded variable count".to_string(),
+            ))
+        })?;
+
+        Ok(i)
     }
 }

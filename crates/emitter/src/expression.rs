@@ -92,11 +92,19 @@ pub fn emit_expression(
 
         // Complex
         Expression::FunctionCall(f) => func_call(f, chunks, args),
-        Expression::In(b) => todo!(),
+        Expression::In(b) => in_(b, chunks, args),
         Expression::MemberAccess(m) => member_access(m, chunks, args),
         Expression::StructInit(s) => struct_init(s, chunks, args),
         Expression::List(u) => list(u, chunks, args),
     }
+}
+
+fn in_(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -> Result<u64, ()> {
+    args.diagnostics.push(Report::emit_error(
+        b.loc.clone(),
+        "Unsupported currently".to_string(),
+    ));
+    Err(())
 }
 
 fn member_access(
@@ -111,7 +119,7 @@ fn member_access(
     match m.expr.ty() {
         TypeVariant::Struct(sym) => {
             let struct_decl = &args.emitter.definition.structs[sym.i];
-            extract_field_data(&struct_decl.fields, m.member.0, &load_chunks, chunks, args);
+            extract_field_data(&struct_decl.fields, m.member.0, &load_chunks, chunks, args)?;
         }
         TypeVariant::Model(sym) => {
             let model_decl = &args.emitter.definition.models[sym.i];
@@ -121,7 +129,7 @@ fn member_access(
                 &load_chunks,
                 chunks,
                 args,
-            );
+            )?;
         }
         TypeVariant::State(sym) => {
             let state_decl = &args.emitter.definition.states[sym.i];
@@ -131,7 +139,7 @@ fn member_access(
                 &load_chunks,
                 chunks,
                 args,
-            );
+            )?;
         }
         _ => unimplemented!(),
     };
@@ -145,9 +153,9 @@ fn extract_field_data(
     load_chunks: &[Chunk],
     chunks: &mut Vec<Chunk>,
     args: &mut EmitExprArgs,
-) {
+) -> Result<(), ()> {
     let mut offset_chunks = vec![Chunk::new_single(Instruction::PushInt, Constant::Uint(0))];
-    let current_i = args.emitter.scratch_index as u64;
+    let current_i = args.emitter.scratch_index_incr()? as u64;
 
     for (i, f) in fields.iter().enumerate() {
         if i == f_n {
@@ -178,7 +186,7 @@ fn extract_field_data(
                     // extract size value.
                     offset_chunks.push(Chunk::new_empty(Instruction::ExtractUint));
 
-                    let size_i = current_i + 1;
+                    let size_i = args.emitter.scratch_index_incr()? as u64;
                     // store the size value in the next temp location.
                     offset_chunks
                         .push(Chunk::new_single(Instruction::Load, Constant::Uint(size_i)));
@@ -240,6 +248,10 @@ fn extract_field_data(
     }
 
     chunks.extend(offset_chunks);
+    // revert var counter to override the unused variables in future.
+    args.emitter.scratch_index = current_i as u8;
+
+    Ok(())
 }
 
 fn struct_init(
@@ -322,7 +334,7 @@ fn struct_arr_load(
     let sizes = emit_init_args(s, chunks, args)?;
 
     if let Some(bounds) = &bounds {
-        let arr_index = args.emitter.scratch_index as u64;
+        let arr_index = args.emitter.scratch_index_incr()? as u64;
         chunks.push(Chunk::new_single(
             Instruction::Store,
             Constant::Uint(arr_index),
@@ -397,6 +409,9 @@ fn struct_arr_load(
             Instruction::Load,
             Constant::Uint(arr_index),
         ));
+
+        // revert var counter to override the unused variables in future.
+        args.emitter.scratch_index = arr_index as u8;
     }
     Ok(())
 }
