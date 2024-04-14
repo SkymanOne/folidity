@@ -13,14 +13,14 @@ use num_bigint::BigUint;
 use num_traits::FromPrimitive;
 
 use crate::{
-    expression::{
-        emit_expression,
-        EmitExprArgs,
-    },
-    instruction::{
+    ast::{
         Chunk,
         Constant,
         Instruction,
+    },
+    expression::{
+        emit_expression,
+        EmitExprArgs,
     },
     scratch_table::ScratchTable,
     teal::TealEmitter,
@@ -35,7 +35,7 @@ fn simple_exprs() {
         scratch: &mut ScratchTable::default(),
         diagnostics: &mut vec![],
         emitter: &mut emitter,
-        concrete_vars: IndexMap::default(),
+        concrete_vars: &mut IndexMap::default(),
     };
 
     let loc = Span { start: 0, end: 0 };

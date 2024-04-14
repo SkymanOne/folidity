@@ -28,7 +28,8 @@ use num_rational::BigRational;
 use num_traits::ToPrimitive;
 
 use crate::{
-    instruction::{
+    add_padding,
+    ast::{
         Chunk,
         Constant,
         Instruction,
@@ -40,11 +41,11 @@ use crate::{
 
 /// Arguments for the expression emitter.
 #[derive(Debug)]
-pub struct EmitExprArgs<'a> {
-    pub scratch: &'a mut ScratchTable,
-    pub diagnostics: &'a mut Vec<Report>,
-    pub emitter: &'a mut TealEmitter<'a>,
-    pub concrete_vars: IndexMap<usize, Vec<Chunk>>,
+pub struct EmitExprArgs<'a, 'b> {
+    pub scratch: &'b mut ScratchTable,
+    pub diagnostics: &'b mut Vec<Report>,
+    pub emitter: &'b mut TealEmitter<'a>,
+    pub concrete_vars: &'b mut IndexMap<usize, Vec<Chunk>>,
 }
 
 /// Emit expression returning the len of the type in bytes.
@@ -99,6 +100,7 @@ pub fn emit_expression(
     }
 }
 
+// todo: write a support teal function to checking inclusion and use it here.
 fn in_(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -> Result<u64, ()> {
     args.diagnostics.push(Report::emit_error(
         b.loc.clone(),
@@ -562,14 +564,14 @@ fn func_call(
         .definition
         .declaration_symbols
         .get(&f.name.name)
-        .expect("should exisy")
+        .expect("should exist")
         .symbol_info();
 
     let size = &args
         .emitter
         .func_infos
         .get(func_sym)
-        .expect("Should exist")
+        .expect("should exist")
         .return_size;
 
     chunks.extend(arg_chunks);
@@ -1087,9 +1089,4 @@ fn add_one_to_integer(bytes: &mut [u8]) -> bool {
 
     // If carry is still 1 here, it means the addition resulted in an overflow.
     carry == 1
-}
-
-fn add_padding(chunks: &mut Vec<Chunk>) {
-    chunks.insert(0, Chunk::new_empty(Instruction::Empty));
-    chunks.push(Chunk::new_empty(Instruction::Empty));
 }

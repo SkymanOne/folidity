@@ -8,7 +8,7 @@ use folidity_semantics::{
 use indexmap::IndexMap;
 use num_traits::CheckedAdd;
 
-use crate::instruction::{
+use crate::ast::{
     Chunk,
     FuncInfo,
     Instruction,

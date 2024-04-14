@@ -162,6 +162,16 @@ pub enum Instruction {
     Itob,
     #[display(fmt = "dup")]
     Dup,
+    #[display(fmt = "{}:", _0)]
+    Subroutine(String),
+    #[display(fmt = "retsub")]
+    ReturnSubroutine,
+
+    #[display(fmt = "txn")]
+    Txn,
+
+    #[display(fmt = "box_get")]
+    BoxGet,
 }
 
 pub trait TypeSizeHint {
