@@ -18,7 +18,6 @@ use folidity_semantics::{
     },
     symtable::Scope,
 };
-use indexmap::IndexMap;
 use num_bigint::{
     BigInt,
     Sign,
@@ -35,27 +34,16 @@ use crate::{
         Instruction,
         TypeSizeHint,
     },
-    scratch_table::ScratchTable,
-    teal::TealEmitter,
+    teal::EmitArgs,
 };
 
 type EmitResult = Result<u64, ()>;
-
-/// Arguments for the expression emitter.
-#[derive(Debug)]
-pub struct EmitExprArgs<'a, 'b> {
-    pub scratch: &'b mut ScratchTable,
-    pub diagnostics: &'b mut Vec<Report>,
-    pub emitter: &'b mut TealEmitter<'a>,
-    pub concrete_vars: &'b mut IndexMap<usize, Vec<Chunk>>,
-    pub loop_labels: &'b mut Vec<String>,
-}
 
 /// Emit expression returning the len of the type in bytes.
 pub fn emit_expression(
     expr: &Expression,
     chunks: &mut Vec<Chunk>,
-    args: &mut EmitExprArgs,
+    args: &mut EmitArgs,
 ) -> EmitResult {
     match expr {
         Expression::Variable(u) => var(u, chunks, args),
@@ -104,7 +92,7 @@ pub fn emit_expression(
 }
 
 // todo: write a support teal function to checking inclusion and use it here.
-fn in_(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -> EmitResult {
+fn in_(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     args.diagnostics.push(Report::emit_error(
         b.loc.clone(),
         "Unsupported currently".to_string(),
@@ -112,7 +100,7 @@ fn in_(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -
     Err(())
 }
 
-fn member_access(m: &MemberAccess, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -> EmitResult {
+fn member_access(m: &MemberAccess, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     let mut load_chunks = vec![];
     // load data arr
     let _ = emit_expression(&m.expr, &mut load_chunks, args)?;
@@ -153,7 +141,7 @@ fn extract_field_data(
     f_n: usize,
     load_chunks: &[Chunk],
     chunks: &mut Vec<Chunk>,
-    args: &mut EmitExprArgs,
+    args: &mut EmitArgs,
 ) -> Result<(), ()> {
     let mut offset_chunks = vec![Chunk::new_single(Instruction::PushInt, Constant::Uint(0))];
     let current_i = args.emitter.scratch_index_incr()? as u64;
@@ -255,7 +243,7 @@ fn extract_field_data(
     Ok(())
 }
 
-fn struct_init(s: &StructInit, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -> EmitResult {
+fn struct_init(s: &StructInit, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     match &s.ty {
         TypeVariant::Struct(_) => {
             emit_init_args(s, chunks, args).map(|r| Ok(r.iter().sum::<u64>()))?
@@ -326,7 +314,7 @@ fn struct_arr_load(
     fields: &[Param],
     bounds: &Option<Bounds>,
     chunks: &mut Vec<Chunk>,
-    args: &mut EmitExprArgs,
+    args: &mut EmitArgs,
 ) -> Result<(), ()> {
     let sizes = emit_init_args(s, chunks, args)?;
 
@@ -416,7 +404,7 @@ fn struct_arr_load(
 fn emit_init_args(
     s: &StructInit,
     chunks: &mut Vec<Chunk>,
-    args: &mut EmitExprArgs,
+    args: &mut EmitArgs,
 ) -> Result<Vec<u64>, ()> {
     let mut args_sizes = vec![];
     let mut error = false;
@@ -500,7 +488,7 @@ fn emit_init_args(
 fn list(
     u: &UnaryExpression<Vec<Expression>>,
     chunks: &mut Vec<Chunk>,
-    args: &mut EmitExprArgs,
+    args: &mut EmitArgs,
 ) -> EmitResult {
     if u.element.is_empty() {
         chunks.push(Chunk::new_single(Instruction::PushInt, Constant::Uint(0)));
@@ -538,7 +526,7 @@ fn list(
     Ok(size)
 }
 
-fn func_call(f: &FunctionCall, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -> EmitResult {
+fn func_call(f: &FunctionCall, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     let mut arg_chunks: Vec<Chunk> = vec![];
 
     let mut error = false;
@@ -577,7 +565,7 @@ fn func_call(f: &FunctionCall, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs)
     Ok(*size)
 }
 
-fn add(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -> EmitResult {
+fn add(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     // `left + right` should appear in stack as: `left => right => +`
 
     let mut local_chunks = vec![];
@@ -603,7 +591,7 @@ fn add(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -
     Ok(s1.max(s2))
 }
 
-fn sub(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -> EmitResult {
+fn sub(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     // `left - right` should appear in stack as: `left => right => -`
 
     let mut local_chunks = vec![];
@@ -628,7 +616,7 @@ fn sub(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -
     Ok(s1.max(s2))
 }
 
-fn mul(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -> EmitResult {
+fn mul(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     // `left * right` should appear in stack as: `left => right => *`
 
     let mut local_chunks = vec![];
@@ -653,7 +641,7 @@ fn mul(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -
     Ok(s1.max(s2))
 }
 
-fn div(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -> EmitResult {
+fn div(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     // `left / right` should appear in stack as: `left => right => /`
 
     let mut local_chunks = vec![];
@@ -678,7 +666,7 @@ fn div(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -
     Ok(s1.max(s2))
 }
 
-fn modulo(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -> EmitResult {
+fn modulo(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     let mut local_chunks = vec![];
     let s1 = emit_expression(&b.left, &mut local_chunks, args)?;
     let s2 = emit_expression(&b.right, &mut local_chunks, args)?;
@@ -701,7 +689,7 @@ fn modulo(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs
     Ok(s1.max(s2))
 }
 
-fn le(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -> EmitResult {
+fn le(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     let mut local_chunks = vec![];
     emit_expression(&b.left, &mut local_chunks, args)?;
     emit_expression(&b.right, &mut local_chunks, args)?;
@@ -724,7 +712,7 @@ fn le(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) ->
     Ok(8)
 }
 
-fn leq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -> EmitResult {
+fn leq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     let mut local_chunks = vec![];
     emit_expression(&b.left, &mut local_chunks, args)?;
     emit_expression(&b.right, &mut local_chunks, args)?;
@@ -747,7 +735,7 @@ fn leq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -
     Ok(8)
 }
 
-fn ge(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -> EmitResult {
+fn ge(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     let mut local_chunks = vec![];
     emit_expression(&b.left, &mut local_chunks, args)?;
     emit_expression(&b.right, &mut local_chunks, args)?;
@@ -770,7 +758,7 @@ fn ge(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) ->
     Ok(8)
 }
 
-fn geq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -> EmitResult {
+fn geq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     let mut local_chunks = vec![];
     emit_expression(&b.left, &mut local_chunks, args)?;
     emit_expression(&b.right, &mut local_chunks, args)?;
@@ -793,7 +781,7 @@ fn geq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -
     Ok(8)
 }
 
-fn eq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -> EmitResult {
+fn eq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     // `left == right` should appear in stack as: `left => right => ==`
     let mut local_chunks = vec![];
     emit_expression(&b.left, &mut local_chunks, args)?;
@@ -806,7 +794,7 @@ fn eq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) ->
     Ok(8)
 }
 
-fn neq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -> EmitResult {
+fn neq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     // `left != right` should appear in stack as: `left => right => !=`
     let mut local_chunks = vec![];
     emit_expression(&b.left, &mut local_chunks, args)?;
@@ -822,7 +810,7 @@ fn neq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -
 fn not(
     u: &UnaryExpression<Box<Expression>>,
     chunks: &mut Vec<Chunk>,
-    args: &mut EmitExprArgs,
+    args: &mut EmitArgs,
 ) -> EmitResult {
     let mut local_chunks = vec![];
     emit_expression(&u.element, &mut local_chunks, args)?;
@@ -845,7 +833,7 @@ fn not(
     Ok(8)
 }
 
-fn or(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -> EmitResult {
+fn or(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     let mut local_chunks = vec![];
     emit_expression(&b.left, &mut local_chunks, args)?;
     emit_expression(&b.right, &mut local_chunks, args)?;
@@ -868,7 +856,7 @@ fn or(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) ->
     Ok(8)
 }
 
-fn and(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -> EmitResult {
+fn and(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     let mut local_chunks = vec![];
     emit_expression(&b.left, &mut local_chunks, args)?;
     emit_expression(&b.right, &mut local_chunks, args)?;
@@ -892,7 +880,7 @@ fn and(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -
 }
 
 /// Load var from the scratch.
-fn var(u: &UnaryExpression<usize>, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -> EmitResult {
+fn var(u: &UnaryExpression<usize>, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     let Some(var) = args.scratch.get_var(u.element) else {
         args.diagnostics.push(Report::emit_error(
             u.loc.clone(),
@@ -915,7 +903,7 @@ fn var(u: &UnaryExpression<usize>, chunks: &mut Vec<Chunk>, args: &mut EmitExprA
 }
 
 /// Handle signed and unsigned integers as bytes.
-fn int(n: &BigInt, loc: &Span, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -> EmitResult {
+fn int(n: &BigInt, loc: &Span, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     let (sign, mut bytes) = n.to_bytes_be();
     if matches!(sign, Sign::Minus) {
         bytes = bytes.iter().map(|b| !b).collect();
@@ -937,7 +925,7 @@ fn int(n: &BigInt, loc: &Span, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs)
 }
 
 /// Handle boolean values as `1` and `0` in Teal.
-fn bool(u: &UnaryExpression<bool>, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -> EmitResult {
+fn bool(u: &UnaryExpression<bool>, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     let val: u64 = if u.element { 1 } else { 0 };
     let c = Constant::Uint(val);
     let chunk = Chunk::new_single(Instruction::PushInt, c);
@@ -947,7 +935,7 @@ fn bool(u: &UnaryExpression<bool>, chunks: &mut Vec<Chunk>, args: &mut EmitExprA
 }
 
 /// Handle character as u64 value.
-fn char(u: &UnaryExpression<char>, chunks: &mut Vec<Chunk>, args: &mut EmitExprArgs) -> EmitResult {
+fn char(u: &UnaryExpression<char>, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     let val: u64 = u.element.into();
     let c = Constant::Uint(val);
     let chunk = Chunk::new_single(Instruction::PushInt, c);
@@ -957,11 +945,7 @@ fn char(u: &UnaryExpression<char>, chunks: &mut Vec<Chunk>, args: &mut EmitExprA
 }
 
 /// Handle raw string literals.
-fn string(
-    u: &UnaryExpression<String>,
-    chunks: &mut Vec<Chunk>,
-    args: &mut EmitExprArgs,
-) -> EmitResult {
+fn string(u: &UnaryExpression<String>, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     let c = Constant::String(u.element.clone());
     let chunk = Chunk::new_single(Instruction::PushBytes, c);
     chunks.push(chunk);
@@ -970,11 +954,7 @@ fn string(
 }
 
 /// Handle hex value bytes.
-fn hex(
-    u: &UnaryExpression<Vec<u8>>,
-    chunks: &mut Vec<Chunk>,
-    args: &mut EmitExprArgs,
-) -> EmitResult {
+fn hex(u: &UnaryExpression<Vec<u8>>, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     let c = Constant::Bytes(u.element.clone());
     let chunk = Chunk::new_single(Instruction::PushBytes, c);
     chunks.push(chunk);
@@ -986,7 +966,7 @@ fn hex(
 fn address(
     u: &UnaryExpression<Address>,
     chunks: &mut Vec<Chunk>,
-    args: &mut EmitExprArgs,
+    args: &mut EmitArgs,
 ) -> EmitResult {
     let c = Constant::StringLit(u.element.to_string());
     let chunk = Chunk::new_single(Instruction::PushAddr, c);
@@ -996,11 +976,7 @@ fn address(
 }
 
 /// Handle enum literals, we construct it from `bytes(enums_name) + byte(variant_number)`
-fn enum_(
-    u: &UnaryExpression<usize>,
-    chunks: &mut Vec<Chunk>,
-    args: &mut EmitExprArgs,
-) -> EmitResult {
+fn enum_(u: &UnaryExpression<usize>, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     let TypeVariant::Enum(s) = &u.ty else {
         unreachable!()
     };
@@ -1025,7 +1001,7 @@ fn enum_(
 fn float(
     u: &UnaryExpression<BigRational>,
     chunks: &mut Vec<Chunk>,
-    args: &mut EmitExprArgs,
+    args: &mut EmitArgs,
 ) -> EmitResult {
     let Some(float_val) = u.element.to_f64() else {
         args.diagnostics.push(Report::emit_error(

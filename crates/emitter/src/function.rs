@@ -17,13 +17,16 @@ use crate::{
         Constant,
         Instruction,
     },
-    expression::{
-        emit_expression,
-        EmitExprArgs,
-    },
+    expression::emit_expression,
     scratch_table::ScratchTable,
-    statement::emit_statement,
-    teal::TealEmitter,
+    statement::{
+        emit_bounds,
+        emit_statement,
+    },
+    teal::{
+        EmitArgs,
+        TealEmitter,
+    },
 };
 
 pub fn emit_function(func: &Function, emitter: &mut TealEmitter) -> Result<Vec<Chunk>, ()> {
@@ -35,11 +38,13 @@ pub fn emit_function(func: &Function, emitter: &mut TealEmitter) -> Result<Vec<C
     let mut scratch = ScratchTable::default();
     let mut concrete_vars = IndexMap::new();
     let mut diagnostics = vec![];
-    let mut args = EmitExprArgs {
+    let mut args = EmitArgs {
         scratch: &mut scratch,
         diagnostics: &mut diagnostics,
+        delayed_bounds: &mut vec![],
         emitter,
         concrete_vars: &mut concrete_vars,
+        func,
         loop_labels: &mut vec![],
     };
 
@@ -96,6 +101,14 @@ pub fn emit_function(func: &Function, emitter: &mut TealEmitter) -> Result<Vec<C
     add_padding(&mut access_chunks);
     chunks.extend(access_chunks);
 
+    // emit bound expressions for input state and args
+    // any unresolved expression are added to the delay.
+    if let Some(bounds) = &func.bounds {
+        args.delayed_bounds.extend_from_slice(&bounds.exprs);
+
+        emit_bounds(&mut chunks, &mut args);
+    }
+
     // emit statements.
     let mut body_chunks = vec![];
     for stmt in &func.body {
@@ -113,7 +126,7 @@ pub fn emit_function(func: &Function, emitter: &mut TealEmitter) -> Result<Vec<C
     Ok(chunks)
 }
 
-fn emit_state_var(ident: &String, sym: &SymbolInfo, func: &Function, args: &mut EmitExprArgs) {
+fn emit_state_var(ident: &String, sym: &SymbolInfo, func: &Function, args: &mut EmitArgs) {
     let state_decl = &args.emitter.definition.states[sym.i];
     let box_name = format!("__{}", state_decl.name.name);
     let (v_no, _) = func.scope.find_var_index(&ident).expect("should exist");

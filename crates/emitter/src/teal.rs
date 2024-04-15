@@ -1,18 +1,34 @@
 use folidity_diagnostics::Report;
 use folidity_semantics::{
+    ast::{
+        Expression,
+        Function,
+    },
     ContractDefinition,
-    GlobalSymbol,
     Span,
     SymbolInfo,
 };
 use indexmap::IndexMap;
-use num_traits::CheckedAdd;
 
-use crate::ast::{
-    Chunk,
-    FuncInfo,
-    Instruction,
+use crate::{
+    ast::{
+        Chunk,
+        FuncInfo,
+    },
+    scratch_table::ScratchTable,
 };
+
+/// Arguments for emitter operations.
+#[derive(Debug)]
+pub struct EmitArgs<'a, 'b> {
+    pub scratch: &'b mut ScratchTable,
+    pub diagnostics: &'b mut Vec<Report>,
+    pub emitter: &'b mut TealEmitter<'a>,
+    pub concrete_vars: &'b mut IndexMap<usize, Vec<Chunk>>,
+    pub delayed_bounds: &'b mut Vec<Expression>,
+    pub func: &'b Function,
+    pub loop_labels: &'b mut Vec<String>,
+}
 
 #[derive(Debug, Clone)]
 pub struct TealArtifacts {

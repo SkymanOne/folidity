@@ -2,7 +2,10 @@ use bounds::resolve_bounds;
 pub use contract::ContractDefinition;
 use folidity_diagnostics::Report;
 use folidity_parser::ast::Source;
-pub use folidity_parser::Span;
+pub use folidity_parser::{
+    ast::Identifier,
+    Span,
+};
 use functions::resolve_func_body;
 pub use global_symbol::{
     GlobalSymbol,

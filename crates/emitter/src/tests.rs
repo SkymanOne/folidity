@@ -2,10 +2,15 @@ use folidity_semantics::{
     ast::{
         BinaryExpression,
         Expression,
+        FuncReturnType,
+        Function,
+        FunctionVisibility,
+        Type,
         TypeVariant,
         UnaryExpression,
     },
     ContractDefinition,
+    Identifier,
     Span,
 };
 use indexmap::IndexMap;
@@ -18,28 +23,41 @@ use crate::{
         Constant,
         Instruction,
     },
-    expression::{
-        emit_expression,
-        EmitExprArgs,
-    },
+    expression::emit_expression,
     scratch_table::ScratchTable,
-    teal::TealEmitter,
+    teal::{
+        EmitArgs,
+        TealEmitter,
+    },
 };
 
 #[test]
 fn simple_exprs() {
     let definition = ContractDefinition::default();
     let mut emitter = TealEmitter::new(&definition);
+    let loc = Span { start: 0, end: 0 };
 
-    let mut args = EmitExprArgs {
+    let mut args = EmitArgs {
         scratch: &mut ScratchTable::default(),
         diagnostics: &mut vec![],
         emitter: &mut emitter,
         concrete_vars: &mut IndexMap::default(),
+        delayed_bounds: &mut vec![],
+        func: &Function::new(
+            loc.clone(),
+            false,
+            FunctionVisibility::Priv,
+            FuncReturnType::Type(Type::default()),
+            Identifier {
+                loc: loc.clone(),
+                name: "my_func".to_string(),
+            },
+            IndexMap::default(),
+            None,
+        ),
         loop_labels: &mut vec![],
     };
 
-    let loc = Span { start: 0, end: 0 };
     let e1 = Expression::UInt(UnaryExpression {
         loc: loc.clone(),
         element: BigUint::from_i64(100).unwrap(),

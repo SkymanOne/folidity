@@ -172,6 +172,8 @@ pub enum Instruction {
 
     #[display(fmt = "box_get")]
     BoxGet,
+    #[display(fmt = "box_put")]
+    BoxPut,
 
     #[display(fmt = "b")]
     Branch,

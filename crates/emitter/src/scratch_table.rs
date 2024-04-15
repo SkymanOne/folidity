@@ -1,7 +1,3 @@
-use folidity_semantics::symtable::{
-    Scope,
-    VariableSym,
-};
 use indexmap::IndexMap;
 
 use crate::teal::TealEmitter;
@@ -21,19 +17,6 @@ pub struct ScratchTable {
 }
 
 impl ScratchTable {
-    // pub fn add_scope(&mut self, scope: &Scope, emitter: &mut TealEmitter) {
-    //     for (no, v) in &scope.vars {
-    //         self.vars.insert(
-    //             *no,
-    //             ScratchVariable {
-    //                 index: emitter.scratch_index,
-    //                 ty: v.ty.clone(),
-    //             },
-    //         );
-    //         emitter.scratch_index += 1;
-    //     }
-    // }
-
     /// Add variable to the virtual scratch table.
     pub fn add_var(&mut self, var_no: usize, size: u64, emitter: &mut TealEmitter) -> u8 {
         let index = emitter.scratch_index;
