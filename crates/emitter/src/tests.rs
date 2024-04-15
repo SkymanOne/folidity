@@ -36,6 +36,7 @@ fn simple_exprs() {
         diagnostics: &mut vec![],
         emitter: &mut emitter,
         concrete_vars: &mut IndexMap::default(),
+        loop_labels: &mut vec![],
     };
 
     let loc = Span { start: 0, end: 0 };

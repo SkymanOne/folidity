@@ -36,6 +36,12 @@ pub struct TealEmitter<'a> {
     ///
     /// We use `u8` as there are only 256 cells available.
     pub scratch_index: u8,
+
+    /// Counter for loops.
+    pub loop_counter: u64,
+
+    /// Counter for if-else.
+    pub cond_counter: u64,
 }
 
 impl<'a> TealEmitter<'a> {
@@ -46,6 +52,8 @@ impl<'a> TealEmitter<'a> {
             func_infos: IndexMap::new(),
             diagnostics: vec![],
             scratch_index: 0,
+            loop_counter: 0,
+            cond_counter: 0,
         }
     }
 
@@ -55,6 +63,30 @@ impl<'a> TealEmitter<'a> {
             self.diagnostics.push(Report::emit_error(
                 Span::default(),
                 "Exceeded variable count".to_string(),
+            ))
+        })?;
+
+        Ok(i)
+    }
+
+    pub fn loop_index_incr(&mut self) -> Result<u64, ()> {
+        let i = self.loop_counter;
+        self.loop_counter.checked_add(1).ok_or_else(|| {
+            self.diagnostics.push(Report::emit_error(
+                Span::default(),
+                "Exceeded loop count".to_string(),
+            ))
+        })?;
+
+        Ok(i)
+    }
+
+    pub fn cond_index_incr(&mut self) -> Result<u64, ()> {
+        let i = self.cond_counter;
+        self.cond_counter.checked_add(1).ok_or_else(|| {
+            self.diagnostics.push(Report::emit_error(
+                Span::default(),
+                "Exceeded if-else count".to_string(),
             ))
         })?;
 

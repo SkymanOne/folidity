@@ -45,4 +45,8 @@ impl ScratchTable {
     pub fn get_var(&self, no: usize) -> Option<&ScratchVariable> {
         self.vars.get(&no)
     }
+
+    pub fn get_var_mut(&mut self, no: usize) -> Option<&mut ScratchVariable> {
+        self.vars.get_mut(&no)
+    }
 }

@@ -393,6 +393,7 @@ pub struct Variable {
 pub struct Assign {
     pub loc: Span,
     pub name: Identifier,
+    pub pos: usize,
     pub value: Expression,
 }
 

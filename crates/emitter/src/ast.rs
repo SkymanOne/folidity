@@ -163,7 +163,7 @@ pub enum Instruction {
     #[display(fmt = "dup")]
     Dup,
     #[display(fmt = "{}:", _0)]
-    Subroutine(String),
+    Label(String),
     #[display(fmt = "retsub")]
     ReturnSubroutine,
 
@@ -172,6 +172,13 @@ pub enum Instruction {
 
     #[display(fmt = "box_get")]
     BoxGet,
+
+    #[display(fmt = "b")]
+    Branch,
+    #[display(fmt = "bnz")]
+    BranchNotZero,
+    #[display(fmt = "bz")]
+    BranchZero,
 }
 
 pub trait TypeSizeHint {

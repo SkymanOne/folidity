@@ -104,7 +104,6 @@ pub fn statement(
                 ));
                 return Err(());
             };
-            // let table = &scope.tables[t_i];
             let mut sym = scope.find_symbol(&v_i).unwrap().clone();
 
             if !sym.mutable {
@@ -130,6 +129,7 @@ pub fn statement(
             resolved.push(Statement::Assign(Assign {
                 loc: a.loc.clone(),
                 name: a.name.clone(),
+                pos: v_i,
                 value: resolved_value,
             }));
             Ok(true)

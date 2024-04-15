@@ -29,7 +29,7 @@ use crate::{
 pub fn emit_function(func: &Function, emitter: &mut TealEmitter) -> Result<Vec<Chunk>, ()> {
     let mut chunks = vec![];
     let func_name = format!("__{}", func.name.name);
-    chunks.push(Chunk::new_empty(Instruction::Subroutine(func_name.clone())));
+    chunks.push(Chunk::new_empty(Instruction::Label(func_name.clone())));
 
     let mut error = false;
     let mut scratch = ScratchTable::default();
@@ -40,6 +40,7 @@ pub fn emit_function(func: &Function, emitter: &mut TealEmitter) -> Result<Vec<C
         diagnostics: &mut diagnostics,
         emitter,
         concrete_vars: &mut concrete_vars,
+        loop_labels: &mut vec![],
     };
 
     // inject arguments as concrete vars.
