@@ -158,6 +158,8 @@ pub enum Instruction {
 
     #[display(fmt = "assert")]
     Assert,
+    #[display(fmt = "err")]
+    Error,
     #[display(fmt = "itob")]
     Itob,
     #[display(fmt = "dup")]
@@ -169,6 +171,10 @@ pub enum Instruction {
 
     #[display(fmt = "txn")]
     Txn,
+    #[display(fmt = "txna")]
+    Txna,
+    #[display(fmt = "global")]
+    Global,
 
     #[display(fmt = "box_get")]
     BoxGet,
@@ -181,6 +187,11 @@ pub enum Instruction {
     BranchNotZero,
     #[display(fmt = "bz")]
     BranchZero,
+
+    #[display(fmt = "return")]
+    Return,
+    #[display(fmt = "log")]
+    Log,
 }
 
 pub trait TypeSizeHint {

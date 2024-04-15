@@ -27,8 +27,15 @@ impl<'a> Runner<ContractDefinition, TealArtifacts> for TealEmitter<'a> {
     where
         Self: std::marker::Sized,
     {
-        let _emitter = TealEmitter::new(source);
-        todo!()
+        let mut emitter = TealEmitter::new(source);
+        emitter.emit_entry_point();
+        if !emitter.emit_functions() {
+            return Err(CompilationError::Emit(emitter.diagnostics));
+        }
+
+        let artifacts = emitter.compile();
+
+        Ok(artifacts)
     }
 }
 

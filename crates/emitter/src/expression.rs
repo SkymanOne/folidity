@@ -58,11 +58,11 @@ pub fn emit_expression(
                 args,
             )
         }
-        Expression::Boolean(u) => bool(u, chunks, args),
-        Expression::Char(u) => char(u, chunks, args),
-        Expression::String(u) => string(u, chunks, args),
-        Expression::Hex(u) => hex(u, chunks, args),
-        Expression::Address(u) => address(u, chunks, args),
+        Expression::Boolean(u) => bool(u, chunks),
+        Expression::Char(u) => char(u, chunks),
+        Expression::String(u) => string(u, chunks),
+        Expression::Hex(u) => hex(u, chunks),
+        Expression::Address(u) => address(u, chunks),
         Expression::Enum(u) => enum_(u, chunks, args),
         Expression::Float(u) => float(u, chunks, args),
 
@@ -92,7 +92,7 @@ pub fn emit_expression(
 }
 
 // todo: write a support teal function to checking inclusion and use it here.
-fn in_(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
+fn in_(b: &BinaryExpression, _chunks: &mut [Chunk], args: &mut EmitArgs) -> EmitResult {
     args.diagnostics.push(Report::emit_error(
         b.loc.clone(),
         "Unsupported currently".to_string(),
@@ -925,7 +925,7 @@ fn int(n: &BigInt, loc: &Span, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> 
 }
 
 /// Handle boolean values as `1` and `0` in Teal.
-fn bool(u: &UnaryExpression<bool>, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
+fn bool(u: &UnaryExpression<bool>, chunks: &mut Vec<Chunk>) -> EmitResult {
     let val: u64 = if u.element { 1 } else { 0 };
     let c = Constant::Uint(val);
     let chunk = Chunk::new_single(Instruction::PushInt, c);
@@ -935,7 +935,7 @@ fn bool(u: &UnaryExpression<bool>, chunks: &mut Vec<Chunk>, args: &mut EmitArgs)
 }
 
 /// Handle character as u64 value.
-fn char(u: &UnaryExpression<char>, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
+fn char(u: &UnaryExpression<char>, chunks: &mut Vec<Chunk>) -> EmitResult {
     let val: u64 = u.element.into();
     let c = Constant::Uint(val);
     let chunk = Chunk::new_single(Instruction::PushInt, c);
@@ -945,7 +945,7 @@ fn char(u: &UnaryExpression<char>, chunks: &mut Vec<Chunk>, args: &mut EmitArgs)
 }
 
 /// Handle raw string literals.
-fn string(u: &UnaryExpression<String>, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
+fn string(u: &UnaryExpression<String>, chunks: &mut Vec<Chunk>) -> EmitResult {
     let c = Constant::String(u.element.clone());
     let chunk = Chunk::new_single(Instruction::PushBytes, c);
     chunks.push(chunk);
@@ -954,7 +954,7 @@ fn string(u: &UnaryExpression<String>, chunks: &mut Vec<Chunk>, args: &mut EmitA
 }
 
 /// Handle hex value bytes.
-fn hex(u: &UnaryExpression<Vec<u8>>, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
+fn hex(u: &UnaryExpression<Vec<u8>>, chunks: &mut Vec<Chunk>) -> EmitResult {
     let c = Constant::Bytes(u.element.clone());
     let chunk = Chunk::new_single(Instruction::PushBytes, c);
     chunks.push(chunk);
@@ -963,11 +963,7 @@ fn hex(u: &UnaryExpression<Vec<u8>>, chunks: &mut Vec<Chunk>, args: &mut EmitArg
 }
 
 /// Handle Algorand address.
-fn address(
-    u: &UnaryExpression<Address>,
-    chunks: &mut Vec<Chunk>,
-    args: &mut EmitArgs,
-) -> EmitResult {
+fn address(u: &UnaryExpression<Address>, chunks: &mut Vec<Chunk>) -> EmitResult {
     let c = Constant::StringLit(u.element.to_string());
     let chunk = Chunk::new_single(Instruction::PushAddr, c);
     chunks.push(chunk);

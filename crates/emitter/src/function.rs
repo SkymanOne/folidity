@@ -3,7 +3,6 @@ use folidity_semantics::{
     ast::{
         Function,
         FunctionVisibility,
-        StateParam,
         TypeVariant,
     },
     SymbolInfo,
@@ -51,7 +50,7 @@ pub fn emit_function(func: &Function, emitter: &mut TealEmitter) -> Result<Vec<C
     // inject arguments as concrete vars.
     // if the function is not a constructor, then the first app arg is a function signature.
     let mut func_arg_index: u64 = if func.is_init { 0 } else { 1 };
-    for (name, p) in &func.params {
+    for (name, _) in &func.params {
         let (p_no, _) = func.scope.find_var_index(name).expect("should exist");
         let arg_chunk = Chunk::new_multiple(
             Instruction::Txn,
@@ -126,10 +125,10 @@ pub fn emit_function(func: &Function, emitter: &mut TealEmitter) -> Result<Vec<C
     Ok(chunks)
 }
 
-fn emit_state_var(ident: &String, sym: &SymbolInfo, func: &Function, args: &mut EmitArgs) {
+fn emit_state_var(ident: &str, sym: &SymbolInfo, func: &Function, args: &mut EmitArgs) {
     let state_decl = &args.emitter.definition.states[sym.i];
     let box_name = format!("__{}", state_decl.name.name);
-    let (v_no, _) = func.scope.find_var_index(&ident).expect("should exist");
+    let (v_no, _) = func.scope.find_var_index(ident).expect("should exist");
 
     // todo: support sizes of >4096 bytes
     let name_chunk = Chunk::new_single(Instruction::PushBytes, Constant::String(box_name));
