@@ -31,19 +31,24 @@ pub fn emit_statement(
     chunks: &mut Vec<Chunk>,
     args: &mut EmitArgs,
 ) -> EmitResult {
+    let mut local_chunks = vec![];
     match stmt {
-        Statement::Variable(var) => variable(var, stmt.loc(), chunks, args),
-        Statement::Assign(var) => assign(var, stmt.loc(), chunks, args),
-        Statement::Expression(e) => emit_expression(e, chunks, args).map(|_| ()),
-        Statement::IfElse(b) => if_else(b, chunks, args),
-        Statement::ForLoop(l) => for_loop(l, chunks, args),
+        Statement::Variable(var) => variable(var, stmt.loc(), &mut local_chunks, args),
+        Statement::Assign(var) => assign(var, stmt.loc(), &mut local_chunks, args),
+        Statement::Expression(e) => emit_expression(e, &mut local_chunks, args).map(|_| ()),
+        Statement::IfElse(b) => if_else(b, &mut local_chunks, args),
+        Statement::ForLoop(l) => for_loop(l, &mut local_chunks, args),
         Statement::Iterator(_) => todo!("Not yet implemented in emitter"),
-        Statement::Return(r) => return_(&r.expr, chunks, args),
-        Statement::StateTransition(e) => state_transition(e, chunks, args),
-        Statement::Block(b) => block(&b.statements, chunks, args),
-        Statement::Skip(loc) => skip(loc, chunks, args),
+        Statement::Return(r) => return_(&r.expr, &mut local_chunks, args),
+        Statement::StateTransition(e) => state_transition(e, &mut local_chunks, args),
+        Statement::Block(b) => block(&b.statements, &mut local_chunks, args),
+        Statement::Skip(loc) => skip(loc, &mut local_chunks, args),
         Statement::Error(_) => unreachable!(),
-    }
+    }?;
+    add_padding(&mut local_chunks);
+    chunks.extend(local_chunks);
+
+    Ok(())
 }
 
 fn variable(
@@ -70,11 +75,7 @@ fn variable(
     }
 
     let index = args.scratch.add_var(var.pos, size, args.emitter) as u64;
-    chunks.push(Chunk::new_single(
-        Instruction::PushInt,
-        Constant::Uint(index),
-    ));
-    chunks.push(Chunk::new_empty(Instruction::Store));
+    chunks.push(Chunk::new_single(Instruction::Store, Constant::Uint(index)));
 
     Ok(())
 }
@@ -91,11 +92,7 @@ fn assign(var: &Assign, loc: &Span, chunks: &mut Vec<Chunk>, args: &mut EmitArgs
 
     var_scratch.size = size;
     let index = var_scratch.index as u64;
-    chunks.push(Chunk::new_single(
-        Instruction::PushInt,
-        Constant::Uint(index),
-    ));
-    chunks.push(Chunk::new_empty(Instruction::Store));
+    chunks.push(Chunk::new_single(Instruction::Store, Constant::Uint(index)));
 
     Ok(())
 }
@@ -163,9 +160,6 @@ fn for_loop(l: &ForLoop, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitRe
     // pop label
     args.loop_labels.pop();
 
-    // pad the block.
-    add_padding(&mut loop_chunks);
-
     if error {
         return Err(());
     }
@@ -206,9 +200,6 @@ fn if_else(b: &IfElse, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResu
     // create end label and push it to the top of the stack.
     block_chunks.push(Chunk::new_empty(Instruction::Label(end_label.clone())));
 
-    // pad the block.
-    add_padding(&mut block_chunks);
-
     if error {
         return Err(());
     }
@@ -233,7 +224,6 @@ fn state_transition(e: &Expression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs
 
     // push contents onto the stack
     let _ = emit_expression(e, &mut local_chunks, args)?;
-
     if let Some(state_bound) = &args.func.state_bound {
         let TypeVariant::State(sym) = e.ty() else {
             unreachable!();
@@ -271,7 +261,6 @@ fn state_transition(e: &Expression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs
     let box_chunk = Chunk::new_empty(Instruction::BoxPut);
     local_chunks.push(box_chunk);
 
-    add_padding(&mut local_chunks);
     chunks.extend(local_chunks);
 
     Ok(())
@@ -308,12 +297,14 @@ fn return_(e: &Option<Expression>, chunks: &mut Vec<Chunk>, args: &mut EmitArgs)
         args.emitter.scratch_index = index as u8;
     }
 
+    chunks.extend(local_chunks);
     chunks.push(Chunk::new_empty(Instruction::ReturnSubroutine));
 
     Ok(())
 }
 
 pub fn emit_bounds(chunks: &mut Vec<Chunk>, args: &mut EmitArgs) {
+    // offload delayed bounds.
     let mut delayed_bounds = vec![];
     std::mem::swap(args.delayed_bounds, &mut delayed_bounds);
 
@@ -323,19 +314,18 @@ pub fn emit_bounds(chunks: &mut Vec<Chunk>, args: &mut EmitArgs) {
     let mut diagnostics = vec![];
     std::mem::swap(args.diagnostics, &mut diagnostics);
 
-    while let Some(e) = delayed_bounds.last() {
-        // if expression has been successfully emitter, we can pop it from the list.
-        if emit_expression(e, &mut bound_chunks, args).is_ok() {
+    for e in &delayed_bounds {
+        // if expression can not be emitted, we add it back to the arguments.
+        if emit_expression(e, &mut bound_chunks, args).is_err() {
             // and assert it
             bound_chunks.push(Chunk::new_empty(Instruction::Assert));
-            delayed_bounds.pop();
+
+            args.delayed_bounds.push(e.clone());
         }
     }
 
-    std::mem::swap(args.delayed_bounds, &mut delayed_bounds);
     // recover the state.
     std::mem::swap(args.diagnostics, &mut diagnostics);
 
-    add_padding(&mut bound_chunks);
     chunks.extend(bound_chunks);
 }

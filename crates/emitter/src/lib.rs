@@ -17,7 +17,7 @@ mod expression;
 mod function;
 mod scratch_table;
 mod statement;
-mod teal;
+pub mod teal;
 
 #[cfg(test)]
 mod tests;

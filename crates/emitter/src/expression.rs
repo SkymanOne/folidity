@@ -20,14 +20,12 @@ use folidity_semantics::{
 };
 use num_bigint::{
     BigInt,
-    Sign,
     ToBigInt,
 };
 use num_rational::BigRational;
 use num_traits::ToPrimitive;
 
 use crate::{
-    add_padding,
     ast::{
         Chunk,
         Constant,
@@ -133,6 +131,8 @@ fn member_access(m: &MemberAccess, chunks: &mut Vec<Chunk>, args: &mut EmitArgs)
         _ => unimplemented!(),
     };
 
+    chunks.extend(load_chunks);
+
     Ok(0)
 }
 
@@ -143,7 +143,10 @@ fn extract_field_data(
     chunks: &mut Vec<Chunk>,
     args: &mut EmitArgs,
 ) -> Result<(), ()> {
-    let mut offset_chunks = vec![Chunk::new_single(Instruction::PushInt, Constant::Uint(0))];
+    let mut offset_chunks = vec![
+        Chunk::new_single(Instruction::PushInt, Constant::Uint(0)),
+        Chunk::new_single(Instruction::Store, Constant::Uint(0)),
+    ];
     let current_i = args.emitter.scratch_index_incr()? as u64;
 
     for (i, f) in fields.iter().enumerate() {
@@ -260,7 +263,6 @@ fn struct_init(s: &StructInit, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> 
                 args,
             )?;
 
-            add_padding(&mut local_chunks);
             chunks.extend(local_chunks);
 
             Ok(0)
@@ -283,6 +285,7 @@ fn struct_init(s: &StructInit, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> 
                         &mut local_chunks,
                         args,
                     )?;
+                    chunks.extend(local_chunks);
                 }
                 // todo: rethink approach
                 StateBody::Model(sym_m) => {
@@ -297,7 +300,6 @@ fn struct_init(s: &StructInit, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> 
                         args,
                     )?;
 
-                    add_padding(&mut local_chunks);
                     chunks.extend(local_chunks);
                 }
             };
@@ -480,7 +482,6 @@ fn emit_init_args(
         ),
     );
 
-    add_padding(&mut local_chunks);
     chunks.extend(local_chunks);
     Ok(storage_sizes)
 }
@@ -572,7 +573,7 @@ fn add(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
     let s1 = emit_expression(&b.left, &mut local_chunks, args)?;
     let s2 = emit_expression(&b.right, &mut local_chunks, args)?;
 
-    let op = match &b.ty {
+    let op = match &b.left.ty() {
         TypeVariant::Int | TypeVariant::Uint => Instruction::BPlus,
         TypeVariant::String => Instruction::Concat,
         _ => {
@@ -585,7 +586,7 @@ fn add(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
     };
 
     local_chunks.push(Chunk::new_empty(op));
-    add_padding(&mut local_chunks);
+
     chunks.extend(local_chunks);
 
     Ok(s1.max(s2))
@@ -598,7 +599,7 @@ fn sub(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
     let s1 = emit_expression(&b.left, &mut local_chunks, args)?;
     let s2 = emit_expression(&b.right, &mut local_chunks, args)?;
 
-    let op = match &b.ty {
+    let op = match &b.left.ty() {
         TypeVariant::Int | TypeVariant::Uint => Instruction::BMinus,
         _ => {
             args.diagnostics.push(Report::emit_error(
@@ -610,7 +611,7 @@ fn sub(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
     };
 
     local_chunks.push(Chunk::new_empty(op));
-    add_padding(&mut local_chunks);
+
     chunks.extend(local_chunks);
 
     Ok(s1.max(s2))
@@ -623,7 +624,7 @@ fn mul(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
     let s1 = emit_expression(&b.left, &mut local_chunks, args)?;
     let s2 = emit_expression(&b.right, &mut local_chunks, args)?;
 
-    let op = match &b.ty {
+    let op = match &b.left.ty() {
         TypeVariant::Int | TypeVariant::Uint => Instruction::BMul,
         _ => {
             args.diagnostics.push(Report::emit_error(
@@ -635,7 +636,7 @@ fn mul(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
     };
 
     local_chunks.push(Chunk::new_empty(op));
-    add_padding(&mut local_chunks);
+
     chunks.extend(local_chunks);
 
     Ok(s1.max(s2))
@@ -648,7 +649,7 @@ fn div(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
     let s1 = emit_expression(&b.left, &mut local_chunks, args)?;
     let s2 = emit_expression(&b.right, &mut local_chunks, args)?;
 
-    let op = match &b.ty {
+    let op = match &b.left.ty() {
         TypeVariant::Int | TypeVariant::Uint => Instruction::BDiv,
         _ => {
             args.diagnostics.push(Report::emit_error(
@@ -660,7 +661,7 @@ fn div(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
     };
 
     local_chunks.push(Chunk::new_empty(op));
-    add_padding(&mut local_chunks);
+
     chunks.extend(local_chunks);
 
     Ok(s1.max(s2))
@@ -671,7 +672,7 @@ fn modulo(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) ->
     let s1 = emit_expression(&b.left, &mut local_chunks, args)?;
     let s2 = emit_expression(&b.right, &mut local_chunks, args)?;
 
-    let op = match &b.ty {
+    let op = match &b.left.ty() {
         TypeVariant::Int | TypeVariant::Uint => Instruction::BMod,
         _ => {
             args.diagnostics.push(Report::emit_error(
@@ -683,7 +684,7 @@ fn modulo(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) ->
     };
 
     local_chunks.push(Chunk::new_empty(op));
-    add_padding(&mut local_chunks);
+
     chunks.extend(local_chunks);
 
     Ok(s1.max(s2))
@@ -694,7 +695,7 @@ fn le(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Emi
     emit_expression(&b.left, &mut local_chunks, args)?;
     emit_expression(&b.right, &mut local_chunks, args)?;
 
-    let op = match &b.ty {
+    let op = match &b.left.ty() {
         TypeVariant::Int | TypeVariant::Uint | TypeVariant::Char => Instruction::BLess,
         _ => {
             args.diagnostics.push(Report::emit_error(
@@ -706,7 +707,7 @@ fn le(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Emi
     };
 
     local_chunks.push(Chunk::new_empty(op));
-    add_padding(&mut local_chunks);
+
     chunks.extend(local_chunks);
 
     Ok(8)
@@ -717,7 +718,7 @@ fn leq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
     emit_expression(&b.left, &mut local_chunks, args)?;
     emit_expression(&b.right, &mut local_chunks, args)?;
 
-    let op = match &b.ty {
+    let op = match &b.left.ty() {
         TypeVariant::Int | TypeVariant::Uint | TypeVariant::Char => Instruction::BLessEq,
         _ => {
             args.diagnostics.push(Report::emit_error(
@@ -729,7 +730,7 @@ fn leq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
     };
 
     local_chunks.push(Chunk::new_empty(op));
-    add_padding(&mut local_chunks);
+
     chunks.extend(local_chunks);
 
     Ok(8)
@@ -740,7 +741,7 @@ fn ge(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Emi
     emit_expression(&b.left, &mut local_chunks, args)?;
     emit_expression(&b.right, &mut local_chunks, args)?;
 
-    let op = match &b.ty {
+    let op = match &b.left.ty() {
         TypeVariant::Int | TypeVariant::Uint | TypeVariant::Char => Instruction::BMore,
         _ => {
             args.diagnostics.push(Report::emit_error(
@@ -752,7 +753,7 @@ fn ge(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Emi
     };
 
     local_chunks.push(Chunk::new_empty(op));
-    add_padding(&mut local_chunks);
+
     chunks.extend(local_chunks);
 
     Ok(8)
@@ -763,7 +764,7 @@ fn geq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
     emit_expression(&b.left, &mut local_chunks, args)?;
     emit_expression(&b.right, &mut local_chunks, args)?;
 
-    let op = match &b.ty {
+    let op = match &b.left.ty() {
         TypeVariant::Int | TypeVariant::Uint | TypeVariant::Char => Instruction::BMoreEq,
         _ => {
             args.diagnostics.push(Report::emit_error(
@@ -775,7 +776,7 @@ fn geq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
     };
 
     local_chunks.push(Chunk::new_empty(op));
-    add_padding(&mut local_chunks);
+
     chunks.extend(local_chunks);
 
     Ok(8)
@@ -788,7 +789,7 @@ fn eq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Emi
     emit_expression(&b.right, &mut local_chunks, args)?;
 
     local_chunks.push(Chunk::new_empty(Instruction::BEq));
-    add_padding(&mut local_chunks);
+
     chunks.extend(local_chunks);
 
     Ok(8)
@@ -801,7 +802,7 @@ fn neq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
     emit_expression(&b.right, &mut local_chunks, args)?;
 
     local_chunks.push(Chunk::new_empty(Instruction::BNeq));
-    add_padding(&mut local_chunks);
+
     chunks.extend(local_chunks);
 
     Ok(8)
@@ -827,7 +828,7 @@ fn not(
     };
 
     local_chunks.push(Chunk::new_empty(op));
-    add_padding(&mut local_chunks);
+
     chunks.extend(local_chunks);
 
     Ok(8)
@@ -838,7 +839,7 @@ fn or(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Emi
     emit_expression(&b.left, &mut local_chunks, args)?;
     emit_expression(&b.right, &mut local_chunks, args)?;
 
-    let op = match &b.ty {
+    let op = match &b.left.ty() {
         TypeVariant::Bool => Instruction::Or,
         _ => {
             args.diagnostics.push(Report::emit_error(
@@ -850,7 +851,7 @@ fn or(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Emi
     };
 
     local_chunks.push(Chunk::new_empty(op));
-    add_padding(&mut local_chunks);
+
     chunks.extend(local_chunks);
 
     Ok(8)
@@ -861,7 +862,7 @@ fn and(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
     emit_expression(&b.left, &mut local_chunks, args)?;
     emit_expression(&b.right, &mut local_chunks, args)?;
 
-    let op = match &b.ty {
+    let op = match &b.left.ty() {
         TypeVariant::Bool => Instruction::And,
         _ => {
             args.diagnostics.push(Report::emit_error(
@@ -873,7 +874,7 @@ fn and(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
     };
 
     local_chunks.push(Chunk::new_empty(op));
-    add_padding(&mut local_chunks);
+
     chunks.extend(local_chunks);
 
     Ok(8)
@@ -881,6 +882,11 @@ fn and(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
 
 /// Load var from the scratch.
 fn var(u: &UnaryExpression<usize>, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
+    if let Some(local_chunks) = args.concrete_vars.get(&u.element) {
+        chunks.extend_from_slice(local_chunks);
+        return Ok(0);
+    }
+
     let Some(var) = args.scratch.get_var(u.element) else {
         args.diagnostics.push(Report::emit_error(
             u.loc.clone(),
@@ -888,11 +894,6 @@ fn var(u: &UnaryExpression<usize>, chunks: &mut Vec<Chunk>, args: &mut EmitArgs)
         ));
         return Err(());
     };
-
-    if let Some(local_chunks) = args.concrete_vars.get(&u.element) {
-        chunks.extend_from_slice(local_chunks);
-        return Ok(0);
-    }
 
     let c = Constant::Uint(var.index as u64);
     let chunk = Chunk::new_single(Instruction::Load, c);
@@ -904,24 +905,20 @@ fn var(u: &UnaryExpression<usize>, chunks: &mut Vec<Chunk>, args: &mut EmitArgs)
 
 /// Handle signed and unsigned integers as bytes.
 fn int(n: &BigInt, loc: &Span, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
-    let (sign, mut bytes) = n.to_bytes_be();
-    if matches!(sign, Sign::Minus) {
-        bytes = bytes.iter().map(|b| !b).collect();
-        if !add_one_to_integer(&mut bytes) {
-            args.diagnostics.push(Report::emit_error(
-                loc.clone(),
-                String::from("Overflow occurred"),
-            ));
-            return Err(());
-        }
-    }
+    let Some(int_val) = n.to_i128() else {
+        args.diagnostics.push(Report::emit_error(
+            loc.clone(),
+            String::from("Integer value is too large."),
+        ));
+        return Err(());
+    };
 
-    let len = bytes.len() as u64;
-    let c = Constant::Bytes(bytes);
+    let bytes = int_val.to_be_bytes();
+    let c = Constant::Bytes(bytes.to_vec());
     let chunk = Chunk::new_single(Instruction::PushBytes, c);
     chunks.push(chunk);
 
-    Ok(len)
+    Ok(16)
 }
 
 /// Handle boolean values as `1` and `0` in Teal.
@@ -1013,22 +1010,4 @@ fn float(
     chunks.push(chunk);
 
     Ok(8)
-}
-
-/// Add `1` to bytes for Two's Complement Binary.
-fn add_one_to_integer(bytes: &mut [u8]) -> bool {
-    let mut carry = 1;
-
-    for byte in bytes.iter_mut().rev() {
-        if *byte == 0xFF && carry == 1 {
-            *byte = 0x00;
-        } else {
-            *byte += carry;
-            carry = 0;
-            break;
-        }
-    }
-
-    // If carry is still 1 here, it means the addition resulted in an overflow.
-    carry == 1
 }

@@ -10,7 +10,6 @@ use folidity_semantics::{
 use indexmap::IndexMap;
 
 use crate::{
-    add_padding,
     ast::{
         Chunk,
         Constant,
@@ -97,7 +96,6 @@ pub fn emit_function(func: &Function, emitter: &mut TealEmitter) -> Result<Vec<C
         emit_state_var(&s.name.name, &s.ty, func, &mut args);
     }
 
-    add_padding(&mut access_chunks);
     chunks.extend(access_chunks);
 
     // emit bound expressions for input state and args
@@ -113,12 +111,12 @@ pub fn emit_function(func: &Function, emitter: &mut TealEmitter) -> Result<Vec<C
     for stmt in &func.body {
         error |= emit_statement(stmt, &mut body_chunks, &mut args).is_err();
     }
-    add_padding(&mut body_chunks);
     chunks.extend(body_chunks);
 
     chunks.push(Chunk::new_empty(Instruction::ReturnSubroutine));
 
     if error {
+        emitter.diagnostics.extend(diagnostics);
         return Err(());
     }
 

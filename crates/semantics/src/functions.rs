@@ -199,7 +199,7 @@ pub fn function_decl(
         );
     }
 
-    let access_attributes: Vec<Expression> = func
+    let mut access_attributes: Vec<Expression> = func
         .access_attributes
         .iter()
         .flat_map(|attr| &attr.members)
@@ -234,6 +234,8 @@ pub fn function_decl(
             ));
 
             error = true;
+        } else {
+            access_attributes.clear();
         }
     }
 

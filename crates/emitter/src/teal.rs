@@ -84,7 +84,7 @@ impl<'a> TealEmitter<'a> {
 
         chunks.push(Chunk::new_single(
             Instruction::Txn,
-            Constant::StringLit("ApplicationId".to_string()),
+            Constant::StringLit("ApplicationID".to_string()),
         ));
         chunks.push(Chunk::new_single(Instruction::PushInt, Constant::Uint(0)));
         chunks.push(Chunk::new_empty(Instruction::Eq));
@@ -137,14 +137,20 @@ impl<'a> TealEmitter<'a> {
             ),
             Chunk::new_single(Instruction::PushInt, Constant::Uint(1)), // OptIn
             Chunk::new_empty(Instruction::Eq),
-            Chunk::new_empty(Instruction::Error), // error out for now
+            Chunk::new_single(
+                Instruction::BranchNotZero,
+                Constant::StringLit("fail".to_string()), // fail for now
+            ),
             Chunk::new_single(
                 Instruction::Txn,
                 Constant::StringLit("OnCompletion".to_string()),
             ),
             Chunk::new_single(Instruction::PushInt, Constant::Uint(2)), // CloseOut
             Chunk::new_empty(Instruction::Eq),
-            Chunk::new_empty(Instruction::Error), // error out for now
+            Chunk::new_single(
+                Instruction::BranchNotZero,
+                Constant::StringLit("fail".to_string()), // fail for now
+            ),
             Chunk::new_single(
                 Instruction::Txn,
                 Constant::StringLit("OnCompletion".to_string()),
@@ -175,6 +181,15 @@ impl<'a> TealEmitter<'a> {
             Chunk::new_empty(Instruction::Empty),
         ]);
 
+        // return 0 error code.
+        chunks.extend_from_slice(&[
+            Chunk::new_empty(Instruction::Label("fail".to_string())),
+            Chunk::new_single(Instruction::PushInt, Constant::Uint(0)),
+            Chunk::new_empty(Instruction::Return),
+            Chunk::new_empty(Instruction::Empty),
+            Chunk::new_empty(Instruction::Empty),
+        ]);
+
         chunks.push(Chunk::new_empty(Instruction::Label("on_call".to_string())));
 
         for name in self.definition.functions.iter().map(|f| &f.name.name) {
@@ -182,7 +197,7 @@ impl<'a> TealEmitter<'a> {
                 Chunk::new_multiple(
                     Instruction::Txna,
                     vec![
-                        Constant::StringLit("ApplicationArg".to_string()),
+                        Constant::StringLit("ApplicationArgs".to_string()),
                         Constant::Uint(0),
                     ],
                 ),
@@ -190,13 +205,15 @@ impl<'a> TealEmitter<'a> {
                 Chunk::new_empty(Instruction::Eq),
                 Chunk::new_single(
                     Instruction::BranchNotZero,
-                    Constant::StringLit(format!("__{}", name)),
+                    Constant::StringLit(format!("__block__{}", name)),
                 ),
             ]);
         }
         chunks.push(Chunk::new_empty(Instruction::Error)); // error if none matches.
 
-        self.emit_blocks();
+        let mut block_chunks = self.emit_blocks();
+        add_padding(&mut block_chunks);
+        chunks.extend(block_chunks);
 
         add_padding(&mut chunks);
         self.chunks.extend(chunks);
@@ -208,6 +225,7 @@ impl<'a> TealEmitter<'a> {
         for func in &self.definition.functions {
             if let Ok(mut chunks) = emit_function(func, self) {
                 add_padding(&mut chunks);
+                self.chunks.extend(chunks);
             } else {
                 error |= true;
             }
@@ -242,6 +260,7 @@ impl<'a> TealEmitter<'a> {
         }
     }
 
+    #[allow(clippy::result_unit_err)]
     pub fn scratch_index_incr(&mut self) -> Result<u8, ()> {
         let i = self.scratch_index;
         self.scratch_index.checked_add(1).ok_or_else(|| {
@@ -254,6 +273,7 @@ impl<'a> TealEmitter<'a> {
         Ok(i)
     }
 
+    #[allow(clippy::result_unit_err)]
     pub fn loop_index_incr(&mut self) -> Result<u64, ()> {
         let i = self.loop_counter;
         self.loop_counter.checked_add(1).ok_or_else(|| {
@@ -266,6 +286,7 @@ impl<'a> TealEmitter<'a> {
         Ok(i)
     }
 
+    #[allow(clippy::result_unit_err)]
     pub fn cond_index_incr(&mut self) -> Result<u64, ()> {
         let i = self.cond_counter;
         self.cond_counter.checked_add(1).ok_or_else(|| {
@@ -294,7 +315,7 @@ impl<'a> TealEmitter<'a> {
                 ),
             ]);
 
-            if f.return_ty.ty() != &TypeVariant::Uint {
+            if f.return_ty.ty() != &TypeVariant::Unit {
                 block_chunks.push(Chunk::new_empty(Instruction::Log));
             }
 
@@ -304,10 +325,8 @@ impl<'a> TealEmitter<'a> {
             ]);
 
             add_padding(&mut block_chunks);
-
             chunks.extend(block_chunks);
         }
-        add_padding(&mut chunks);
         chunks
     }
 }

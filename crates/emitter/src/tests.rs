@@ -11,6 +11,7 @@ use folidity_semantics::{
     },
     ContractDefinition,
     Identifier,
+    Runner,
     Span,
 };
 use indexmap::IndexMap;
@@ -81,26 +82,81 @@ fn simple_exprs() {
 
     let expected = vec![
         Chunk {
-            op: Instruction::Empty,
-            constants: vec![],
+            op: Instruction::PushBytes,
+            constants: vec![Constant::Bytes(100_i128.to_be_bytes().to_vec())],
         },
         Chunk {
             op: Instruction::PushBytes,
-            constants: vec![Constant::Bytes(vec![100])],
-        },
-        Chunk {
-            op: Instruction::PushBytes,
-            constants: vec![Constant::Bytes(vec![2])],
+            constants: vec![Constant::Bytes(2_i128.to_be_bytes().to_vec())],
         },
         Chunk {
             op: Instruction::BMul,
             constants: vec![],
         },
-        Chunk {
-            op: Instruction::Empty,
-            constants: vec![],
-        },
     ];
 
     assert_eq!(chunks, expected)
+}
+
+const WORKING_SIMPLE: &str = r#"
+
+model ParentModel {
+    a: address,
+    b: list<int>    
+} st [
+    a == a"2FMLYJHYQWRHMFKRHKTKX5UNB5DGO65U57O3YVLWUJWKRE4YYJYC2CWWBY",
+]
+
+model MyModel: ParentModel {
+    c: int,
+    d: string
+} st [
+    a == a"2FMLYJHYQWRHMFKRHKTKX5UNB5DGO65U57O3YVLWUJWKRE4YYJYC2CWWBY",
+    c > -10,
+    d == s"Hello World"
+]
+
+state StartState(MyModel) st [
+    c < 1000
+]
+
+@init
+@(any)
+fn (r: bool) start(init: int) when () -> (StartState s) 
+st [
+    r == true,
+    s.c < 10,
+]
+{
+    let a = a"2FMLYJHYQWRHMFKRHKTKX5UNB5DGO65U57O3YVLWUJWKRE4YYJYC2CWWBY";
+    let h = hex"1234";
+    let b = [1, 2, 3];
+    let c = -5;
+    let d = s"Hello World";
+
+    move StartState : { a, b, c, d };
+    return true;
+}
+
+@(any)
+view(StartState s) fn int get_value() {
+    return s.c;
+}
+"#;
+
+#[test]
+fn test_simple_emit() {
+    folidity_diagnostics::disable_pretty_print();
+    let result = folidity_parser::parse(WORKING_SIMPLE);
+    let Ok(tree) = &result else {
+        panic!("{:#?}", &result.err().unwrap());
+    };
+
+    let res = ContractDefinition::run(tree);
+    assert!(res.is_ok(), "{:#?}", res.err().unwrap());
+    let contract = res.unwrap();
+
+    let runner = TealEmitter::run(&contract);
+
+    assert!(runner.is_ok(), "{:#?}", runner.err().unwrap());
 }

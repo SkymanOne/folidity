@@ -23,3 +23,6 @@ z3 = { workspace = true }
 hex = { workspace = true }
 indexmap = { workspace = true }
 derive_more = { workspace = true }
+
+[dev-dependencies]
+folidity-parser = { workspace = true }

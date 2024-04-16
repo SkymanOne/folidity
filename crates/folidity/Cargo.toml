@@ -15,6 +15,7 @@ version.workspace = true
 folidity-parser = { workspace = true }
 folidity-semantics = { workspace = true }
 folidity-verifier = { workspace = true }
+folidity-emitter = { workspace = true }
 folidity-diagnostics = { workspace = true }
 clap = { workspace = true }
 ariadne = { workspace = true }

@@ -24,7 +24,7 @@ impl Display for Constant {
             Constant::Uint(n) => write!(f, "{}", n),
             Constant::Bytes(b) => {
                 let hex_str = hex::encode(b);
-                write!(f, "{}", hex_str)
+                write!(f, "0x{}", hex_str)
             }
             Constant::String(s) => write!(f, "\"{}\"", s),
             Constant::StringLit(s) => write!(f, "{}", s),
