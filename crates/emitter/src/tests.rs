@@ -42,7 +42,6 @@ fn simple_exprs() {
         scratch: &mut ScratchTable::default(),
         diagnostics: &mut vec![],
         emitter: &mut emitter,
-        concrete_vars: &mut IndexMap::default(),
         delayed_bounds: &mut vec![],
         func: &Function::new(
             loc.clone(),
@@ -82,15 +81,15 @@ fn simple_exprs() {
 
     let expected = vec![
         Chunk {
-            op: Instruction::PushBytes,
-            constants: vec![Constant::Bytes(100_i128.to_be_bytes().to_vec())],
+            op: Instruction::PushInt,
+            constants: vec![Constant::Uint(100)],
         },
         Chunk {
-            op: Instruction::PushBytes,
-            constants: vec![Constant::Bytes(2_i128.to_be_bytes().to_vec())],
+            op: Instruction::PushInt,
+            constants: vec![Constant::Uint(2)],
         },
         Chunk {
-            op: Instruction::BMul,
+            op: Instruction::Mul,
             constants: vec![],
         },
     ];

@@ -1,13 +1,13 @@
 use std::fmt::Display;
 
 use derive_more::Display;
-use folidity_semantics::ast::TypeVariant;
-
-#[derive(Debug, Clone)]
-pub struct FuncInfo {
-    pub sig: String,
-    pub return_size: u64,
-}
+use folidity_semantics::{
+    ast::{
+        Param,
+        TypeVariant,
+    },
+    ContractDefinition,
+};
 
 /// Represents a constant literal in teal bytecode.
 #[derive(Debug, Clone, PartialEq)]
@@ -192,22 +192,60 @@ pub enum Instruction {
     Return,
     #[display(fmt = "log")]
     Log,
+    #[display(fmt = "len")]
+    Length,
 }
 
 pub trait TypeSizeHint {
     /// Hints the compiler the type size if known at compile time.
-    fn size_hint(&self) -> Option<u64>;
+    fn size_hint(&self, contract: &ContractDefinition) -> u64;
 }
 
 impl TypeSizeHint for TypeVariant {
-    fn size_hint(&self) -> Option<u64> {
+    fn size_hint(&self, contract: &ContractDefinition) -> u64 {
         match self {
-            TypeVariant::Char => Some(8),
-            TypeVariant::Address => Some(32),
-            TypeVariant::Unit => Some(0),
-            TypeVariant::Bool => Some(8),
-            TypeVariant::Function(f) => f.returns.size_hint(),
-            _ => None,
+            TypeVariant::Char
+            | TypeVariant::Bool
+            | TypeVariant::Int
+            | TypeVariant::Uint
+            | TypeVariant::Float => 8,
+            TypeVariant::Address => 32,
+            TypeVariant::Unit => 0,
+            TypeVariant::Enum(_) => 16,
+            TypeVariant::Function(f) => f.returns.size_hint(contract),
+            TypeVariant::Set(_)
+            | TypeVariant::List(_)
+            | TypeVariant::Mapping(_)
+            | TypeVariant::String
+            | TypeVariant::Hex => 512,
+            TypeVariant::Struct(sym) => {
+                let struct_decl = &contract.structs[sym.i];
+                struct_size(&struct_decl.fields, contract)
+            }
+            TypeVariant::Model(sym) => {
+                let model_decl = &contract.models[sym.i];
+                struct_size(&model_decl.fields(contract), contract)
+            }
+            TypeVariant::State(sym) => {
+                let state_decl = &contract.states[sym.i];
+                struct_size(&state_decl.fields(contract), contract)
+            }
+            TypeVariant::Generic(_) => unimplemented!(),
         }
     }
+}
+
+pub fn struct_size(fields: &[Param], contract: &ContractDefinition) -> u64 {
+    // construct array
+    let mut array_size: u64 = 0;
+    for f in fields {
+        array_size += f.ty.ty.size_hint(contract);
+
+        if f.ty.ty.is_resizable() {
+            array_size += 8; // reserve one more uint64 block for actual size of
+                             // resizeable struct.
+        }
+    }
+
+    array_size
 }

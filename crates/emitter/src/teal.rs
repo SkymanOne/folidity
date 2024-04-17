@@ -7,7 +7,6 @@ use folidity_semantics::{
     },
     ContractDefinition,
     Span,
-    SymbolInfo,
 };
 use indexmap::IndexMap;
 
@@ -16,7 +15,6 @@ use crate::{
     ast::{
         Chunk,
         Constant,
-        FuncInfo,
         Instruction,
     },
     function::emit_function,
@@ -29,7 +27,6 @@ pub struct EmitArgs<'a, 'b> {
     pub scratch: &'b mut ScratchTable,
     pub diagnostics: &'b mut Vec<Report>,
     pub emitter: &'b mut TealEmitter<'a>,
-    pub concrete_vars: &'b mut IndexMap<usize, Vec<Chunk>>,
     pub delayed_bounds: &'b mut Vec<Expression>,
     pub func: &'b Function,
     pub loop_labels: &'b mut Vec<String>,
@@ -49,8 +46,6 @@ pub struct TealEmitter<'a> {
     pub definition: &'a ContractDefinition,
     /// List of chunks that are emitted into the final build.
     chunks: Vec<Chunk>,
-    /// Mapping from function symbol to its teal method signature.
-    pub func_infos: IndexMap<SymbolInfo, FuncInfo>,
     /// Errors and warning caused during emit process.
     pub diagnostics: Vec<Report>,
     /// Index for scratch space variable.
@@ -63,6 +58,8 @@ pub struct TealEmitter<'a> {
 
     /// Counter for if-else.
     pub cond_counter: u64,
+    /// list of concrete teal expression to access vars.
+    pub concrete_vars: IndexMap<usize, Vec<Chunk>>,
 }
 
 impl<'a> TealEmitter<'a> {
@@ -70,11 +67,11 @@ impl<'a> TealEmitter<'a> {
         Self {
             definition,
             chunks: vec![],
-            func_infos: IndexMap::new(),
             diagnostics: vec![],
             scratch_index: 0,
             loop_counter: 0,
             cond_counter: 0,
+            concrete_vars: IndexMap::new(),
         }
     }
 

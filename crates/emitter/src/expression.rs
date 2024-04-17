@@ -56,11 +56,11 @@ pub fn emit_expression(
                 args,
             )
         }
-        Expression::Boolean(u) => bool(u, chunks),
-        Expression::Char(u) => char(u, chunks),
+        Expression::Boolean(u) => bool(u, chunks, args),
+        Expression::Char(u) => char(u, chunks, args),
         Expression::String(u) => string(u, chunks),
         Expression::Hex(u) => hex(u, chunks),
-        Expression::Address(u) => address(u, chunks),
+        Expression::Address(u) => address(u, chunks, args),
         Expression::Enum(u) => enum_(u, chunks, args),
         Expression::Float(u) => float(u, chunks, args),
 
@@ -99,162 +99,55 @@ fn in_(b: &BinaryExpression, _chunks: &mut [Chunk], args: &mut EmitArgs) -> Emit
 }
 
 fn member_access(m: &MemberAccess, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
-    let mut load_chunks = vec![];
-    // load data arr
-    let _ = emit_expression(&m.expr, &mut load_chunks, args)?;
+    let mut local_chunks = vec![];
+    let _ = emit_expression(&m.expr, &mut local_chunks, args)?;
 
-    match m.expr.ty() {
+    let fields = match m.expr.ty() {
         TypeVariant::Struct(sym) => {
             let struct_decl = &args.emitter.definition.structs[sym.i];
-            extract_field_data(&struct_decl.fields, m.member.0, &load_chunks, chunks, args)?;
-        }
-        TypeVariant::Model(sym) => {
-            let model_decl = &args.emitter.definition.models[sym.i];
-            extract_field_data(
-                &model_decl.fields(args.emitter.definition),
-                m.member.0,
-                &load_chunks,
-                chunks,
-                args,
-            )?;
+            struct_decl.fields.clone()
         }
         TypeVariant::State(sym) => {
             let state_decl = &args.emitter.definition.states[sym.i];
-            extract_field_data(
-                &state_decl.fields(args.emitter.definition),
-                m.member.0,
-                &load_chunks,
-                chunks,
-                args,
-            )?;
+            state_decl.fields(args.emitter.definition)
         }
-        _ => unimplemented!(),
+        TypeVariant::Model(sym) => {
+            let model_decl = &args.emitter.definition.models[sym.i];
+            model_decl.fields(args.emitter.definition)
+        }
+        _ => {
+            args.diagnostics.push(Report::emit_error(
+                m.loc.clone(),
+                "Other types are unsupported currently".to_string(),
+            ));
+            return Err(());
+        }
     };
 
-    chunks.extend(load_chunks);
+    extract_field(&fields, m.member.0, None, &mut local_chunks, args)?;
 
-    Ok(0)
-}
+    chunks.extend(local_chunks);
 
-fn extract_field_data(
-    fields: &[Param],
-    f_n: usize,
-    load_chunks: &[Chunk],
-    chunks: &mut Vec<Chunk>,
-    args: &mut EmitArgs,
-) -> Result<(), ()> {
-    let mut offset_chunks = vec![
-        Chunk::new_single(Instruction::PushInt, Constant::Uint(0)),
-        Chunk::new_single(Instruction::Store, Constant::Uint(0)),
-    ];
-    let current_i = args.emitter.scratch_index_incr()? as u64;
-
-    for (i, f) in fields.iter().enumerate() {
-        if i == f_n {
-            // load data
-            offset_chunks.extend_from_slice(load_chunks);
-            // load current offset from the temp location.
-            offset_chunks.push(Chunk::new_single(
-                Instruction::Load,
-                Constant::Uint(current_i),
-            ));
-            match &f.ty.ty {
-                // for bool and char, we can just extract u64 directly.
-                TypeVariant::Bool | TypeVariant::Char => {
-                    offset_chunks.push(Chunk::new_empty(Instruction::ExtractUint))
-                }
-                // for address we can extract 32 bytes precisely.
-                TypeVariant::Address => {
-                    offset_chunks.push(Chunk::new_single(Instruction::PushInt, Constant::Uint(32)));
-                    offset_chunks.push(Chunk::new_empty(Instruction::Extract3));
-                }
-                // for any other types, we need to read size and then read the contents.
-                _ => {
-                    // Push 8 byte offset
-                    offset_chunks.push(Chunk::new_single(Instruction::PushInt, Constant::Uint(8)));
-                    // current_offset + 8 = offset of the size value for the field.
-                    offset_chunks.push(Chunk::new_empty(Instruction::Plus));
-
-                    // extract size value.
-                    offset_chunks.push(Chunk::new_empty(Instruction::ExtractUint));
-
-                    let size_i = args.emitter.scratch_index_incr()? as u64;
-                    // store the size value in the next temp location.
-                    offset_chunks
-                        .push(Chunk::new_single(Instruction::Load, Constant::Uint(size_i)));
-
-                    // load data
-                    offset_chunks.extend_from_slice(load_chunks);
-                    // load current offset from the temp location.
-                    offset_chunks.push(Chunk::new_single(
-                        Instruction::Load,
-                        Constant::Uint(current_i),
-                    ));
-                    // Push 16 byte offset
-                    offset_chunks.push(Chunk::new_single(Instruction::PushInt, Constant::Uint(16)));
-                    // current_offset + 16 = offset of the data of the field.
-                    offset_chunks.push(Chunk::new_empty(Instruction::Plus));
-                    // load the size value from scratch
-                    offset_chunks
-                        .push(Chunk::new_single(Instruction::Load, Constant::Uint(size_i)));
-                    // extract data
-                    offset_chunks.push(Chunk::new_empty(Instruction::Extract3));
-                }
-            };
-
-            break;
-        }
-
-        if let Some(size) = f.ty.ty.size_hint() {
-            offset_chunks.push(Chunk::new_single(
-                Instruction::PushInt,
-                Constant::Uint(size),
-            ));
-        } else {
-            // use current index as a temporary location.
-            // store current offset
-            offset_chunks.push(Chunk::new_single(
-                Instruction::Store,
-                Constant::Uint(current_i),
-            ));
-            // insert load instruction for the storage.
-            offset_chunks.extend_from_slice(load_chunks);
-            // load current offset
-            offset_chunks.push(Chunk::new_single(
-                Instruction::Load,
-                Constant::Uint(current_i),
-            ));
-            // duplicate offset
-            offset_chunks.push(Chunk::new_empty(Instruction::Dup));
-            // extract capacity uint64 capacity value for the field
-            offset_chunks.push(Chunk::new_empty(Instruction::ExtractUint));
-        }
-
-        // add previous two values.
-        offset_chunks.push(Chunk::new_empty(Instruction::Plus));
-        // store value in temp location.
-        offset_chunks.push(Chunk::new_single(
-            Instruction::Store,
-            Constant::Uint(current_i),
-        ));
-    }
-
-    chunks.extend(offset_chunks);
-    // revert var counter to override the unused variables in future.
-    args.emitter.scratch_index = current_i as u8;
-
-    Ok(())
+    Ok(m.ty.size_hint(args.emitter.definition))
 }
 
 fn struct_init(s: &StructInit, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
+    let mut local_chunks = vec![];
     match &s.ty {
-        TypeVariant::Struct(_) => {
-            emit_init_args(s, chunks, args).map(|r| Ok(r.iter().sum::<u64>()))?
+        TypeVariant::Struct(sym) => {
+            let struct_decl = &args.emitter.definition.structs[sym.i];
+            init_array(
+                s,
+                &Scope::default(),
+                &struct_decl.fields,
+                &None,
+                &mut local_chunks,
+                args,
+            )?;
         }
         TypeVariant::Model(sym) => {
-            let mut local_chunks = vec![];
             let model_decl = &args.emitter.definition.models[sym.i];
-            struct_arr_load(
+            init_array(
                 s,
                 &model_decl.scope,
                 &model_decl.fields(args.emitter.definition),
@@ -262,36 +155,28 @@ fn struct_init(s: &StructInit, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> 
                 &mut local_chunks,
                 args,
             )?;
-
-            chunks.extend(local_chunks);
-
-            Ok(0)
         }
         TypeVariant::State(sym) => {
             let state_decl = &args.emitter.definition.states[sym.i];
+
             let Some(body) = &state_decl.body else {
-                // todo: init state.
                 return Ok(0);
             };
 
             match body {
-                StateBody::Raw(fields) => {
-                    let mut local_chunks = vec![];
-                    struct_arr_load(
+                StateBody::Raw(_) => {
+                    init_array(
                         s,
                         &state_decl.scope,
-                        fields,
+                        &state_decl.fields(args.emitter.definition),
                         &state_decl.bounds,
                         &mut local_chunks,
                         args,
                     )?;
-                    chunks.extend(local_chunks);
                 }
-                // todo: rethink approach
-                StateBody::Model(sym_m) => {
-                    let mut local_chunks = vec![];
-                    let model_decl = &args.emitter.definition.models[sym_m.i];
-                    struct_arr_load(
+                StateBody::Model(model_sym) => {
+                    let model_decl = &args.emitter.definition.models[model_sym.i];
+                    init_array(
                         s,
                         &model_decl.scope,
                         &model_decl.fields(args.emitter.definition),
@@ -299,18 +184,23 @@ fn struct_init(s: &StructInit, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> 
                         &mut local_chunks,
                         args,
                     )?;
-
-                    chunks.extend(local_chunks);
                 }
-            };
-
-            Ok(0)
+            }
         }
-        _ => unreachable!(),
+        _ => {
+            args.diagnostics.push(Report::ver_error(
+                s.loc.clone(),
+                "This type is not supported for instantiation in emitter.".to_string(),
+            ));
+            return Err(());
+        }
     }
+
+    chunks.extend(local_chunks);
+    Ok(s.ty.size_hint(args.emitter.definition))
 }
 
-fn struct_arr_load(
+fn init_array(
     s: &StructInit,
     scope: &Scope,
     fields: &[Param],
@@ -318,172 +208,171 @@ fn struct_arr_load(
     chunks: &mut Vec<Chunk>,
     args: &mut EmitArgs,
 ) -> Result<(), ()> {
-    let sizes = emit_init_args(s, chunks, args)?;
+    let array_index = args.emitter.scratch_index_incr()? as u64;
+    let mut local_chunks = vec![];
 
-    if let Some(bounds) = &bounds {
-        let arr_index = args.emitter.scratch_index_incr()? as u64;
-        chunks.push(Chunk::new_single(
+    let array_size: u64 = s.ty.size_hint(args.emitter.definition);
+
+    // create zero-filled array and store it
+    local_chunks.extend_from_slice(&[
+        Chunk::new_single(Instruction::PushInt, Constant::Uint(array_size)),
+        Chunk::new_empty(Instruction::ArrayInit),
+        Chunk::new_single(Instruction::Store, Constant::Uint(array_index)),
+    ]);
+
+    // iteratively parse each argument expression, and store it in the array.
+    let mut loc_offset = (s.args.len() as u64 - 1) * 8;
+    let mut data_offests = vec![];
+    for a in &s.args {
+        // push current offset to the list.
+        data_offests.push(loc_offset);
+
+        // emit expression
+        let size = emit_expression(a, &mut local_chunks, args)?;
+
+        // and store it temporarily.
+        let data_index = args.emitter.scratch_index_incr()? as u64;
+        local_chunks.push(Chunk::new_single(
             Instruction::Store,
-            Constant::Uint(arr_index),
+            Constant::Uint(data_index),
         ));
 
+        if a.ty().is_resizable() {
+            local_chunks.extend_from_slice(&[
+                Chunk::new_single(Instruction::Load, Constant::Uint(array_index)), // load array
+                Chunk::new_single(Instruction::PushInt, Constant::Uint(size)), // push actual size of data
+                Chunk::new_single(Instruction::Replace, Constant::Uint(loc_offset)), // place it in the block
+                Chunk::new_single(Instruction::Store, Constant::Uint(array_index)), // store the array
+            ]);
+            loc_offset += 8; // increment the offset by 8
+        }
+        local_chunks.extend_from_slice(&[
+            Chunk::new_single(Instruction::Load, Constant::Uint(array_index)), // load array
+            Chunk::new_single(Instruction::Load, Constant::Uint(data_index)),  // load data
+            Chunk::new_single(Instruction::Replace, Constant::Uint(loc_offset)), /* place it in
+                                                                                * the block */
+            Chunk::new_single(Instruction::Store, Constant::Uint(array_index)), // store the array
+        ]);
+
+        // increment offset for the next block.
+        loc_offset += a.ty().size_hint(args.emitter.definition);
+    }
+
+    // if there are bounds add them to the delay to be resolved after.
+    if let Some(bounds) = bounds {
+        // create concrete chunks and insert them in the lookup table.
         for (i, f) in fields.iter().enumerate() {
-            let (var_n, _) = &scope.find_var_index(&f.name.name).expect("should exist");
-
-            let load_chunk = Chunk::new_single(Instruction::Load, Constant::Uint(arr_index));
-
-            if f.ty.ty.is_resizable() {
-                let mut skip_size = sizes.iter().take(i).sum::<u64>() + 8;
-                // get size int
-                let skip_size_chunk =
-                    Chunk::new_single(Instruction::PushInt, Constant::Uint(skip_size));
-                let extract_int_chunk = Chunk::new_empty(Instruction::ExtractUint);
-                skip_size += 8;
-                let skip_data_chunk =
-                    Chunk::new_single(Instruction::PushInt, Constant::Uint(skip_size));
-
-                // load arr -> push start position -> (load arr -> push size chunk pos -> extract
-                // u64) -> extract3
-                let var_access_chunks = vec![
-                    // load arr_index
-                    load_chunk.clone(),
-                    // pushint pos+16
-                    skip_data_chunk,
-                    // load arr_index
-                    load_chunk,
-                    // pushint pos+8
-                    skip_size_chunk,
-                    // extract_uint64
-                    extract_int_chunk,
-                    // extract 3 (arr )
-                    Chunk::new_empty(Instruction::Extract3),
-                ];
-
-                args.concrete_vars.insert(*var_n, var_access_chunks);
-            } else {
-                let skip_size: u64 = sizes.iter().take(i).sum();
-                let take_size = sizes[i];
-                let var_access_chunks = vec![
-                    load_chunk,
-                    Chunk::new_multiple(
-                        Instruction::Extract,
-                        vec![Constant::Uint(skip_size), Constant::Uint(take_size)],
-                    ),
-                ];
-
-                args.concrete_vars.insert(*var_n, var_access_chunks);
-            }
+            let (p_no, _) = scope.find_var_index(&f.name.name).expect("should exist");
+            let mut concrete_chunks = vec![];
+            extract_field(fields, i, Some(array_index), &mut concrete_chunks, args)?;
+            args.emitter.concrete_vars.insert(p_no, concrete_chunks);
         }
 
-        let mut bounds_chunks = vec![];
-        let mut err = false;
+        let mut error = false;
+
         for e in &bounds.exprs {
-            err |= emit_expression(e, &mut bounds_chunks, args).is_err();
-            bounds_chunks.push(Chunk::new_empty(Instruction::Assert));
+            error |= emit_expression(e, &mut local_chunks, args).is_err();
+            local_chunks.push(Chunk::new_empty(Instruction::Assert));
         }
 
-        if err {
+        if error {
             args.diagnostics.push(Report::ver_error(
-                s.loc.clone(),
-                "Error bounds in initialisation of a model.".to_string(),
+                bounds.loc.clone(),
+                "Error emitting bounds during struct instantiation.".to_string(),
             ));
             return Err(());
         }
-
-        chunks.extend(bounds_chunks);
-
-        chunks.push(Chunk::new_single(
-            Instruction::Load,
-            Constant::Uint(arr_index),
-        ));
-
-        // revert var counter to override the unused variables in future.
-        args.emitter.scratch_index = arr_index as u8;
     }
+
+    local_chunks.push(Chunk::new_single(
+        Instruction::Load,
+        Constant::Uint(array_index),
+    ));
+    chunks.extend(local_chunks);
+
     Ok(())
 }
 
-fn emit_init_args(
-    s: &StructInit,
+fn extract_field(
+    fields: &[Param],
+    member: usize,
+    array_index: Option<u64>,
     chunks: &mut Vec<Chunk>,
     args: &mut EmitArgs,
-) -> Result<Vec<u64>, ()> {
-    let mut args_sizes = vec![];
-    let mut error = false;
+) -> EmitResult {
     let mut local_chunks = vec![];
-    for e in &s.args {
-        if let Ok(s) = emit_expression(e, &mut local_chunks, args) {
-            args_sizes.push(s);
-        } else {
-            error |= true;
+    // save the content in the scratch.
+
+    // extract array index if provided or create one if the struct wasn't stored before.
+    let array_index = if let Some(index) = array_index {
+        index
+    } else {
+        let index = args.emitter.scratch_index_incr()? as u64;
+        local_chunks.push(Chunk::new_single(Instruction::Store, Constant::Uint(index)));
+        index
+    };
+    let mut offset_loc: u64 = 0;
+
+    for (i, f) in fields.iter().enumerate() {
+        if i == member {
+            break;
+        }
+        offset_loc += f.ty.ty.size_hint(args.emitter.definition);
+        if f.ty.ty.is_resizable() {
+            offset_loc += 8; // add 8 to the offset to accommodate for the size block.
         }
     }
 
-    if error {
-        args.diagnostics.push(Report::ver_error(
-            s.loc.clone(),
-            "Error evaluating args".to_string(),
-        ));
-        return Err(());
+    local_chunks.extend_from_slice(&[
+        Chunk::new_single(Instruction::Load, Constant::Uint(array_index)), /* load array from
+                                                                            * memory */
+        Chunk::new_single(Instruction::PushInt, Constant::Uint(offset_loc)), // push offset
+    ]);
+
+    let ty = &fields[member].ty.ty;
+    if ty.is_resizable() {
+        let size_index = args.emitter.scratch_index_incr()? as u64;
+        let data_loc = offset_loc + 8;
+        local_chunks.extend_from_slice(&[
+            Chunk::new_empty(Instruction::ExtractUint), // extract size data
+            Chunk::new_single(Instruction::Store, Constant::Uint(size_index)), /* store size in
+                                                         * scratch. */
+            // handle accessing data
+            Chunk::new_single(Instruction::Load, Constant::Uint(array_index)), /* load array
+                                                                                * from memory */
+            Chunk::new_single(Instruction::PushInt, Constant::Uint(data_loc)), /* push offset of
+                                                                                * the actual
+                                                                                * data */
+            // Handle accessing size
+            Chunk::new_single(Instruction::Load, Constant::Uint(size_index)), /* load array from
+                                                                               * memory */
+            //
+            Chunk::new_empty(Instruction::Extract3), // extract data from array
+        ]);
+    } else if matches!(
+        ty,
+        TypeVariant::Int
+            | TypeVariant::Uint
+            | TypeVariant::Float
+            | TypeVariant::Bool
+            | TypeVariant::Char
+    ) {
+        local_chunks.push(Chunk::new_empty(Instruction::ExtractUint))
+    } else {
+        local_chunks.extend_from_slice(&[
+            Chunk::new_single(
+                Instruction::PushInt,
+                Constant::Uint(ty.size_hint(args.emitter.definition)),
+            ), // size
+            Chunk::new_empty(Instruction::Extract3), // extract data
+        ])
     }
 
-    local_chunks = vec![];
-
-    let mut start_i = 0;
-    let mut storage_sizes = vec![];
-    for (e, s) in s.args.iter().zip(&args_sizes) {
-        // actual size of the field.
-        let mut size = *s;
-
-        // add dynamic sizing for the resizable types.
-        if e.ty().is_resizable() {
-            let capacity_chunk = Chunk::new_single(Instruction::PushInt, Constant::Uint(*s * 2));
-            let size_chunk = Chunk::new_single(Instruction::PushInt, Constant::Uint(*s));
-            let itob = Chunk::new_empty(Instruction::Itob);
-
-            // first push capacity chunk
-            local_chunks.push(capacity_chunk);
-            local_chunks.push(itob.clone());
-            local_chunks.push(Chunk::new_single(
-                Instruction::Replace,
-                Constant::Uint(start_i),
-            ));
-            start_i += 8;
-
-            // then push size chunk
-            local_chunks.push(size_chunk);
-            local_chunks.push(itob);
-            local_chunks.push(Chunk::new_single(
-                Instruction::Replace,
-                Constant::Uint(start_i),
-            ));
-            start_i += 8;
-
-            // the actual size of the field has increased twice + 16 bytes.
-            size = (size * 2) + 16;
-        }
-
-        // push expression.
-        let _ = emit_expression(e, &mut local_chunks, args).expect("should be valid");
-        local_chunks.push(Chunk::new_single(
-            Instruction::Replace,
-            Constant::Uint(start_i),
-        ));
-        start_i += s;
-
-        storage_sizes.push(size);
-    }
-
-    local_chunks.insert(
-        0,
-        Chunk::new_single(
-            Instruction::ArrayInit,
-            Constant::Uint(storage_sizes.iter().sum()),
-        ),
-    );
+    // args.emitter.scratch_index = array_index as u64; // reset index to preserve space.
 
     chunks.extend(local_chunks);
-    Ok(storage_sizes)
+
+    Ok(0)
 }
 
 fn list(
@@ -494,7 +383,7 @@ fn list(
     if u.element.is_empty() {
         chunks.push(Chunk::new_single(Instruction::PushInt, Constant::Uint(0)));
         chunks.push(Chunk::new_empty(Instruction::ArrayInit));
-        return Ok(0);
+        return Ok(u.ty.size_hint(args.emitter.definition));
     }
 
     let mut list_chunks: Vec<Chunk> = vec![];
@@ -539,21 +428,6 @@ fn func_call(f: &FunctionCall, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> 
         return Err(());
     }
 
-    let func_sym = args
-        .emitter
-        .definition
-        .declaration_symbols
-        .get(&f.name.name)
-        .expect("should exist")
-        .symbol_info();
-
-    let size = &args
-        .emitter
-        .func_infos
-        .get(func_sym)
-        .expect("should exist")
-        .return_size;
-
     chunks.extend(arg_chunks);
 
     // we use `__<name>` convention for function names.
@@ -563,18 +437,18 @@ fn func_call(f: &FunctionCall, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> 
         Constant::StringLit(name),
     ));
 
-    Ok(*size)
+    Ok(f.returns.size_hint(args.emitter.definition))
 }
 
 fn add(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     // `left + right` should appear in stack as: `left => right => +`
 
     let mut local_chunks = vec![];
-    let s1 = emit_expression(&b.left, &mut local_chunks, args)?;
-    let s2 = emit_expression(&b.right, &mut local_chunks, args)?;
+    let _ = emit_expression(&b.left, &mut local_chunks, args)?;
+    let _ = emit_expression(&b.right, &mut local_chunks, args)?;
 
     let op = match &b.left.ty() {
-        TypeVariant::Int | TypeVariant::Uint => Instruction::BPlus,
+        TypeVariant::Int | TypeVariant::Uint | TypeVariant::Float => Instruction::Plus,
         TypeVariant::String => Instruction::Concat,
         _ => {
             args.diagnostics.push(Report::emit_error(
@@ -589,18 +463,18 @@ fn add(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
 
     chunks.extend(local_chunks);
 
-    Ok(s1.max(s2))
+    Ok(b.ty.size_hint(args.emitter.definition))
 }
 
 fn sub(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     // `left - right` should appear in stack as: `left => right => -`
 
     let mut local_chunks = vec![];
-    let s1 = emit_expression(&b.left, &mut local_chunks, args)?;
-    let s2 = emit_expression(&b.right, &mut local_chunks, args)?;
+    let _ = emit_expression(&b.left, &mut local_chunks, args)?;
+    let _ = emit_expression(&b.right, &mut local_chunks, args)?;
 
     let op = match &b.left.ty() {
-        TypeVariant::Int | TypeVariant::Uint => Instruction::BMinus,
+        TypeVariant::Int | TypeVariant::Uint | TypeVariant::Float => Instruction::Minus,
         _ => {
             args.diagnostics.push(Report::emit_error(
                 b.loc.clone(),
@@ -614,18 +488,18 @@ fn sub(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
 
     chunks.extend(local_chunks);
 
-    Ok(s1.max(s2))
+    Ok(b.ty.size_hint(args.emitter.definition))
 }
 
 fn mul(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     // `left * right` should appear in stack as: `left => right => *`
 
     let mut local_chunks = vec![];
-    let s1 = emit_expression(&b.left, &mut local_chunks, args)?;
-    let s2 = emit_expression(&b.right, &mut local_chunks, args)?;
+    let _ = emit_expression(&b.left, &mut local_chunks, args)?;
+    let _ = emit_expression(&b.right, &mut local_chunks, args)?;
 
     let op = match &b.left.ty() {
-        TypeVariant::Int | TypeVariant::Uint => Instruction::BMul,
+        TypeVariant::Int | TypeVariant::Uint | TypeVariant::Float => Instruction::Mul,
         _ => {
             args.diagnostics.push(Report::emit_error(
                 b.loc.clone(),
@@ -639,18 +513,18 @@ fn mul(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
 
     chunks.extend(local_chunks);
 
-    Ok(s1.max(s2))
+    Ok(b.ty.size_hint(args.emitter.definition))
 }
 
 fn div(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     // `left / right` should appear in stack as: `left => right => /`
 
     let mut local_chunks = vec![];
-    let s1 = emit_expression(&b.left, &mut local_chunks, args)?;
-    let s2 = emit_expression(&b.right, &mut local_chunks, args)?;
+    let _ = emit_expression(&b.left, &mut local_chunks, args)?;
+    let _ = emit_expression(&b.right, &mut local_chunks, args)?;
 
     let op = match &b.left.ty() {
-        TypeVariant::Int | TypeVariant::Uint => Instruction::BDiv,
+        TypeVariant::Int | TypeVariant::Uint | TypeVariant::Float => Instruction::Div,
         _ => {
             args.diagnostics.push(Report::emit_error(
                 b.loc.clone(),
@@ -664,16 +538,16 @@ fn div(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
 
     chunks.extend(local_chunks);
 
-    Ok(s1.max(s2))
+    Ok(b.ty.size_hint(args.emitter.definition))
 }
 
 fn modulo(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     let mut local_chunks = vec![];
-    let s1 = emit_expression(&b.left, &mut local_chunks, args)?;
-    let s2 = emit_expression(&b.right, &mut local_chunks, args)?;
+    let _ = emit_expression(&b.left, &mut local_chunks, args)?;
+    let _ = emit_expression(&b.right, &mut local_chunks, args)?;
 
     let op = match &b.left.ty() {
-        TypeVariant::Int | TypeVariant::Uint => Instruction::BMod,
+        TypeVariant::Int | TypeVariant::Uint => Instruction::Mod,
         _ => {
             args.diagnostics.push(Report::emit_error(
                 b.loc.clone(),
@@ -687,7 +561,7 @@ fn modulo(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) ->
 
     chunks.extend(local_chunks);
 
-    Ok(s1.max(s2))
+    Ok(b.ty.size_hint(args.emitter.definition))
 }
 
 fn le(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
@@ -696,7 +570,9 @@ fn le(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Emi
     emit_expression(&b.right, &mut local_chunks, args)?;
 
     let op = match &b.left.ty() {
-        TypeVariant::Int | TypeVariant::Uint | TypeVariant::Char => Instruction::BLess,
+        TypeVariant::Int | TypeVariant::Uint | TypeVariant::Char | TypeVariant::Float => {
+            Instruction::Less
+        }
         _ => {
             args.diagnostics.push(Report::emit_error(
                 b.loc.clone(),
@@ -710,7 +586,7 @@ fn le(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Emi
 
     chunks.extend(local_chunks);
 
-    Ok(8)
+    Ok(b.ty.size_hint(args.emitter.definition))
 }
 
 fn leq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
@@ -719,7 +595,9 @@ fn leq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
     emit_expression(&b.right, &mut local_chunks, args)?;
 
     let op = match &b.left.ty() {
-        TypeVariant::Int | TypeVariant::Uint | TypeVariant::Char => Instruction::BLessEq,
+        TypeVariant::Int | TypeVariant::Uint | TypeVariant::Char | TypeVariant::Float => {
+            Instruction::LessEq
+        }
         _ => {
             args.diagnostics.push(Report::emit_error(
                 b.loc.clone(),
@@ -733,7 +611,7 @@ fn leq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
 
     chunks.extend(local_chunks);
 
-    Ok(8)
+    Ok(b.ty.size_hint(args.emitter.definition))
 }
 
 fn ge(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
@@ -742,7 +620,9 @@ fn ge(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Emi
     emit_expression(&b.right, &mut local_chunks, args)?;
 
     let op = match &b.left.ty() {
-        TypeVariant::Int | TypeVariant::Uint | TypeVariant::Char => Instruction::BMore,
+        TypeVariant::Int | TypeVariant::Uint | TypeVariant::Char | TypeVariant::Float => {
+            Instruction::More
+        }
         _ => {
             args.diagnostics.push(Report::emit_error(
                 b.loc.clone(),
@@ -756,7 +636,7 @@ fn ge(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Emi
 
     chunks.extend(local_chunks);
 
-    Ok(8)
+    Ok(b.ty.size_hint(args.emitter.definition))
 }
 
 fn geq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
@@ -765,7 +645,9 @@ fn geq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
     emit_expression(&b.right, &mut local_chunks, args)?;
 
     let op = match &b.left.ty() {
-        TypeVariant::Int | TypeVariant::Uint | TypeVariant::Char => Instruction::BMoreEq,
+        TypeVariant::Int | TypeVariant::Uint | TypeVariant::Char | TypeVariant::Float => {
+            Instruction::MoreEq
+        }
         _ => {
             args.diagnostics.push(Report::emit_error(
                 b.loc.clone(),
@@ -779,7 +661,7 @@ fn geq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
 
     chunks.extend(local_chunks);
 
-    Ok(8)
+    Ok(b.ty.size_hint(args.emitter.definition))
 }
 
 fn eq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
@@ -788,11 +670,11 @@ fn eq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Emi
     emit_expression(&b.left, &mut local_chunks, args)?;
     emit_expression(&b.right, &mut local_chunks, args)?;
 
-    local_chunks.push(Chunk::new_empty(Instruction::BEq));
+    local_chunks.push(Chunk::new_empty(Instruction::Eq));
 
     chunks.extend(local_chunks);
 
-    Ok(8)
+    Ok(b.ty.size_hint(args.emitter.definition))
 }
 
 fn neq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
@@ -801,11 +683,11 @@ fn neq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
     emit_expression(&b.left, &mut local_chunks, args)?;
     emit_expression(&b.right, &mut local_chunks, args)?;
 
-    local_chunks.push(Chunk::new_empty(Instruction::BNeq));
+    local_chunks.push(Chunk::new_empty(Instruction::Neq));
 
     chunks.extend(local_chunks);
 
-    Ok(8)
+    Ok(b.ty.size_hint(args.emitter.definition))
 }
 
 fn not(
@@ -831,7 +713,7 @@ fn not(
 
     chunks.extend(local_chunks);
 
-    Ok(8)
+    Ok(u.ty.size_hint(args.emitter.definition))
 }
 
 fn or(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
@@ -854,7 +736,7 @@ fn or(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Emi
 
     chunks.extend(local_chunks);
 
-    Ok(8)
+    Ok(b.ty.size_hint(args.emitter.definition))
 }
 
 fn and(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
@@ -877,12 +759,12 @@ fn and(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
 
     chunks.extend(local_chunks);
 
-    Ok(8)
+    Ok(b.ty.size_hint(args.emitter.definition))
 }
 
 /// Load var from the scratch.
 fn var(u: &UnaryExpression<usize>, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
-    if let Some(local_chunks) = args.concrete_vars.get(&u.element) {
+    if let Some(local_chunks) = args.emitter.concrete_vars.get(&u.element) {
         chunks.extend_from_slice(local_chunks);
         return Ok(0);
     }
@@ -900,12 +782,12 @@ fn var(u: &UnaryExpression<usize>, chunks: &mut Vec<Chunk>, args: &mut EmitArgs)
 
     chunks.push(chunk);
 
-    Ok(var.size)
+    Ok(u.ty.size_hint(args.emitter.definition))
 }
 
 /// Handle signed and unsigned integers as bytes.
 fn int(n: &BigInt, loc: &Span, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
-    let Some(int_val) = n.to_i128() else {
+    let Some(int_val) = n.to_i64() else {
         args.diagnostics.push(Report::emit_error(
             loc.clone(),
             String::from("Integer value is too large."),
@@ -914,31 +796,32 @@ fn int(n: &BigInt, loc: &Span, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> 
     };
 
     let bytes = int_val.to_be_bytes();
-    let c = Constant::Bytes(bytes.to_vec());
-    let chunk = Chunk::new_single(Instruction::PushBytes, c);
+    let val = u64::from_be_bytes(bytes);
+    let c = Constant::Uint(val);
+    let chunk = Chunk::new_single(Instruction::PushInt, c);
     chunks.push(chunk);
 
-    Ok(16)
+    Ok(TypeVariant::Int.size_hint(args.emitter.definition))
 }
 
 /// Handle boolean values as `1` and `0` in Teal.
-fn bool(u: &UnaryExpression<bool>, chunks: &mut Vec<Chunk>) -> EmitResult {
+fn bool(u: &UnaryExpression<bool>, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     let val: u64 = if u.element { 1 } else { 0 };
     let c = Constant::Uint(val);
     let chunk = Chunk::new_single(Instruction::PushInt, c);
     chunks.push(chunk);
 
-    Ok(8)
+    Ok(u.ty.size_hint(args.emitter.definition))
 }
 
 /// Handle character as u64 value.
-fn char(u: &UnaryExpression<char>, chunks: &mut Vec<Chunk>) -> EmitResult {
+fn char(u: &UnaryExpression<char>, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     let val: u64 = u.element.into();
     let c = Constant::Uint(val);
     let chunk = Chunk::new_single(Instruction::PushInt, c);
     chunks.push(chunk);
 
-    Ok(8)
+    Ok(u.ty.size_hint(args.emitter.definition))
 }
 
 /// Handle raw string literals.
@@ -960,34 +843,33 @@ fn hex(u: &UnaryExpression<Vec<u8>>, chunks: &mut Vec<Chunk>) -> EmitResult {
 }
 
 /// Handle Algorand address.
-fn address(u: &UnaryExpression<Address>, chunks: &mut Vec<Chunk>) -> EmitResult {
+fn address(
+    u: &UnaryExpression<Address>,
+    chunks: &mut Vec<Chunk>,
+    args: &mut EmitArgs,
+) -> EmitResult {
     let c = Constant::StringLit(u.element.to_string());
     let chunk = Chunk::new_single(Instruction::PushAddr, c);
     chunks.push(chunk);
 
-    Ok(32)
+    Ok(u.ty.size_hint(args.emitter.definition))
 }
 
-/// Handle enum literals, we construct it from `bytes(enums_name) + byte(variant_number)`
+/// Handle enum literals, we construct it from `bytes(enums_pos) ++ byte(variant_number)`
 fn enum_(u: &UnaryExpression<usize>, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     let TypeVariant::Enum(s) = &u.ty else {
         unreachable!()
     };
 
-    let mut enum_name = args.emitter.definition.enums[s.i]
-        .name
-        .name
-        .clone()
-        .as_bytes()
-        .to_vec();
-    enum_name.push(u.element as u8);
+    let mut enum_value: Vec<u8> = vec![];
+    enum_value.extend_from_slice(&s.i.to_be_bytes());
+    enum_value.extend_from_slice(&u.element.to_be_bytes());
 
-    let len = enum_name.len() as u64;
-    let c = Constant::Bytes(enum_name);
+    let c = Constant::Bytes(enum_value);
     let chunk = Chunk::new_single(Instruction::PushBytes, c);
     chunks.push(chunk);
 
-    Ok(len)
+    Ok(u.ty.size_hint(args.emitter.definition))
 }
 
 /// Handle rational literals, for now we simply present them at f64 IEEE 754 standard.
@@ -1005,9 +887,10 @@ fn float(
     };
 
     let bytes = float_val.to_bits().to_be_bytes();
-    let c = Constant::Bytes(bytes.to_vec());
-    let chunk = Chunk::new_single(Instruction::PushBytes, c);
+    let val = u64::from_be_bytes(bytes);
+    let c = Constant::Uint(val);
+    let chunk = Chunk::new_single(Instruction::PushInt, c);
     chunks.push(chunk);
 
-    Ok(8)
+    Ok(u.ty.size_hint(args.emitter.definition))
 }

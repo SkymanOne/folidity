@@ -7,7 +7,6 @@ use folidity_semantics::{
     },
     SymbolInfo,
 };
-use indexmap::IndexMap;
 
 use crate::{
     ast::{
@@ -34,14 +33,12 @@ pub fn emit_function(func: &Function, emitter: &mut TealEmitter) -> Result<Vec<C
 
     let mut error = false;
     let mut scratch = ScratchTable::default();
-    let mut concrete_vars = IndexMap::new();
     let mut diagnostics = vec![];
     let mut args = EmitArgs {
         scratch: &mut scratch,
         diagnostics: &mut diagnostics,
         delayed_bounds: &mut vec![],
         emitter,
-        concrete_vars: &mut concrete_vars,
         func,
         loop_labels: &mut vec![],
     };
@@ -58,7 +55,7 @@ pub fn emit_function(func: &Function, emitter: &mut TealEmitter) -> Result<Vec<C
                 Constant::Uint(func_arg_index),
             ],
         );
-        args.concrete_vars.insert(p_no, vec![arg_chunk]);
+        args.emitter.concrete_vars.insert(p_no, vec![arg_chunk]);
 
         func_arg_index += 1;
     }
@@ -133,6 +130,7 @@ fn emit_state_var(ident: &str, sym: &SymbolInfo, func: &Function, args: &mut Emi
     let box_chunk = Chunk::new_empty(Instruction::BoxGet);
     let assert_chunk = Chunk::new_empty(Instruction::Assert);
 
-    args.concrete_vars
+    args.emitter
+        .concrete_vars
         .insert(v_no, vec![name_chunk, box_chunk, assert_chunk]);
 }

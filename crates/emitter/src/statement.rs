@@ -77,6 +77,11 @@ fn variable(
     let index = args.scratch.add_var(var.pos, size, args.emitter) as u64;
     chunks.push(Chunk::new_single(Instruction::Store, Constant::Uint(index)));
 
+    args.emitter.concrete_vars.insert(
+        var.pos,
+        vec![Chunk::new_single(Instruction::Load, Constant::Uint(index))],
+    );
+
     Ok(())
 }
 
@@ -240,7 +245,7 @@ fn state_transition(e: &Expression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs
                 let index = args.emitter.scratch_index_incr()? as u64;
                 local_chunks.push(Chunk::new_single(Instruction::Store, Constant::Uint(index)));
 
-                args.concrete_vars.insert(
+                args.emitter.concrete_vars.insert(
                     p_no,
                     vec![Chunk::new_single(Instruction::Load, Constant::Uint(index))],
                 );
@@ -249,8 +254,6 @@ fn state_transition(e: &Expression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs
 
                 // load contents from the scratch.
                 local_chunks.push(Chunk::new_single(Instruction::Load, Constant::Uint(index)));
-                // reset index
-                args.emitter.scratch_index = index as u8;
             }
         }
     }
@@ -285,16 +288,13 @@ fn return_(e: &Option<Expression>, chunks: &mut Vec<Chunk>, args: &mut EmitArgs)
             .find_var_index(&param.name.name)
             .expect("should exist");
 
-        args.concrete_vars.insert(
+        args.emitter.concrete_vars.insert(
             p_no,
             vec![Chunk::new_single(Instruction::Load, Constant::Uint(index))],
         );
 
         emit_bounds(&mut local_chunks, args);
         local_chunks.push(Chunk::new_single(Instruction::Load, Constant::Uint(index)));
-
-        // reset index
-        args.emitter.scratch_index = index as u8;
     }
 
     chunks.extend(local_chunks);
@@ -315,13 +315,15 @@ pub fn emit_bounds(chunks: &mut Vec<Chunk>, args: &mut EmitArgs) {
     std::mem::swap(args.diagnostics, &mut diagnostics);
 
     for e in &delayed_bounds {
+        let mut try_chunks = vec![];
         // if expression can not be emitted, we add it back to the arguments.
-        if emit_expression(e, &mut bound_chunks, args).is_err() {
-            // and assert it
-            bound_chunks.push(Chunk::new_empty(Instruction::Assert));
-
+        if emit_expression(e, &mut try_chunks, args).is_err() {
             args.delayed_bounds.push(e.clone());
+            continue;
         }
+        // otherwise we also assert it
+        try_chunks.push(Chunk::new_empty(Instruction::Assert));
+        bound_chunks.extend(try_chunks);
     }
 
     // recover the state.
