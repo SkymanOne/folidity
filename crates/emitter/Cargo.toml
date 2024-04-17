@@ -1,5 +1,5 @@
 [package]
-name = "folidity"
+name = "folidity-emitter"
 authors.workspace = true
 categories.workspace = true
 edition.workspace = true
@@ -8,17 +8,21 @@ keywords.workspace = true
 license.workspace = true
 repository.workspace = true
 version.workspace = true
+description = "Teal code emitter for folidity compiler."
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-folidity-parser = { workspace = true }
 folidity-semantics = { workspace = true }
-folidity-verifier = { workspace = true }
-folidity-emitter = { workspace = true }
 folidity-diagnostics = { workspace = true }
-clap = { workspace = true }
-ariadne = { workspace = true }
-anyhow = { workspace = true }
-walkdir = { workspace = true }
-yansi = { workspace = true }
+num-bigint = { workspace = true }
+num-rational = { workspace = true }
+num-traits = { workspace = true }
+algonaut_core = { workspace = true }
+z3 = { workspace = true }
+hex = { workspace = true }
+indexmap = { workspace = true }
+derive_more = { workspace = true }
+
+[dev-dependencies]
+folidity-parser = { workspace = true }

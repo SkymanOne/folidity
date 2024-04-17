@@ -6,4 +6,7 @@ Folidity compiler allows you to formally prove that these bounds and contracts a
 
 ## Usage
 - `folidity new <project_name>` - initialise a new counter project in the destination directory.
-- `folidty check <file_name>` - check the source code for parser, semantic and type errors.
+- `folidty check <file_name>.fol` - check the source code for parser, semantic and type errors.
+- `folidity compile <file_name>.fol` - compile the source code into Teal binary. Produces approval program: `approval.teal`, and clear program: `clear.teal` 
+
+You can run `--help` on `folidity` command and its subcommand to learn more about the CLI.

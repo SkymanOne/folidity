@@ -75,6 +75,18 @@ impl TypeVariant {
         )
     }
 
+    /// Is data type resizeable.
+    pub fn is_resizable(&self) -> bool {
+        matches!(
+            &self,
+            TypeVariant::List(_)
+                | TypeVariant::Set(_)
+                | TypeVariant::Mapping(_)
+                | TypeVariant::String
+                | TypeVariant::Hex
+        )
+    }
+
     /// Find the set of dependent user defined types that are encapsulated by this type.
     pub fn custom_type_dependencies(&self) -> HashSet<usize> {
         match &self {
@@ -381,6 +393,7 @@ pub struct Variable {
 pub struct Assign {
     pub loc: Span,
     pub name: Identifier,
+    pub pos: usize,
     pub value: Expression,
 }
 

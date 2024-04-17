@@ -142,9 +142,9 @@ impl Scope {
     /// Attempts to find an index of a symbol in the current or outer scopes.
     ///
     /// # Returns
-    /// - Index of a symbol in the table if found.
+    /// - Index of a symbol in the list of vars.
     /// - Index of the table where the symbol can be found if any.
-    pub fn find_var_index(&mut self, name: &str) -> Option<(usize, usize)> {
+    pub fn find_var_index(&self, name: &str) -> Option<(usize, usize)> {
         let mut table_i = self.current;
         let mut table = &self.tables[table_i];
 

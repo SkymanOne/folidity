@@ -23,6 +23,7 @@ use yansi::Paint;
 
 use self::{
     check::CheckCommand,
+    compile::CompileCommand,
     new::NewCommand,
     verify::VerifyCommand,
 };
@@ -34,6 +35,7 @@ use ariadne::{
 };
 
 mod check;
+mod compile;
 mod new;
 mod verify;
 
@@ -42,6 +44,7 @@ pub enum Commands {
     New(NewCommand),
     Check(CheckCommand),
     Verify(VerifyCommand),
+    Compile(CompileCommand),
 }
 
 impl Commands {
@@ -50,6 +53,7 @@ impl Commands {
             Commands::New(cmd) => cmd.run(),
             Commands::Check(cmd) => cmd.run(),
             Commands::Verify(cmd) => cmd.run(),
+            Commands::Compile(cmd) => cmd.run(),
         }
     }
 }
@@ -59,6 +63,13 @@ pub fn read_contract(path_str: &OsString) -> Result<String> {
     if !path.exists() {
         anyhow::bail!("File does not exist.");
     }
+
+    let meta = path.metadata()?;
+
+    if !meta.is_file() {
+        anyhow::bail!("Path is not a file.")
+    }
+
     let s = path.file_name().context("This is not a valid path.")?;
     if !s.to_string_lossy().ends_with(".fol") {
         anyhow::bail!("File is not a valid folidity contract.")
