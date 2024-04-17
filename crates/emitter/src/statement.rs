@@ -38,7 +38,7 @@ pub fn emit_statement(
         Statement::Expression(e) => emit_expression(e, &mut local_chunks, args).map(|_| ()),
         Statement::IfElse(b) => if_else(b, &mut local_chunks, args),
         Statement::ForLoop(l) => for_loop(l, &mut local_chunks, args),
-        Statement::Iterator(_) => todo!("Not yet implemented in emitter"),
+        Statement::Iterator(it) => iterator(it, chunks, args),
         Statement::Return(r) => return_(&r.expr, &mut local_chunks, args),
         Statement::StateTransition(e) => state_transition(e, &mut local_chunks, args),
         Statement::Block(b) => block(&b.statements, &mut local_chunks, args),
@@ -49,6 +49,20 @@ pub fn emit_statement(
     chunks.extend(local_chunks);
 
     Ok(())
+}
+
+fn iterator(
+    it: &folidity_semantics::ast::Iterator,
+    _chunks: &mut Vec<Chunk>,
+    args: &mut EmitArgs,
+) -> EmitResult {
+    let _ = _chunks;
+    args.diagnostics.push(Report::ver_error(
+        it.loc.clone(),
+        "Iterators are not yer supported.".to_string(),
+    ));
+
+    Err(())
 }
 
 fn variable(
@@ -112,7 +126,7 @@ fn skip(loc: &Span, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult 
 
     chunks.push(Chunk::new_single(
         Instruction::Branch,
-        Constant::String(args.loop_labels.last().expect("should exist").clone()),
+        Constant::StringLit(args.loop_labels.last().expect("should exist").clone()),
     ));
 
     Ok(())
@@ -135,28 +149,27 @@ fn block(stmts: &[Statement], chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> E
 fn for_loop(l: &ForLoop, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     let mut loop_chunks = vec![];
     let loop_index = args.emitter.loop_index_incr()?;
-    let start_label = format!("{}_loop_start", loop_index);
+    let incr_label = format!("{}_loop_incr", loop_index);
     let end_label = format!("{}_loop_end", loop_index);
     let mut error = false;
 
     // create var and store it.
     error |= variable(&l.var, &l.loc, &mut loop_chunks, args).is_err();
-
-    // create start label and push it to the top of the stack.
-    loop_chunks.push(Chunk::new_empty(Instruction::Label(start_label.clone())));
     // emit condition block
     error |= emit_expression(&l.condition, &mut loop_chunks, args).is_err();
     // jump to end if satisfies (i.e. 1)
     loop_chunks.push(Chunk::new_single(
         Instruction::BranchNotZero,
-        Constant::String(end_label.clone()),
+        Constant::StringLit(end_label.clone()),
     ));
 
     // emit body
-    args.loop_labels.push(start_label.clone());
+    args.loop_labels.push(incr_label.clone());
     error |= block(&l.body, &mut loop_chunks, args).is_err();
 
     // emit increment logic
+    // create increment label
+    loop_chunks.push(Chunk::new_empty(Instruction::Label(incr_label.clone())));
     error |= emit_expression(&l.incrementer, &mut loop_chunks, args).is_err();
 
     // emit end label.
@@ -186,7 +199,7 @@ fn if_else(b: &IfElse, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResu
     // jump to else block if not satisfies (i.e. 0)
     block_chunks.push(Chunk::new_single(
         Instruction::BranchZero,
-        Constant::String(else_label.clone()),
+        Constant::StringLit(else_label.clone()),
     ));
 
     // emit body.
@@ -194,7 +207,7 @@ fn if_else(b: &IfElse, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResu
     // jump to end if executed.
     block_chunks.push(Chunk::new_single(
         Instruction::Branch,
-        Constant::String(end_label.clone()),
+        Constant::StringLit(end_label.clone()),
     ));
 
     // emit else parts

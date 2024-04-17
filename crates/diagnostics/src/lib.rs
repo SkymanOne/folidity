@@ -141,7 +141,7 @@ impl Report {
             level: Level::Error,
             message,
             additional_info: vec![],
-            note: String::from("Consider revising the constraints for validity."),
+            note: String::from("Consider reviewing syntax usage."),
         }
     }
 

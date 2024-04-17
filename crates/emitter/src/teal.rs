@@ -260,7 +260,7 @@ impl<'a> TealEmitter<'a> {
     #[allow(clippy::result_unit_err)]
     pub fn scratch_index_incr(&mut self) -> Result<u8, ()> {
         let i = self.scratch_index;
-        self.scratch_index.checked_add(1).ok_or_else(|| {
+        self.scratch_index = self.scratch_index.checked_add(1).ok_or_else(|| {
             self.diagnostics.push(Report::emit_error(
                 Span::default(),
                 "Exceeded variable count".to_string(),
@@ -273,7 +273,7 @@ impl<'a> TealEmitter<'a> {
     #[allow(clippy::result_unit_err)]
     pub fn loop_index_incr(&mut self) -> Result<u64, ()> {
         let i = self.loop_counter;
-        self.loop_counter.checked_add(1).ok_or_else(|| {
+        self.loop_counter = self.loop_counter.checked_add(1).ok_or_else(|| {
             self.diagnostics.push(Report::emit_error(
                 Span::default(),
                 "Exceeded loop count".to_string(),
@@ -286,7 +286,7 @@ impl<'a> TealEmitter<'a> {
     #[allow(clippy::result_unit_err)]
     pub fn cond_index_incr(&mut self) -> Result<u64, ()> {
         let i = self.cond_counter;
-        self.cond_counter.checked_add(1).ok_or_else(|| {
+        self.cond_counter = self.cond_counter.checked_add(1).ok_or_else(|| {
             self.diagnostics.push(Report::emit_error(
                 Span::default(),
                 "Exceeded if-else count".to_string(),

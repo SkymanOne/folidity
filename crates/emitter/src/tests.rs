@@ -159,3 +159,97 @@ fn test_simple_emit() {
 
     assert!(runner.is_ok(), "{:#?}", runner.err().unwrap());
 }
+
+const COMPLEX_SRC: &str = r#"
+state CounterState {
+    counter: int,
+} st [
+    # example bounds
+    counter < 1000,
+    counter > -1000
+]
+
+# This is an constructor.
+@init
+# Anyone can call this function.
+@(any)
+fn () initialise() when () -> CounterState {
+    loops(5.0);
+    conditionals(false, 10);
+    move_state();
+    move CounterState : { 0 };
+}
+
+@(any)
+fn () incr_by(value: int) when (CounterState s) -> CounterState
+st [
+    value > 100,
+] {
+    let value = s.counter + value;
+    move CounterState : { value };
+}
+
+@(any)
+fn () decr_by(value: int) when (CounterState s) -> CounterState 
+st [
+    value > 100,
+] {
+    let value = s.counter - value;
+    move CounterState : { value };
+}
+
+@(any)
+view(CounterState s) fn int get_value() {
+    return s.counter;
+}
+
+fn () loops(value: float) {
+    for (let mut i = 0; i < 10; i + 1) {
+        let value = value + 123.0;
+        skip;
+    }
+    let some_list = [-3, 4, 5];
+}
+
+fn () conditionals(cond: bool, value: int) {
+    let scoped = -10;
+    let mut s = s"Hello";
+    s = s + s" " + s"World";
+    if cond {
+        let a = scoped + 3;
+    } else if value > 1 {
+        let b = scoped + 4;
+    } else {
+        let c = scoped + 5;
+    }
+}
+
+fn () move_state() when (CounterState s1) -> (CounterState s2) {
+    let a = a"2FMLYJHYQWRHMFKRHKTKX5UNB5DGO65U57O3YVLWUJWKRE4YYJYC2CWWBY";
+    let b = [1, 2, 3];
+    let c = -5;
+    let d = s"Hello World";
+
+    let counter = s1.counter;
+
+
+    move CounterState : { counter };
+}
+"#;
+
+#[test]
+fn test_complex_emit() {
+    folidity_diagnostics::disable_pretty_print();
+    let result = folidity_parser::parse(COMPLEX_SRC);
+    let Ok(tree) = &result else {
+        panic!("{:#?}", &result.err().unwrap());
+    };
+
+    let res = ContractDefinition::run(tree);
+    assert!(res.is_ok(), "{:#?}", res.err().unwrap());
+    let contract = res.unwrap();
+
+    let runner = TealEmitter::run(&contract);
+
+    assert!(runner.is_ok(), "{:#?}", runner.err().unwrap());
+}
