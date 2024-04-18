@@ -40,6 +40,7 @@
   is_progress_report: false,
   abstract_text: abstract,
   acknowledgments_text: none,
+  display_word_count: true,
   doc
 )
 
@@ -121,7 +122,7 @@ Each category represents the general scope for a specific set of vulnerabilities
 
       hlinex(gutter-restrict: auto, stroke: black + 0.5pt),
 
-      [#scv(2)], [Pseudo-randomness], [Using block number, block hash,#linebreak()block timestamp are not truly #linebreak() random generated parameters,#linebreak()and can be manipulated by the adversary validator],
+      [#scv(2)], [Pseudo-randomness], [Using block number, block hash,#linebreak()block timestamp are not truly #linebreak() randomly generated parameters,#linebreak()and can be manipulated by the adversary validator],
 
       hlinex(gutter-restrict: auto, stroke: black + 0.5pt),
       
@@ -137,7 +138,7 @@ Each category represents the general scope for a specific set of vulnerabilities
 
       hlinex(gutter-restrict: auto, stroke: black + 0.5pt),
       
-      [#scv(6)], [Unchecked externall#linebreak()calls], [Unchecked re-entrant, forward, delegate#linebreak()calls can result in the contract#linebreak()entering into unexpected state],
+      [#scv(6)], [Unchecked external#linebreak()calls], [Unchecked re-entrant, forward, delegate#linebreak()calls can result in the contract#linebreak()entering into unexpected state],
       hlinex(gutter-restrict: auto, stroke: black + 1pt),
     )
   ),
@@ -183,7 +184,7 @@ to verify the mathematical abstractions of the system @model_checking. _Theorem 
 relations between the model and the statements about the system @theorem_proving. Finally, _symbolic execution_ focuses
 on the execution of the program using symbolic values instead of concrete values @eth_formal_verification.
 
-KEVM #footnote[https://jellopaper.org/index.html] is a tool that provides an executable semantics of EVM using $KK$ framework. 
+KEVM #footnote[https://jellopaper.org/index.html] is a tool that provides executable semantics of EVM using $KK$ framework. 
 It uses reachability logic to reason symbolically about the system @kevm. KEVM is a powerful tool that operates at the EVM bytecode level.
 Specifically, SC developers are required to write a specification in a separate file that is checked against the compiled EVM bytecode of the SC.
 Whilst this provides more fine-grained assurance of the safety and correctness, it requires specialised knowledge of the $KK$ framework and EVM
@@ -226,7 +227,7 @@ external tooling.
 Some languages, such as Vyper #footnote[https://docs.vyperlang.org/en/latest/index.html], strive for simplicity.
 By stripping off some low-level features, Vyper minimises the developer's chances of misusing the dangerous operations.
 It also provides overflow checking, signed integers, and other safe arithmetic operations. However, Vyper is still immature, 
-and the recent bug in the compiler caused a massive re-entrancy exploit in the _curve.fi_ AMM protocol @curve.
+and the recent bug in the compiler caused a massive re-entrance exploit in the _curve.fi_ AMM protocol @curve.
 Furthermore, Vyper still suffers from the same implicit state transition problem as Solidity.
 
 // To address the problem, it has been realised that a functional programming style may be better for SC development due to
