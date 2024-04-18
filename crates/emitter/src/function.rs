@@ -45,19 +45,15 @@ pub fn emit_function(func: &Function, emitter: &mut TealEmitter) -> Result<Vec<C
 
     // inject arguments as concrete vars.
     // if the function is not a constructor, then the first app arg is a function signature.
-    let mut func_arg_index: u64 = if func.is_init { 0 } else { 1 };
     for (name, _) in &func.params {
         let (p_no, _) = func.scope.find_var_index(name).expect("should exist");
-        let arg_chunk = Chunk::new_multiple(
-            Instruction::Txn,
-            vec![
-                Constant::StringLit("ApplicationArgs".to_string()),
-                Constant::Uint(func_arg_index),
-            ],
-        );
+        let arg_index = args.emitter.cond_index_incr()?;
+        chunks.push(Chunk::new_single(
+            Instruction::Store,
+            Constant::Uint(arg_index),
+        ));
+        let arg_chunk = Chunk::new_single(Instruction::Load, Constant::Uint(arg_index));
         args.emitter.concrete_vars.insert(p_no, vec![arg_chunk]);
-
-        func_arg_index += 1;
     }
 
     // Inject concrete vars for state bounds.

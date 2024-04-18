@@ -291,13 +291,11 @@ fn test_func() {
         None,
     ));
 
-    contract.add_global_symbol(
-        &func_ident,
-        GlobalSymbol::Function(SymbolInfo {
-            loc: loc.clone(),
-            i: 0,
-        }),
-    );
+    let func_sym = SymbolInfo {
+        loc: loc.clone(),
+        i: 0,
+    };
+    contract.add_global_symbol(&func_ident, GlobalSymbol::Function(func_sym.clone()));
 
     let number = parsed_ast::Expression::Number(parsed_ast::UnaryExpression {
         loc: loc.clone(),
@@ -368,7 +366,7 @@ fn test_func() {
     )
     .unwrap();
 
-    assert_eq!(func_call.name, func_ident);
+    assert_eq!(func_call.sym, func_sym);
     assert_eq!(
         func_call.returns,
         TypeVariant::List(Box::new(TypeVariant::Int))
