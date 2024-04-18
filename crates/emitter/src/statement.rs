@@ -255,7 +255,7 @@ fn state_transition(e: &Expression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs
                     .find_var_index(&name.name)
                     .expect("should exist");
                 // saves contents in the scratch.
-                let index = args.emitter.scratch_index_incr()? as u64;
+                let index = args.emitter.scratch_index_incr()?;
                 local_chunks.push(Chunk::new_single(Instruction::Store, Constant::Uint(index)));
 
                 args.emitter.concrete_vars.insert(
@@ -292,7 +292,7 @@ fn return_(e: &Option<Expression>, chunks: &mut Vec<Chunk>, args: &mut EmitArgs)
     let _ = emit_expression(expr, &mut local_chunks, args)?;
 
     if let FuncReturnType::ParamType(param) = &args.func.return_ty {
-        let index = args.emitter.scratch_index_incr()? as u64;
+        let index = args.emitter.scratch_index_incr()?;
         local_chunks.push(Chunk::new_single(Instruction::Store, Constant::Uint(index)));
 
         let (p_no, _) = args
