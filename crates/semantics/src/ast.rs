@@ -511,8 +511,8 @@ pub struct BinaryExpression {
 pub struct FunctionCall {
     /// Location of the parent expression.
     pub loc: Span,
-    /// Name of the function.
-    pub name: Identifier,
+    /// Symbol of the function.
+    pub sym: SymbolInfo,
     /// List of arguments.
     pub args: Vec<Expression>,
     pub returns: TypeVariant,

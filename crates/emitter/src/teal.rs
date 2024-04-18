@@ -258,7 +258,7 @@ impl<'a> TealEmitter<'a> {
     }
 
     #[allow(clippy::result_unit_err)]
-    pub fn scratch_index_incr(&mut self) -> Result<u8, ()> {
+    pub fn scratch_index_incr(&mut self) -> Result<u64, ()> {
         let i = self.scratch_index;
         self.scratch_index = self.scratch_index.checked_add(1).ok_or_else(|| {
             self.diagnostics.push(Report::emit_error(
@@ -267,7 +267,7 @@ impl<'a> TealEmitter<'a> {
             ))
         })?;
 
-        Ok(i)
+        Ok(i as u64)
     }
 
     #[allow(clippy::result_unit_err)]
@@ -304,13 +304,29 @@ impl<'a> TealEmitter<'a> {
             let block_name = format!("__block__{}", f.name.name);
             let func_name = format!("__{}", f.name.name);
 
-            block_chunks.extend_from_slice(&[
-                Chunk::new_empty(Instruction::Label(block_name)),
-                Chunk::new_single(
-                    Instruction::CallSub,
-                    crate::ast::Constant::StringLit(func_name),
-                ),
-            ]);
+            block_chunks.push(Chunk::new_empty(Instruction::Label(block_name)));
+
+            // push argument into the function block.
+            // if the function is not a constructor, then the first app arg is a function signature.
+            let mut func_arg_index: u64 = if f.is_init { 0 } else { 1 };
+            f.params.iter().for_each(|_| {
+                let arg_chunk = Chunk::new_multiple(
+                    Instruction::Txn,
+                    vec![
+                        Constant::StringLit("ApplicationArgs".to_string()),
+                        Constant::Uint(func_arg_index),
+                    ],
+                );
+
+                block_chunks.push(arg_chunk);
+
+                func_arg_index += 1;
+            });
+
+            block_chunks.push(Chunk::new_single(
+                Instruction::CallSub,
+                crate::ast::Constant::StringLit(func_name),
+            ));
 
             if f.return_ty.ty() != &TypeVariant::Unit {
                 block_chunks.push(Chunk::new_empty(Instruction::Log));

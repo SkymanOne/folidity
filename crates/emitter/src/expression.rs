@@ -208,7 +208,7 @@ fn init_array(
     chunks: &mut Vec<Chunk>,
     args: &mut EmitArgs,
 ) -> Result<(), ()> {
-    let array_index = args.emitter.scratch_index_incr()? as u64;
+    let array_index = args.emitter.scratch_index_incr()?;
     let mut local_chunks = vec![];
 
     let array_size: u64 = s.ty.size_hint(args.emitter.definition);
@@ -231,7 +231,7 @@ fn init_array(
         let size = emit_expression(a, &mut local_chunks, args)?;
 
         // and store it temporarily.
-        let data_index = args.emitter.scratch_index_incr()? as u64;
+        let data_index = args.emitter.scratch_index_incr()?;
         local_chunks.push(Chunk::new_single(
             Instruction::Store,
             Constant::Uint(data_index),
@@ -307,7 +307,7 @@ fn extract_field(
     let array_index = if let Some(index) = array_index {
         index
     } else {
-        let index = args.emitter.scratch_index_incr()? as u64;
+        let index = args.emitter.scratch_index_incr()?;
         local_chunks.push(Chunk::new_single(Instruction::Store, Constant::Uint(index)));
         index
     };
@@ -331,7 +331,7 @@ fn extract_field(
 
     let ty = &fields[member].ty.ty;
     if ty.is_resizable() {
-        let size_index = args.emitter.scratch_index_incr()? as u64;
+        let size_index = args.emitter.scratch_index_incr()?;
         let data_loc = offset_loc + 8;
         local_chunks.extend_from_slice(&[
             Chunk::new_empty(Instruction::ExtractUint), // extract size data
@@ -430,8 +430,10 @@ fn func_call(f: &FunctionCall, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> 
 
     chunks.extend(arg_chunks);
 
+    let func_decl = &args.emitter.definition.functions[f.sym.i];
+
     // we use `__<name>` convention for function names.
-    let name = format!("__{}", f.name.name);
+    let name = format!("__{}", func_decl.name.name);
     chunks.push(Chunk::new_single(
         Instruction::CallSub,
         Constant::StringLit(name),

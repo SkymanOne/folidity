@@ -16,7 +16,6 @@ use crate::{
     ast::{
         self,
         Expression,
-        Function,
         FunctionCall,
         FunctionType,
         MemberAccess,
@@ -224,7 +223,11 @@ pub fn resolve_func_call(
     contract: &mut ContractDefinition,
     expected_ty: ExpectedType,
 ) -> Result<Expression, ()> {
-    let func = find_func(ident, contract)?;
+    let symbol = contract
+        .find_global_symbol(ident, SymbolKind::Function)
+        .ok_or(())?;
+
+    let func = &contract.functions[symbol.i].clone();
     if func.params.len() != args.len() {
         report_mismatched_args_len(&loc, func.params.len(), args.len(), contract);
         return Err(());
@@ -399,7 +402,7 @@ pub fn resolve_func_call(
 
     Ok(Expression::FunctionCall(FunctionCall {
         loc: loc.clone(),
-        name: ident.clone(),
+        sym: symbol.clone(),
         args: parsed_args,
         returns: return_ty.clone(),
     }))
@@ -821,15 +824,6 @@ fn check_func_return_type(ty: &TypeVariant, return_ty: &TypeVariant) -> bool {
     } else {
         ty == return_ty
     }
-}
-
-fn find_func(ident: &Identifier, contract: &mut ContractDefinition) -> Result<Function, ()> {
-    let symbol = contract
-        .find_global_symbol(ident, SymbolKind::Function)
-        .ok_or(())?;
-
-    let func = &contract.functions[symbol.i];
-    Ok(func.clone())
 }
 
 fn report_mismatched_args_len(
