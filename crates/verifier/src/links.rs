@@ -13,10 +13,6 @@ use crate::{
 
 type LinkGraph = Graph<usize, usize, Undirected, usize>;
 
-// pub struct LinkBlock<'ctx> {
-
-// }
-
 fn find_link_components(executor: &SymbolicExecutor) -> Vec<Vec<usize>> {
     let mut edges: HashSet<(usize, usize)> = HashSet::new();
 

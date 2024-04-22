@@ -66,7 +66,6 @@
   doc
 )
 
-
 = Introduction <test>
 
 The concept of "smart contract" (SC) was first coined by Nick Szabo as a computerised transaction protocol @nz_sc.
@@ -602,7 +601,7 @@ In practice, the following error can be picked at the compile time by using symb
 The other invariant, $i_2$, can be picked at the runtime by generating an appropriate assertion.
 
 
-=== Proving constraint satisfiability
+=== Proving constraint satisfiability <Section:ConstraintsProof>
 
 One of the core pieces in the workflow aforementioned is the model bounds that consist of individual boolean constraints as shown in @Listing:folidity_model.
 Let's break down how each of the selected techniques can be applied to the program written in Folidity.
@@ -800,7 +799,8 @@ The `folidity-diagnostics` module is one of the core pieces of the compiler, it 
     /// Helping note for the message.
     pub note: String,
   }
-  ```
+  ```,
+  caption: "Report structure used to contain info about the error"
 )
 
 At each stage of the compilation, if an error occurs, then the crate composes a `Report` and adds to their respective list of errors which are then returned to the caller and displayed to the user.
@@ -896,6 +896,7 @@ After that, we check models and states for any cycles in inheritance. We disallo
 
 Having verified storage-based declarations, we are ready to resolve functions. Each declaration that has expressions also contains a scope. Therefore, when resolving functions, models and states, a scope is created for each declaration.
 
+#figure(
 ```rust
 pub struct SymTable {
     /// Variable names in the current scope.
@@ -914,11 +915,13 @@ pub struct Scope {
     /// What symbol this scope this belongs to.
     pub symbol: GlobalSymbol,
 }
-```
+```,
+caption: "Symbol table and scope used in the crate."
+)
 
 
-Moving on, function's attributes are resolved. `is_init` is stored as a boolean flag. When resolving an access attribute, we resolve the respective expressions in the attribute's body and match that the referenced fields exist in the incoming state adding it to the scope. Then, we resolve state bounds while injecting bound variables into the scope. 
-Afterwards, function's parameters are added to the scope as a variable. 
+Moving on, the function's attributes are resolved. `is_init` is stored as a boolean flag. When resolving an access attribute, we resolve the respective expressions in the attribute's body and match that the referenced fields exist in the incoming state adding it to the scope. Then, we resolve state bounds while injecting bound variables into the scope. 
+Afterwards, the function's parameters are added to the scope as a variable. 
 The variables are added in the order as they are described in order to maintain the valid stack of symbol tables that is used to control the variable access as explained later.
 
 Having resolved the function's signature, the crate has finished resolving signatures of declarations and is ready to resolve `st` blocks.
@@ -993,7 +996,7 @@ Further reassignment of the variable simply updates the current entry in the tab
 
 `If-Else` blocks are resolved by first resolving the conditional expression, and resolving the list of statements in the body, then `else` statements are resolved if any. Since the `else` statements can be another `if`, we achieve `else if {}` block.
 
-The `for` loop is handled first by resolving: a variable declaration statement, conditional expression, increment condition. Then the list of statements in the body is resolved. Iterators are resolved similarly, instead, there are two expressions in the declaration: a binding variable, and a list. Folidity has `skip` statement that skips the current iterator of the loop, it is only resolved if the current scope context is the loop.
+The `for` loop is handled first by resolving: a variable declaration statement, conditional expression, increment expression. Then the list of statements in the body is resolved. Iterators are resolved similarly, instead, there are two expressions in the declaration: a binding variable, and a list. Folidity has `skip` statement that skips the current iterator of the loop, it is only resolved if the current scope context is the loop.
 
 State transition (`move ...;`) is resolved by first resolving the struct initialisation expression. Then the type of expression is compared to the expected final state of the function. If it mismatches, then the error is reported.
 
@@ -1003,9 +1006,154 @@ Finally, `return` statement indicates the termination of the execution of the fu
 
 Limited support for generics has been introduced to the Folidity compiler. Although a developer can not currently use them directly in the contract's code, they are added to facilitate the support of built-in functions as part of the standard library which is planned the future work.
 
-Generic type has similar semantic to `ExpectedType` it contains the list of supported types that the expression can resolve to. Therefore, when `GenericType(Types)` is supplied in the `ExpectedType::Concrete(_)` it is transformed into the `ExpectedType::Dynamic(Types)` and passed for another round of type resolution.
+Generic type has similar semantics to `ExpectedType` it contains the list of supported types that the expression can resolve to. Therefore, when `GenericType(Types)` is supplied in the `ExpectedType::Concrete(_)` it is transformed into the `ExpectedType::Dynamic(Types)` and passed for another round of type resolution.
 
-#v(-2em)
+== Verifier
+
+As mentioned earlier, Folidiy offers first-class support for verification as part of the compilation process. `folidity-verifier` heavily relies on Microsoft's work around SMT solver by leveraging their Z3 C++ library in combination with FII wrapper, z3.rs create.
+
+=== Z3 basics
+
+Z3 relies on propositional logic to prove the satisfiability of theorems and formulas. This essentially enables symbolic reasoning about the program code. Z3 toolset consists of formulas that are comprised of quantifiers, uninterpreted functions, sets, and other Z3 AST symbols, followed by solvers that enable asserting formulas into the global proving context, and, finally, models, containing a list of concrete values assigned to symbols in formulas, if they are satisfiable.
+
+Z3 also offers tactics and optimisation techniques which currently beyond the scope of usage of this paper.
+
+=== Translation to Z3
+
+Folidity compiler assumes a global proving context in the scope of the whole SC code, that is, also symbols and formulas are defined within the single proving context.
+
+To prove the functional correctness of the program, we essentially need to translate Folidity Expression into Z3 #link("https://docs.rs/z3/0.12.1/z3/ast/index.html")[AST types].
+As shown in @Section:ConstraintsProof, we want to collect the list of constraints for each declaration and prove their consistency independently of each other. However, we also want to build a graph of relationships between declarations in order to prove that the combination of their constraints is satisfiable as well.
+
+#figure(
+```rust
+pub struct DeclarationBounds<'ctx> {
+    /// `st` location block.
+    pub loc: Span,
+    /// Links of others declaration.
+    pub links: Vec<usize>,
+    /// Constraint block of the declaration.
+    pub constraints: IndexMap<u32, Constraint<'ctx>>,
+    /// Scope of the local constraints.
+    pub scope: Z3Scope,
+}
+```,
+caption: "Representation of bounds in declarations"
+)
+
+We first resolve models. Since they can inherit each other and refine the constraints, they do not have any links. Consequently, we resolve states and functions, initialise them with empty links and add them to the delay for later resolution of dependencies. During the resolution of each declaration, we add respective fields and parameters to the separate z3 scope of constants to be referenced in Z3 expressions. Constants in Z3 can be referenced by an unsigned 32-bit integer.
+
+#figure(
+```rust
+pub struct Z3Scope {
+    pub consts: IndexMap<String, u32>,
+}
+```,
+caption: "Z3 scope used in the crate"
+)
+
+After that, we resolve links in the delays by updating `links` fields with indices of the structure the current declaration depends on.
+
+Then, we are ready to transform Folidity `Expression` into the `Z3Expression`.
+
+#figure(
+```rust
+pub struct Z3Expression<'ctx> {
+    /// Location of the expression
+    pub loc: Span,
+    /// Element of the expression.
+    pub element: Dynamic<'ctx>,
+}
+```,
+caption: "Transformed Z3 expression"
+)
+Each expression is transformed to Z3 AST type similarly to how it was resolved in semantics. The resulting expression is then cast to the generic `Dynamic` type to be composable with each other. 
+Variables are transformed into the Z3 constants that are identified by the integer. If we have a variable or a member access that references another structure. The Z3 constant that corresponds to the symbol in another structure is looked up in its scope and returned, this is done to ensure that when combining two different blocks of constraints, the variables correspond to the same Z3 constants.
+Specifically, if `StateA` has a field named `a` which is referenced by the `k!3` constant, and some function accesses this variable via `s.a`, that `s.a` is resolved to `k!3` respectively. 
+
+It is worth looking at how arrays and sorts in Z3 are used in the transformations. Sorts in Z3 enable describing some user-defined datatype. They can be based on some concrete type (i.e. `Sort::int(...)`) or uninterpreted, that is, of some abstract type `A`.
+
+Z3 leverages the array theory by McCarthy expressing them as select-store axioms @array_theory. Z3 assumes that arrays are extensional over function space. Hence, since mapping in Folidity is in space of functions, we can model mapping between two types as an array with the domain of type `A` and range of type `B`. 
+
+In the verification context, it is assumed that lists and sets are both can be reduced to some user-defined `set` sort. Similarly, models, structs and states and transformed to uninterpreted types as well.
+
+Consequently, each resolved independent expression then gets bound by a boolean constant that can be used to uniquely track that expression. This binding is happening by boolean implication.
+
+#figure(
+$
+k!1 arrow.r.double.long a > 10
+$,
+caption: "Bound boolean formula"
+)
+Therefore, if `a > 10` is unsatisfiable, then the `k!1` is unsatisfiable respectively. 
+
+The resolved and bound expressions are then packed into the `Contraint` structs with the index of the binding constant.
+
+#figure(
+```rust
+pub struct Constraint<'ctx> {
+    /// Location of the constraint in the original code.
+    pub loc: Span,
+    /// Binding constraint symbol id to track it across contexts.
+    ///
+    /// e.g. `k!0 => a > 10`
+    /// where `0` is the id of the symbol.
+    pub binding_sym: u32,
+    /// Boolean expression.
+    pub expr: Bool<'ctx>,
+}
+```,
+caption: "Constraint strucutre"
+)
+
+In the end, a list of expressions in individual `st` blocks gets transformed into the list of constraints.
+
+=== Constraint satisfiability in individual blocks
+
+After the transformation of expressions, the crate verifies the satisfiability of individual blocks of constraints in each declaration. 
+
+For each block, we create a solver with the global context and assert (i.e. push) the corresponding constraints. The solver then executes the verification and creates a model if successful. Otherwise, the unsatisfiability core is extracted from the solver. This core consists of the constants that contradict each other which then get reported.
+
+As an example let's look at the following set of constraints.
+
+#figure(
+$
+k!0 arrow.r.double.long s = "\"Hello World\"" \
+k!1 arrow.r.double.long a > 10 \
+k!2 arrow.r.double.long b < 5 \
+k!3 arrow.r.double.long b > a
+$,
+caption: "Example of contradicting formulas"
+)
+
+From the above set, the solver will return the unsatisfiable core of \ 
+`[k!1, k!2, k!3]` that contradict each other.
+
+=== Constraint satisfiability in joined blocks
+
+As a final stage of verification, the crate produces lists of joined blocks of constraints based on the dependencies between declarations. In order to eliminate the redundancy in computation, it is essential to compose lists of unique sets of constraints. To achieve that, an undirected graph of linked nodes is assembled first. Then, Tarjan's SCC algorithm is used to find any strongly connected components. In the case of an undirected graph, the strongly connected component corresponds to a set of interconnected nodes that are disjoint from other components as shown in @Listing:SCCBlocks.
+
+#figure(
+  diagram(
+    spacing: (10mm, 10mm),
+    node-stroke: 0.5pt,
+    node((1,0), [Block 1]),
+    edge("-"),
+    node((1,1), [Block 2]),
+    edge("-"),
+    node((2,1), [Block 3]),
+    node((3,0), [Block 4]),
+    edge("-"),
+    node((3,1), [Block 5]),
+    edge("-"),
+    node((4,0), [Block 6]),
+  ),
+  caption: "Dependency graph of linked declarations"
+) <Listing:SCCBlocks>
+
+In the example above, the algorithm will return two sets of nodes: `[1, 2, 3]` and `[4, 5, 6]`.
+
+The constraints from these blocks and consequently composed into a single list and verified for consistency in a similar manner.
 
 = Project Planning
 
@@ -1018,15 +1166,173 @@ From the beginning of January, the first iteration of grammar should be complete
 
 #pagebreak()
 
+#text(weight: "bold", size: 35pt, "Appendix")
+
 #counter(heading.where(level: 1)).update(0)
 #counter(heading).update(0)
 #set heading(numbering: "A.")
 
+= Project brief
+
+#set heading(numbering: none)
+
+== Problem Statement
+With the rise of blockchain technologies, smart contracts (SC) allowed developers to create complex and resilient applications providing services to end users. However, there have been numerous instances of attacks associated with decentralized applications, involving re-entrance attacks, forced value sends, variable overflows, and incorrectly coded state checks.
+
+This is a result of the dominating nature of procedural style in SC languages such as Solidity, Vyper, PyTeal, and others that make the state transition implicit and hidden from the developers. SC developers then need to opt in for formal verification tools such as KEVM or KAVM that prolong the development process and require specialised knowledge of formal verification.
+
+== Proposed Solution
+
+This project proposes the development of a functional SC language with an explicit state transition and model checks. SCs run in a restricted and sandboxed environment and take part in the state transition of the blockchain state machine. This provides a pure functional context that is suitable for a functional programming language. 
+
+Folidity intends to be an SC language with a purely functional programming style that allows developers to reason about their code as a combination of state transition functions. The language also enables developers to describe storage and state transition functions using constraints and invariants that the compiler will use to formally verify the functional correctness and consistency of a storage model, inspired by Event-B model verification.
+
+Folidity targets the Algorand Virtual Machine (AVM). AVM is famous for its stack-based assembly language, Teal, which provides fine control over execution. Programs on AVM are also reasoned in the form of stateful and stateless applications. This philosophy perfectly aligns with the programming model of Folidity. The most important benefit of opting for AVM is the fixed SC execution costs which is highly important for a prototype language.
+
+== Scope
+The project involves syntax design, the development of a compiler that produces intermediate representation code in Teal, and technical analysis of a sample SC demonstrating and proving its functional safety.
+
+Due to limited time, this project will only focus on a single-contract execution, leaving the support of cross-contract calls beyond the scope of the project.
+
+
+#set heading(numbering: "A.")
+
+#pagebreak()
 = Folidity Grammar <Appendix:Grammar>
+
+```xml
+<program>      := <decl>+
+
+<decl>         := <func_decl> | <model_decl> | <state_decl> | <enum_decl> | <struct_decl>
+
+<func_decl>    :=  `@init`? <attrs>+ <view>? `fn` <type_decl> <ident> `(` <params>? `)` <state_bound>? <st_block>? `{` <func_body> `}`
+<type_decl>    := <type> | `(` <param> `)`
+
+<attrs>        := `@` `(` <attr_ident> `)`
+<attr_ident>   := <ident> | ( <expr> `|` )*
+<params>       := <param> | <param> (`,` <params>)*
+<param>        := <ident> `:` <type>
+<view>          := `view` `(` <state_param> `)`
+<state_bound>  := `when` <state_param> <arr> ( <state_param> | <state_param> (`,` <state_param>)*)
+<func_body>    := (<statement>)*
+<state_param>  := (<ident> <ident>?) | `()`
+
+<st_block>     := `st` <expr>
+
+<statement>    := <var> | <assign> | <if> | <for> | <foreach> | <return> | <func_call> | <state_t> `skip` `;`
+<state_t>      := `move` <struct_init>
+<var>          := let `mut`? <var_ident> (`:` <type>)? (`=` <expr>)?
+<var_ident>    := (<ident> | <decon>)
+<decon>        := `{` <decon_list> `}`
+<decon_list>   := <ident> | <ident> (`,` <decon_list>)*
+
+<assign>       := <ident> `=` <expr>
+<if>           := `if` <expr> ` `{` <statement> `}` (`else` <if>? )*
+<foreach>      := `for` `(` <var_ident> `in` (<ident> | <range>) `)` `{` <statement> `}`
+<for>          := `for` `(` <var> `;` <expr> `;` <expr> `)` `{` <statement> `}`
+<return>       := `return` <expr>
+<struct_init>  := <ident> : `{` <struct_args> `}`
+<struct_args>  := <expr> | (`,` <expr>)* | <arg_obj>
+<struct_arg>   := <ident> `:` <expr>
+<arg_obj>      := `|` `..` <ident>
+
+<model_decl>   := `model` <ident> `{` params `}` <st_block>?
+
+<state_decl>   := `state` <ident> (`from` <ident> <ident>)?  <state_body> <st_block>?
+<state_body>   := `(` <ident> `)` |  `{` params `}`
+<enum_decl>    := `enum` `{` (<ident> | <ident> (`,` <ident>)* ) `}`
+<struct_decl>  := `struct` `{` <params> `}`
+
+<type>         := `int` | `uint` | `float` | `char` | `string` | `hex` 
+             | `address` | `()` | `bool` | <set_type> | <list_type> | <mapping_type>
+
+
+<set_type>     := `Set` `<` <type> `>`
+<list_type>    := `List` `<` <type> `>`
+<mapping_type> := `Mapping` `<` <type> <mapping_rel> <type> `>`
+<mapping_rel>  := (`>`)? `-` (`/`)? (`>`)? `>`
+
+<char>         := ? '` <char>* `'`
+<hex>          := `hex` `"` <char>* `"`
+<address>      := `a` `"` <char>* `"`
+
+<digit>        := [0-9]
+<number>       := <digit>+
+
+<bool>         := `true` | `false`
+<rel>          := `==` | `!=` | `<` | `>` | `<=` | `>=` | `in` 
+<bool_op>      := `||` | '&&'
+
+<period>       := `.`
+<float>        := <number> <period> <number>?
+
+<func_pipe>    := <expr> (`:>` <func_call>)+
+<member_acc>   := <expr> (`.` <ident>)+
+<func_call>    := <ident> `(` <args>? `)`
+<args>         := <expr> | (<args> `,`)*
+
+
+<plus>         := `+`
+<minus>        := `-`
+<div>          := `/`
+<mul>          := `*`
+<not>          := `!`
+<modulo>       := `%`
+<expr>         := <not>? <expr_nested>
+<expr_nested>  := <term> <bool_op> <expr>
+<cond>         := <expr> <rel> <expr> 
+<math_expr>    := <term> ( (<plus> | <minus>) <term> )*
+<term>         := <factor> ( (<mul> | <div> | <modulo>) <factor> )*
+<factor>       := <ident> | <constant> | <func_call> | <func_pipe> | <member_acc> | `(` <expr> `)`
+<constant>     := <number> | <float> | <bool> | <string> | <hex> | <address> | <list>
+<list>         := `[` ( <expr>? | <expr> (`,` <expr>)* ) `]`
+<ident>        := <char>+
+<arr>          := `->`
+
+```
+
+- `<ident>` - eBNF element
+- `?` - optional element
+- `(  )` - grouping
+-  `+` - one or more
+-  `*` - zero or more
+-  \`ident\` - literal token
 
 = Libraries Used <Appendix:Libraries>
 
-= Gannt Chart <Appendix:Gannt>
+#figure(
+  ```toml
+  logos = "0.14"
+  lalrpop-util = "0.20"
+  lalrpop = "0.20"
+  thiserror = "1.0"
+  syn = "2.0"
+  synstructure = "0.13"
+  proc-macro2 = "1.0"
+  quote = "1.0"
+  indexmap = "2.2"
+  petgraph = "0.6.4"
+  num-bigint = "0.4"
+  num-rational = "0.4"
+  num-traits = "0.2"
+  algonaut_core = "0.4"
+  hex = "0.4"
+  regex = "1.10"
+  clap = { version ="4.5", features = ["derive"]}
+  ariadne = { version = "0.4", features = ["auto-color"] }
+  anyhow = "1.0"
+  walkdir = "2.5"
+  yansi = "1.0"
+  # we need to pin to commit as the crate version doesn't allow us to detect local `z3` binary.
+  z3 =  { git = "https://github.com/prove-rs/z3.rs.git", rev = "247d308f27d8b59152ad402e2d8b13d617a1a6a1" }
+  derive_more = "0.99"
+```,
+caption: [`Cargo.toml` file]
+)
+
+= Old Gannt Chart <Appendix:Gannt>
+
+The Gannt chart that demonstrates the planned work.
 
 #pagebreak()
 #rotatex(90deg, [
@@ -1090,6 +1396,12 @@ From the beginning of January, the first iteration of grammar should be complete
 )
 ]
 ])
+
+#pagebreak()
+
+= Actual Gannt Chart <Appendix:ActualGannt>
+
+The Gannt chart that demonstrates the actual work.
 
 #pagebreak()
 
