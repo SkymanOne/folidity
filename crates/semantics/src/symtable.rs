@@ -69,8 +69,6 @@ pub struct SymTable {
     pub context: ScopeContext,
 }
 
-impl SymTable {}
-
 #[derive(Debug, Clone)]
 pub struct Scope {
     /// Indexed map of variables

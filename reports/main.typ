@@ -3,9 +3,15 @@
 #import "@preview/i-figured:0.2.3"
 #import "@preview/timeliney:0.0.1": *
 #import "@preview/fletcher:0.4.3" as fletcher: diagram, node, edge
+#import fletcher.shapes: circle
 
 
 #let abstract = "This paper addresses the long-lasting problem involving the exploits of Smart Contract vulnerabilities. There are tools, such as in the formal verification field and alternative Smart Contract languages, that attempt to address these issues. However, neither approach has managed to combine the static formal verification and the generation of runtime assertions. Furthermore, this work believes that implicit hidden state transition is the root cause of security compromises. In light of the above, we introduce Folidity, a formally verifiable Smart Contract language with a unique approach to reasoning about the modelling and development of Smart Contract systems. Folidity features explicit state transition checks, a model-first approach, and built-in formal verification compilation stage."
+
+#let resources = [
+  - Solang - https://github.com/hyperledger/solang
+  - Open Source libraries listed in @Appendix:Libraries[Appendix]
+]
 
 #let scv(code) = [
   #text(style: "italic", "SCV" + str(code)) #label("SCV:" + str(code))
@@ -48,6 +54,14 @@
   is_progress_report: false,
   abstract_text: abstract,
   acknowledgments_text: none,
+  originality_statements: (
+    acknowledged: "I have acknowledged all sources, and identified any content taken from elsewhere.",
+    resources: resources,
+    foreign: "I did all the work myself, or with my allocated group, and have not helped anyone else",
+    material: "The material in the report is genuine, and I have included all my data/code/designs.",
+    reuse: "I have not submitted any part of this work for another assessment.",
+    participants: "My work did not involve human participants, their cells or data, or animals."
+  ),
   display_word_count: true,
   doc
 )
@@ -500,7 +514,19 @@ If no attributes are specified, then it is assumed that the function is private 
 Moving on, `(out: int)` is a return type bound by the variable `out` that can be used to specify a post-execution condition to ensure that the function produces results within an acceptable model's range. It is also possible to just specify the return type, `fn int my_func(...)`. The `my_func` is an identifier of the function, followed by the list of typed parameters.
 
 Functions in Folidity feature `where` blocks enabling developers to specify state transition bounds and are also used to inject the current state into the function's execution context. Certain functions can only be executed if the input state matches the current state. After `->` we have a final state that indicates which state we transition to, this can be the same state, meaning that the function only mutates the current state and doesn't logically advance. Both input and output states can be bound by variables
-in order to specify pre and post mutation constraints. You can notice that state's variables are declared in a different fashion from other data types. This is conscious design decision to differentiate the state mutation parts from the traditional manipulation of primitive data.
+in order to specify pre and post mutation constraints. You can notice that state's variables are declared in a different fashion from other data types. This is a conscious design decision to differentiate the state mutation parts from the traditional manipulation of primitive data.
+
+Additionally, Folidity offers a unique type of function: _view functions_. They are used exclusively for enquiring current or previous state variables and are explicitly restricted from modifying the state of the contract.
+
+```
+view(BeginState s) fn list<address> get_voters() {
+    return s.voters;
+}
+```
+
+These functions are prefixed with the `view(StateName v)` tokens that indicate what state the function accesses. These functions also do not require any attributes since they are public by default and can not be used for instantiation. 
+
+Finally, Folidity offers `struct` and `enum` declarations resembling the ones in Rust. They can be used as a type in the variable or field type annotations.
 
 == Formal Verification
 
@@ -689,9 +715,9 @@ In the final stage, we can perform the symbolic execution of instructions in the
 === Other techniques
 
 The above examples leverage the static analysis of the program to derive its mathematical properties.
-It is worth noting that it is possible to apply other techniques of formal verification such as symbolic execution and interface discovery.
+It is worth noting that it is possible to apply other techniques of formal verification such as symbolic execution and interface discovery @component_interface.
 
-In particular, we can provide even more fine-grained validation of the program by asserting user-defined constraints in the symbolic execution context. This enables to detect unsatisfability of reachability at the earlier stage of the execution. The traditional methods rely on composing these constraints at the runtime through the statistical discovery of the model bounds whereas Folidity offers this information at the compile time. 
+In particular, we can provide even more fine-grained validation of the program by asserting user-defined constraints in the symbolic execution context. This enables unsatisfability detection of reachability at the earlier stage of the execution. The traditional methods rely on composing these constraints at the runtime through the statistical discovery of the model bounds whereas Folidity offers this information at the compile time. 
 
 In the context of mutli-contract execution, which applies to EVM-compatible blockchains. Instead of carrying out interface discovery through statistical methods, we can potentially encode the function signature with its models bounds and constraints into the metadata and leverage this information at the runtime in order to verify the model consistency and constraint satisfiability as illustrated earlier.
 
@@ -707,7 +733,7 @@ Z3#footnote[https://microsoft.github.io/z3guide] will be used since it also prov
 a higher-level abstraction, but it was quickly discarded due to lack of documentation and increased development time.
 
 As a target blockchain for the language, Algorand #footnote[https://developer.algorand.org] has been selected. 
-Algorand is a decentralized blockchain platform designed for high-performance and low-cost transactions, 
+Algorand is a decentralised blockchain platform designed for high-performance and low-cost transactions, 
 utilising a unique consensus algorithm called Pure Proof-of-Stake to achieve scalability, security, and decentralisation @algorand.
 
 One of the potential drawbacks of Folidity is a computational overhead due to complex abstractions and additional assertions. 
@@ -754,11 +780,236 @@ Additionally, optimisation of the execution is not considered relevant at this s
 Finally, Algorand offers smart signatures, a program that is delegated a signing authority #footnote[https://developer.algorand.org/docs/get-details/dapps/smart-contracts/smartsigs].
 As they operate in a different way from SCs, they are also outside the scope of this project.
 
+== Diagnostics
+
+The `folidity-diagnostics` module is one of the core pieces of the compiler, it enables the aggregation of a list of reports across multiple crates and its presentation to the user. Folidity compiler offers `folidity-diagnostics` crate that contains `Report` structures 
+
+#figure(
+  ```rust
+  pub struct Report {
+    /// Location of an error
+    pub loc: Span,
+    /// A type of error to occur.
+    pub error_type: ErrorType,
+    /// Level of an error.
+    pub level: Level,
+    /// Message of an error
+    pub message: String,
+    /// Additional error.
+    pub additional_info: Vec<Report>,
+    /// Helping note for the message.
+    pub note: String,
+  }
+  ```
+)
+
+At each stage of the compilation, if an error occurs, then the crate composes a `Report` and adds to their respective list of errors which are then returned to the caller and displayed to the user.
+
+== Parser
+
+Parsing has been significantly bootstrapped using Rust crates. Logos #footnote[https://crates.io/crates/logos] is used for tokenisation. It scans strings, matches them against patterns and produces a list of `enum` tokens that can directly be referenced in Rust code. As mentioned before, Lalrpop is a powerful parser-generator and library that allows developers to describe grammar using easy-to-use syntax and generate an AST. Its syntax is expressive and effective when managing grammar ambiguities.
+In addition, Lalrpop provides built-in support for error recovery producing a descriptive list of error reports. Finally, the library has been actively used in the industry by production-ready languages such as Solang #footnote[https://github.com/hyperledger/solang] and Gluon #footnote[https://github.com/gluon-lang/gluon].
+
+#figure(
+  ```
+  AccessAttr: ast::AccessAttribute = {
+    <start:@L> "@" "(" <first:Expression?> <mut memebers:("|" <Expression>)*> ")" <end:@R> => {
+        let mut all = if first.is_some() { vec![first.unwrap()] } else { vec![] };
+        all.append(&mut memebers);
+        ast::AccessAttribute::new(start, end, all)
+    }
+  }
+  ```,
+  caption: "Example of a Lalrpop rule."
+) <Listing:lalrpop>
+
+#figure(
+  ```rust
+  pub struct AccessAttribute {
+      /// Location of the token.
+      pub loc: Span,
+      /// Members delimited by `|`
+      pub members: Vec<Expression>,
+  }
+  ```,
+  caption: "Corresponding Rust struct"
+) <Listing:lalrpop-rust>
+
+As an example, @Listing:lalrpop illustrates a typical parsing rule in Lalrpop, that produces the `AccessAttribute` struct in Rust in @Listing:lalrpop-rust. 
+`<Expression>` is another Lalrpop rule that parses expressions. This way, we can compose different rules and structures together, hence building a tree.
+`@L` and `@R` tokens allow to track the location span of a token which is heavily used in further stages of compilation for reporting purposes.
+
+Finally, we do not resolve primitives to concrete Rust types yet, instead, they are parsed as strings and resolved to a specific type based on the context of the expression as explained later.
+
+== Semantics & Typing
+
+Semantic analysis is one of the largest parts of the Folidity compiler. It inspects the AST produced by the parser and produces a more concrete definition of the contract as shown in @Listing:ContractDefinition. The Folidity uses `GlobalSymbol` and `SymbolInfo` structures to uniquely identify declarations in the codebase. They consist of a symbol's location span and index in the respective list as shown in @Listing:GlobalSymbol.
+
+#figure(
+  ```rust
+  pub struct SymbolInfo {
+      /// Locations of the global symbol.
+      pub loc: Span,
+      /// Index of the global symbol.
+      pub i: usize,
+  }
+
+  pub enum GlobalSymbol {
+    Struct(SymbolInfo),
+    Model(SymbolInfo),
+    Enum(SymbolInfo),
+    State(SymbolInfo),
+    Function(SymbolInfo),
+}
+  ```,
+  caption: "Symbol structs used for identification."
+) <Listing:GlobalSymbol>
+
+#figure(
+  ```rust
+  pub struct ContractDefinition {
+    /// List of all enums in the contract.
+    pub enums: Vec<EnumDeclaration>,
+    /// List of all structs in the contract.
+    pub structs: Vec<StructDeclaration>,
+    /// List of all models in the contract.
+    pub models: Vec<ModelDeclaration>,
+    /// List of all states in the contract.
+    pub states: Vec<StateDeclaration>,
+    /// list of all functions in the contract.
+    pub functions: Vec<Function>,
+    /// Mapping from identifiers to global declaration symbols.
+    pub declaration_symbols: HashMap<String, GlobalSymbol>,
+    /// Id of the next variable in the sym table.
+    pub next_var_id: usize,
+    /// Errors during semantic analysis.
+    pub diagnostics: Vec<Report>,
+  }
+  ```,
+  caption: "Contract definition resolved by the crate."
+) <Listing:ContractDefinition>
+
+As part of the checking, the crate first inspects that all declarations have been defined correctly by inspecting signatures, that is, there are no conflicting names. After the successful resolution, we add the structure to the respective list and 
+Then, we can resolve fields of structs, models and states. First, we verify that no model or state is used as the type of a field. Afterwards, the module checks fields for any cycles using Solang algorithm #footnote[https://github.com/hyperledger/solang/blob/d7a875afe73f95e3c9d5112aa36c8f9eb91a6e00/src/sema/types.rs#L359]. It builds a directed graph from the fields with and uses the original index of the declaration of the index. It then finds any strongly directed components using Tarjan's algorithm #footnote[https://en.wikipedia.org/wiki/Tarjan's_strongly_connected_components_algorithm]. If we have a simple path between the two nodes, then we have detected a cycle.
+
+After that, we check models and states for any cycles in inheritance. We disallow model inheritance to prevent infinite-size structures, but states do not really have this problem since it is possible for functions to transition to the same or any previous states as stated earlier.
+
+Having verified storage-based declarations, we are ready to resolve functions. Each declaration that has expressions also contains a scope. Therefore, when resolving functions, models and states, a scope is created for each declaration.
+
+```rust
+pub struct SymTable {
+    /// Variable names in the current scope.
+    pub names: HashMap<String, usize>,
+    // Context of variables in the given scope.
+    pub context: ScopeContext,
+}
+
+pub struct Scope {
+    /// Indexed map of variables
+    pub vars: IndexMap<usize, VariableSym>,
+    /// List of scoped symbol tables.
+    pub tables: Vec<SymTable>,
+    /// Index of the current scope.
+    pub current: usize,
+    /// What symbol this scope this belongs to.
+    pub symbol: GlobalSymbol,
+}
+```
+
+
+Moving on, function's attributes are resolved. `is_init` is stored as a boolean flag. When resolving an access attribute, we resolve the respective expressions in the attribute's body and match that the referenced fields exist in the incoming state adding it to the scope. Then, we resolve state bounds while injecting bound variables into the scope. 
+Afterwards, function's parameters are added to the scope as a variable. 
+The variables are added in the order as they are described in order to maintain the valid stack of symbol tables that is used to control the variable access as explained later.
+
+Having resolved the function's signature, the crate has finished resolving signatures of declarations and is ready to resolve `st` blocks.
+
+Resolving `st` blocks in declarations is done by simply resolving a list of expressions as explained in @Chapter:Expressions. During each resolution stage, the scope of the declaration is provided to enable the variable lookup in expressions.
+
+The final stage of the semantic resolution is to resolve the functions' bodies. This is done by inspecting the list of statements with injected the injected function's scope which is explained in @Chapter:Statements.
+
+If after each stage of semantic analysis no reports have been pushed, the `ContractDefinition` is returned to the caller, otherwise, the list of `Report`s is returned.
+
+=== Expressions <Chapter:Expressions>
+
+Folidity features a type resolution at the compile time, similar to Rust. We define the following `enum` in @Listing:ExpectedType. We use this information in order to resolve an expression to a specific type.
+
+#figure(
+  ```rust
+  pub enum ExpectedType {
+      /// The expression is not expected to resolve to any type (e.g. a function call)
+      Empty,
+      /// The expression is expected to resolve to a concrete type.
+      /// e.g. `let a: int = <expr>`
+      Concrete(TypeVariant),
+      /// The expression can be resolved to different types and cast later.
+      Dynamic(Vec<TypeVariant>),
+  }
+  ```,
+  caption: "Expected type definition."
+) <Listing:ExpectedType>
+
+Each enum is supplied to a function resolving an expression. If the expected type is well-known (i.e. it is declared or can be derived), then `Concrete(...)` variant is supplied. Otherwise, `Dynamic(...)` variant is supplied with the list of possible types that the expression can resolve to. 
+As an example, in `let a: int = 10;` the `10` literal can only be resolved to a signed integer, whereas in `let a = 10;` the literal can be either signed or unsigned.
+Sometimes, we may not know the expected type, then we use our best effort to resolve the literal to the type it can be resolved to.
+If the type can not be resolved to any of the specified types, then a report is composed and added to the list of reports.
+
+Similar to AST parsing, complex expression structures are resolved recursively and built up back to the tree of expression.
+
+#figure(
+  diagram(
+    spacing: (1mm, 10mm),
+    node-stroke: 0.5pt,
+    node((1,0), [`5`], shape: circle),
+    node((2,0), [`+`]),
+    node((3,0), [`9`], shape: circle),
+    node((0,1), [`Num(5)`]),
+    node((4,1), [`Num(9)`]),
+    node((2,2), [`Add[Num(5), Num(9)]`]),
+    edge((1, 0), (0,1), "->", "1"),
+    edge((3, 0), (4,1), "->", "2"),
+    edge((0, 1), (2,2), "->", "3"),
+    edge((4, 1), (2,2), "->", "3"),
+    edge((2, 0), (2,2), "->", "3"),
+  ),
+  caption: "Example resolving an expression"
+) <Listing:ExpressionResolve>
+
+The @Listing:ExpressionResolve demonstrates how a simple addition is resolved. In step 1, we attempt to resolve the `5`. Assuming there are no concrete expected types, the `5` will resolve to `int`. This implies that the `9` must be resolved to `int` as well. We attempt the resolution. If it fails, we remove `int` from the list of accepted types of `5` and try again. If it succeeds, then `9` is resolved successfully and the top-level function resolving `+` has two concrete expressions. Then, in step 3, we compose expressions together and pack them into the `Add` concrete expression.
+
+Variables are resolved differently. Each scope contains multiple symbol tables depending how deep the scope goes. When the variable is used in the expression, the function looks up the variable symbol in the scope and its metadata (e.g. type, assigned expression, usage kind). 
+
+Certain variables should not be accessed in the function body and vice versa. These variables are state and return bound variables. They can only accessed in the `st` block. Similarly, function parameters should be accessed in the `st` block and function body. Therefore, when retrieving the variable, we inspect the context of the current scope, and depending on it, we either return the variable symbol or an error.
+
+Function calls are resolved similarly by looking up the function's definition in the contract, inspecting the arguments and comparing them to the list of expressions provided as arguments. Piping (`:>`) is simply transformed into the nested function calls, where the first argument of the next function is the function call (or expression) of the previous one. 
+
+Struct initialisation is resolved similarly to function calls by comparing the list of arguments to the list of fields. The only difference is that since the models can inherit fields, we recursively retrieve the list of fields of a parent and prepend to the current list.
+
+Finally, accessing a member (e.g. a field of a model) is done by retrieving the list of fields of the definition and checking that it contains the requested field name. The resolved expression contains the `GlobalSymbol` of the struct accessed and the position of the field.
+
+=== Statements <Chapter:Statements>
+
+In contrast with expressions, statements are resolved iteratively. Starting with the variable declaration, we first resolve the assigned expression if any, and then add it to the current symbol table in the function's scope with resolved or annotated type.
+Further reassignment of the variable simply updates the current entry in the table if the variable is mutable, that is, it has been annotated with the `mut` keyword.
+
+`If-Else` blocks are resolved by first resolving the conditional expression, and resolving the list of statements in the body, then `else` statements are resolved if any. Since the `else` statements can be another `if`, we achieve `else if {}` block.
+
+The `for` loop is handled first by resolving: a variable declaration statement, conditional expression, increment condition. Then the list of statements in the body is resolved. Iterators are resolved similarly, instead, there are two expressions in the declaration: a binding variable, and a list. Folidity has `skip` statement that skips the current iterator of the loop, it is only resolved if the current scope context is the loop.
+
+State transition (`move ...;`) is resolved by first resolving the struct initialisation expression. Then the type of expression is compared to the expected final state of the function. If it mismatches, then the error is reported.
+
+Finally, `return` statement indicates the termination of the execution of the function, and any returned data if any. Similar to the state transition, the return expression type is resolved and compared to the expected return type. Afterwards, we toggle the reachability flag indicating that any followed expressions in the current scope are unreachable.
+
+=== Generics
+
+Limited support for generics has been introduced to the Folidity compiler. Although a developer can not currently use them directly in the contract's code, they are added to facilitate the support of built-in functions as part of the standard library which is planned the future work.
+
+Generic type has similar semantic to `ExpectedType` it contains the list of supported types that the expression can resolve to. Therefore, when `GenericType(Types)` is supplied in the `ExpectedType::Concrete(_)` it is transformed into the `ExpectedType::Dynamic(Types)` and passed for another round of type resolution.
+
 #v(-2em)
 
 = Project Planning
 
-A significant groundwork in research of current solutions and their limitations has been done as illustrated by Gannt chart in @Appendix:Gannt[Appendix].
+A significant groundwork in research of current solutions and their limitations has been done as illustrated by the Gannt chart in @Appendix:Gannt[Appendix].
 Since the requirements have been collected, some progress has been made in the design of BNF grammar that will later pave the way for the development
 of the parser. It is still possible to research more formal verification methods during the grammar design. 
 
@@ -773,6 +1024,7 @@ From the beginning of January, the first iteration of grammar should be complete
 
 = Folidity Grammar <Appendix:Grammar>
 
+= Libraries Used <Appendix:Libraries>
 
 = Gannt Chart <Appendix:Gannt>
 
