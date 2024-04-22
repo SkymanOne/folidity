@@ -100,7 +100,7 @@
         let h_counter = counter(heading.where(level: 1)).display()
         let last_header = before_elems.last().body
         v(4em)
-        if last_header == text("Statement of Originality") {
+        if last_header == text("Statement of Originality") or last_header == text("Bibliography") {
           emph(last_header) + h(1fr) + counter(page).display(page_numbering)
         } else {
           emph(h_counter + " " + last_header) + h(1fr) + counter(page).display(page_numbering)

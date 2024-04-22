@@ -2,9 +2,10 @@
 #import "@preview/tablex:0.0.8": tablex, rowspanx, colspanx, gridx, hlinex
 #import "@preview/i-figured:0.2.3"
 #import "@preview/timeliney:0.0.1": *
+#import "@preview/fletcher:0.4.3" as fletcher: diagram, node, edge
 
 
-#let abstract = "This paper addresses the long-lasting problem involving the exploits of Smart Contract vulnerabilities. There are tools, such as in the formal verification field and alternative Smart Contract languages, that attempt to address these issues. However, neither approach has managed to combine the static formal verification and the generation of runtime assertions. Furthermore, this work believes that implicit hidden state transition is the root cause of security compromises. In light of the above, we introduce Folidity, a safe functional Smart Contract language with a unique approach to reasoning about the modelling and development of Smart Contract systems. Folidity features explicit state transition checks, a model-first approach, and built-in formal verification tooling."
+#let abstract = "This paper addresses the long-lasting problem involving the exploits of Smart Contract vulnerabilities. There are tools, such as in the formal verification field and alternative Smart Contract languages, that attempt to address these issues. However, neither approach has managed to combine the static formal verification and the generation of runtime assertions. Furthermore, this work believes that implicit hidden state transition is the root cause of security compromises. In light of the above, we introduce Folidity, a formally verifiable Smart Contract language with a unique approach to reasoning about the modelling and development of Smart Contract systems. Folidity features explicit state transition checks, a model-first approach, and built-in formal verification compilation stage."
 
 #let scv(code) = [
   #text(style: "italic", "SCV" + str(code)) #label("SCV:" + str(code))
@@ -18,11 +19,18 @@
   link(label("Requirement:" + str(code)))[_Requirement #str(code)_]
 }
 
+#let rotatex(angle, body)= style(styles => layout(size => {
+  let size = measure(block(width: size.width, body), styles)
+  box(inset:(x: -size.width/2+(size.width*calc.abs(calc.cos(angle))+size.height*calc.abs(calc.sin(angle)))/2,
+             y: -size.height/2+(size.height*calc.abs(calc.cos(angle))+size.width*calc.abs(calc.sin(angle)))/2),
+             rotate(body,angle))
+}))
+
 #show figure: i-figured.show-figure
 #show heading: i-figured.reset-counters
 
 #show: doc => use_project(
-  title: "Folidity - Safe Functional Smart Contract Language",
+  title: "Folidity - Formally Verifiable Smart Contract Language",
   author: (
     name: "Gherman Nicolisin",
     email: "gn2g21@soton.ac.uk"
@@ -56,7 +64,7 @@ written in some programming language (Solidity) and executed in the blockchain's
 
 Ethereum Virtual Machine (EVM) iterated over the idea of Bitcoin Scripting @bitcoin, allowing developers to deploy general-purpose, Turing-Complete
 programs that can have their own storage, hence the state, written in Solidity @solidity_docs. This enabled sophisticated applications that grew beyond
-the simple funds transfers among users.
+the simple fund transfers among users.
 
 Overall, SC can be summarised as an _immutable_, _permissionless_, _deterministic_ computer program
 that is executed as part of state transition in the blockchain system @hardvard_sc@eth_yellow_paper. 
@@ -163,7 +171,7 @@ Furthermore, it has been realised that additional tooling or alternative SCLs ne
 
 #pagebreak()
 
-= Current Solutions
+= Related Work
 
 == Overview
 
@@ -262,21 +270,21 @@ even though the methods have been developed for traditional systems, such as Eve
 
 = Proposed Solution <Chapter:Solution>
 
-== Outline
+== Outline <Section:Outline>
 
 In light of the above, we believe there is a need for a solution that combines two approaches to allow SC developers to reason
 about their program in terms of FSM models that can be verified at the compile time for functional correctness and model consistency,
 and enable an automatic generation of invariants and constraints to validate the data at runtime.
 
-We propose _Folidity_, a safe smart contract language. Folidity will offer the model-first approach to the development process
-while featuring the functional-first programming style. The language intends to offer a safe and secure-by-design approach to the programming, 
+We propose _Folidity_, a safe smart contract language. Folidity offers a model-first approach to the development process
+while featuring a functional-friendly programming style. The language intends to offer a safe and secure-by-design approach to the programming, 
 ensuring the developer is aware of any state transitions during execution.
 
 The list of feature requirements has been comprised based on the vulnerabilities described in @fig:Table:classification.
 
 
 / *1. Provide abstraction over timestamp* <Requirement:1>: in response to #ref_scv(1). We are interested in the limited use of timestamps in SCs in favour of block number or another safe primitive.
-/ *2. Provide a safe interface for randomness* <Requirement:2>: in response to #ref_scv(2). Folidity should also provide source of randomness through a standardised interface.
+/ *2. Provide a safe interface for randomness* <Requirement:2>: in response to #ref_scv(2). Folidity should also provide a source of randomness through a standardised interface.
 / *3. Enable model-first approach in development* <Requirement:3> :in response to #ref_scv(3). Developers should reason about the storage in terms of models and how they are updated by events. This approach is inspired by the Event-B @event_b work, which can also be applied to SC development.
 / *4. Explicit state checks at runtime* <Requirement:4>: in response to #ref_scv(3) and #ref_scv(6). Similar to #ref_req(3), SC developers should be aware of any state transitions that update the state of the model. State transitions must happen explicitly and be validated at the runtime to guarantee _liveness_.
 / *5. Static typing* <Requirements:5>: in response to #ref_scv(3) and #ref_scv(5).
@@ -314,7 +322,194 @@ whereas _local state_ describes the storage of an individual SC.
   caption: "Transformed execution context", 
   ) <context:transformed>
 
-=== Model consistency: Simple example
+
+== Language design
+
+Folidity features a rich grammar that allows one to abstract away from low-level operations while providing a high level of readability and expressivity.
+Certain considerations have been taken into account to reflect the desired features described in @Section:Outline.
+
+Folidity is described using LR(1) #footnote("https://en.wikipedia.org/wiki/LR_parser") grammar as outlined in @Appendix:Grammar[Appendix].
+One of the advantages of using LR(1) grammar is its expressiveness and clarity which allows describing sophisticated data structures. 
+It additionally enables easier implementation of the error-recovery @sorkin2012lr1 for reporting purposes which lies at the core of the Folidity compiler.
+
+=== Primitives, Expressions and Statements
+
+Starting from primitives, Folidity provides numerous data types allowing encoding data for the domain of use cases in dApps: 
+- `int`, `uint`, `float` - signed, unsigned integers and floating-proint numbers
+- `()` - unit type, similar to rust this means no data.
+- `string` - string literals, can be provided as `s"Hello World"`
+- `hex` - hexadecimal string literals, provided as `h"AB"`
+- `address` - account number literal, provided as `a"<address>"`
+- `list<a>`, `set<a>` - lists of elements of type `a`, `set` describes a list of unique elements.
+- `mapping<a -> b>` - a mapping from type `a` to type `b` using the relation `->`
+  - `->` : total relation 
+  - `-/>` : partial relation, can be combined with injective and surjective notations.
+  - `>->` : (partial) injective relation
+  - `->>` : (partial) surjective relation
+  - `>->>` : bijective relation 
+- `char` - character, provided as `'a'`
+- `bool` - boolean literals `true` or `false`
+
+By describing the type of relations in mappings, we can combine Event-B approach of proof obligation with symbolic execution to provide strong formal guarantees of member inclusion and member relations.
+
+Specifically, we can define some axiom where we can have a mapping of partial injective relation between addresses (`address`) and asset ids (`uint`) `assets: mapping<address >-/> int>`:
+
+$
+"Assets:" "Address" harpoon.rt "Int"
+$
+
+Then, for some statement $S$: `assets = assets :> add(<a>, <b>)`, we can treat as a hypothesis. The compiler can then assert:
+$
+S, (a', a in "Address") tack.r.long "Assets"(a) != "Assets"(a')
+$
+
+Looking at the expressions, Folidity provides a standard set of operators to describe mathematical and boolean expressions (e.g. `+`, `/`, `||`, etc.)
+with few additions.
+- `in` - inclusion operator, return `true` if for `a in A`, the $a in A$ is true, if used in boolean context. Otherwise, it extracts an element from `A` and assigns it to `a` when used in iterators.
+- `:>` - pipeline operator, heavily inspired by F\# #text(weight: "bold", `|>`) operator #footnote[https://learn.microsoft.com/en-gb/dotnet/fsharp/language-reference/functions/#pipelines]. It allows to pipe the result of one function into the other one. This enables easy integration of a functional style of programming and handling of side effects of the mathematical operations such as overflow or division by zero, hence, addressing #ref_scv(5) and #ref_req(8).
+```rust
+let result: int = a + 1_000_000_000 :> handle((_) -> return 0);
+```
+
+Statements have close resemblances to Rust syntax by following the following syntax:
+```rust
+let <var_ident>: <optional_type> = <expr>; 
+```
+
+The type can be derived at the compile time from the expression. Other simple statements are similar to Rust statements and are defined in @Appendix:Grammar[Appendix].
+
+It is worth looking at the unique additions such as struct instantiation and state transition.
+
+Any structure-like type can instantiated using the \ `<ident> : { <args>, ..<object> }` syntax, where
+- `<ident>` - Identifier of the declaration.
+- `<args>` - list of arguments to assign fields
+- `<object>` - Object to fill the rest of the fields from if not all arguments are provided. 
+
+This expression can be combined with the state transition statement to execute the explicit change in the internal state of the SC.
+
+```
+move <state_ident> : { <args>, ..<object> };
+```
+
+=== Declarations
+
+A typical program in Folidity consists of data structures that describe models, states, and functions that can interact with each other. Models are one of the core structures that provide the model consistency guarantee in Folidity. States can encapsulate different of the same models and describe explicit state transition or state mutations as part of program execution, and functions are the driving points in program execution. Functions declare and describe the state transitions.
+
+As mentioned multiple times before, models lie within the core of Folidity design. They resemble regular `struct` structures in "C-like" languages with
+few differences.
+
+Models describe some representation of the storage layout that is encapsulated within explicit states.
+
+#figure(
+  ```
+  model MyModel {
+    a: int,
+    b: string,
+  } st [
+    a > 10,
+    b == s"Hello World"
+  ]
+  ```,
+  caption: "Simple model with constraints"
+)
+
+Folidity provides developers with a syntax to further constraint the data that the model can accept by specifying model bounds in `st` #footnote("States for \"such that\"") blocks. This syntax can also be used in state and function declarations as illustrated later.
+To support context transformation, any global state variables (e.g. block number, current caller) are injected into a model as fields and can be accessed in `st` blocks and expressions in functions.
+Furthermore, Folidity borrows the idea of model refinements from Event-B by allowing a model to inherit another model's fields and refine its constraints as shown in @Listing:ModelRefinememt. 
+
+
+#figure(
+  ```
+  model ParentModel {
+    a: int,
+  } st [
+    a > 10,
+  ]
+
+  model MyModel: ParentModel {} st [
+    a > 100
+  ]
+  ```,
+  caption: "Model refinement"
+) <Listing:ModelRefinememt>
+
+
+States facilitate the tracked mutation of the storage. They can encapsulate models, have raw fields in the body, or not contain any data at all.
+They are essentially _the_ data structures that can encoded and stored as raw bytes in the contract storage.
+
+#figure(
+  ```
+  model ParentModel {
+    a: int,
+  } st [
+    a > 10,
+  ]
+
+  state StateA(ParentModel) st [
+    a < 100
+  ]
+
+  state StateB {
+    b: uint
+  } st [
+    b < 10
+  ]
+
+  state NoState
+  ```,
+  caption: "States"
+)
+The idea behind model encapsulation is to enable distinct states to represent identical models with their distinct constraints.
+Additionally, states' bounds can further be restricted by specifying the incoming state, that is the state only from which we can transition to the specified state.
+
+#figure(
+  ```
+  state StateA from (StateB s) st [
+    s.a > 10
+  ]
+  ```,
+  caption: "State transition bounds"
+)
+
+As mentioned earlier, functions facilitate the model mutation of the Folidiy SC. Functions provide a controlled interface for the user and other contracts (non-AVM type of contracts) to interact with the business logic and the state of the application. Therefore, it is important to enable developers to control the execution flow of the incoming data and provide them with fine-grained control over output data and storage mutation.
+
+Let's look at the signature of a typical function in Folidity;
+
+#figure(
+  ```
+  @init
+  @(any)
+  fn (out: int) my_func(input: hex) 
+    where (InitialState s1) -> (FinalState s2)
+    st [
+      input != h"ABC",
+      out > 10,
+      out < 100
+      s1.a == s2.a
+    ] { <statements> }
+  ```,
+  caption: "Function signature"
+)
+
+Starting from the top: `@init` is an optional attribute that indicates the function is used for instantiation of the contract.
+Followed by the end attribute, `@(any)`, a developer can specify who can call the contract. `any` is a wildcard variable indicating that anyone can call it.
+However, it is possible to specify a list of addresses or a specific address using data from the incoming state `@(s1.whitelist | a"<some_address>")`.
+
+If no attributes are specified, then it is assumed that the function is private and internal and can only be called within the contract.
+
+Moving on, `(out: int)` is a return type bound by the variable `out` that can be used to specify a post-execution condition to ensure that the function produces results within an acceptable model's range. It is also possible to just specify the return type, `fn int my_func(...)`. The `my_func` is an identifier of the function, followed by the list of typed parameters.
+
+Functions in Folidity feature `where` blocks enabling developers to specify state transition bounds and are also used to inject the current state into the function's execution context. Certain functions can only be executed if the input state matches the current state. After `->` we have a final state that indicates which state we transition to, this can be the same state, meaning that the function only mutates the current state and doesn't logically advance. Both input and output states can be bound by variables
+in order to specify pre and post mutation constraints. You can notice that state's variables are declared in a different fashion from other data types. This is conscious design decision to differentiate the state mutation parts from the traditional manipulation of primitive data.
+
+== Formal Verification
+
+Formal verification is one of the unique features of Folidity.
+The grammar is structured with first-class support for formal verification in mind. Therefore, the compiler can imply and prove certain mathematical and functional properties of the program directly from the code without the need to perform any context translations like its done in the aforementioned solutions. 
+
+This chapter illustrates a couple of examples how model consistency and constraint satisfiability can be directly proven directly from the source code of a typical Folidity program. 
+
+=== Model consistency
 
 As an example of the theory behind model consistency in SCs, let's look at role-based access. Suppose:
 
@@ -328,7 +523,7 @@ As an example of the theory behind model consistency in SCs, let's look at role-
 Then, we can model a role-based access hierarchy as
 $ A subset.eq M subset.eq * $
 
-Subsequently, given some event for the system `add_mod(a: Address)`, we can define following invariants for the system:
+Subsequently, given some event for the system `add_mod(a: Address)`, we can define the following invariants for the system:
 
 $
 i_0 := "card"(A) = 1 \
@@ -340,8 +535,6 @@ And the invariant for the event:
 $
 i_2 := c in A
 $
-
-#pagebreak()
 
 Where
 - $c$ - caller's address
@@ -383,10 +576,132 @@ In practice, the following error can be picked at the compile time by using symb
 The other invariant, $i_2$, can be picked at the runtime by generating an appropriate assertion.
 
 
-== Implementation
+=== Proving constraint satisfiability
 
-The language will be implemented using Rust #footnote[https://www.rust-lang.org] due to its memory-safety guarantees and efficiency. 
-Different parser-combinators alongside custom lexers are going to be used for the development of the parser. 
+One of the core pieces in the workflow aforementioned is the model bounds that consist of individual boolean constraints as shown in @Listing:folidity_model.
+Let's break down how each of the selected techniques can be applied to the program written in Folidity.
+As a good starting point, we can perform a static analysis and verify that the program statements, declarations and constraints are valid and consistent.
+
+A simple approach is to perform semantic analysis that carries out type checking and verification of correct state transition in the function body. Specifically, if `mutate()` expects to return `StateA`, but instead it performs a state transition to `StateB` we can already detect this inconsistency at a compile time.
+
+The next stage of the analysis involves verification of the consistency of the models described.
+
+#figure(
+```
+# Some model and its constraints
+model ModelA {
+  x: int,
+  y: int
+} st [
+  x > 10,
+  y < 5
+]
+# A state that encapsulates a model and provides its own constraints.
+state StateA(ModelA) st [
+  x < y
+]
+# A function that describes mutation.
+fn () mutate(value: int) when (StateA s) -> StateA
+st [
+    value > 100,
+    value < 100,
+] { ... }
+
+```,
+caption: "Simple folidity program", 
+) <Listing:folidity_model>
+
+
+We can generalise the approach using the following mathematical model.
+Let's describe some verification system $bold(italic("VS"))$ as
+
+$bold(italic("VS")) = angle.l bold(Mu), bold(Epsilon), bold(Upsilon), Theta, Tau_Mu, Tau_(Epsilon, {Epsilon, Mu}), Tau_(Upsilon, Epsilon) angle.r$ where
+- $bold(Mu)$ - set of models in the system.
+- $bold(Epsilon)$ - set of states in the system
+- $bold(Upsilon)$ - set of functions in the system.
+- $Theta$ - set of of constraint blocks in the system, where $Theta[bold(Mu)]$ corresponds to the set of constraints for models, $Theta[bold(Epsilon)]$ - state constraints and $Theta[bold(Upsilon)]$ function constraints.
+- $Tau_Mu$ - a relation $Tau: bold(Mu) harpoon.rt bold(Mu)$ describing a model inheritance. 
+- $Tau_(Epsilon, {Epsilon, Mu})$ - a relation $Tau: bold(Epsilon) harpoon.rt {bold(Epsilon), bold(Mu)}$ describing any state transition bounds and encapsulated models in states, that is some state `S'` can only be transitioned to from the specified state `S`, and state some state `S` can encapsulate some model `M`
+- $Tau_(Upsilon, Epsilon)$ - a relation $Tau: bold(Upsilon) harpoon.rt bold(Epsilon)$ describing any state transition bounds for states $bold(Epsilon)$ in functions $bold(Upsilon)$
+
+In particular, $forall mu in bold(Mu) " " exists theta in Theta[mu]$ where $theta$ is a set of constraints for $mu$, and corresponding logic can be applied for elements of $Epsilon$ and $Upsilon$.
+
+Then, to verify the consistency of the system, we first need to verify the following satisfiability _Sat_:
+$ forall mu in bold(Mu) \
+exists theta in Theta[mu] \
+"s.t." theta = {c_0, c_1, ..., c_k} \
+(and.big_(i) c_i) => italic("Sat") $ 
+
+We can define the following check by some functions $rho(theta): Theta -> {italic("Sat"), italic("Unsat")}$
+
+which yields the following proof:
+$ 
+exists theta in Theta[e]  \
+"s.t." theta = {c_0, c_1, ..., c_k} \
+(and.big_(i) c_i) => italic("Sat or Unsat") 
+$ 
+
+This allows to validate the next property of $bold(italic("VS"))$
+$ 
+A = { bold(Mu) union bold(Epsilon) union Upsilon } \
+A = { e_0, e_1, ..., e_k } \
+(and.big_(i) rho(Theta[e_i]) )=> italic("Sat or Unsat") 
+$ 
+
+The next stage is to verify co-dependent symbols in the system for satisfiability of their respective constraints.
+
+Let's look at the models $bold(Mu)$, we want to ensure that
+$
+"if for some" m in Mu, m' in Mu \
+exists (m, m') in Tau_Mu \
+"s.t." rho(m) times rho(m') = (italic("Sat"), italic("Sat")) \
+"and" theta = Theta[m] union Theta[m'] \
+rho(theta) => italic("Sat")
+$
+
+Very similar verification can applied to $Tau_(Upsilon, Epsilon)$.
+
+For $Tau_(Epsilon, {Epsilon, Mu})$, the constraints can be extracted in the following way:
+
+$
+"if for some" epsilon in Epsilon, epsilon' in Epsilon \
+exists (epsilon, epsilon') in Tau_(Epsilon, {Epsilon, Mu}) \
+"s.t." rho(epsilon) times rho(epsilon') times rho(mu) = (italic("Sat"), italic("Sat")) \
+"and" theta = Theta[epsilon] union Theta[epsilon'] \
+rho(theta) => italic("Sat")
+$
+
+Similarly,
+$
+"if for some" epsilon in Epsilon, mu in Mu \
+exists (epsilon, mu) in Tau_(Epsilon, {Epsilon, Mu}) \
+"s.t." rho(epsilon) times rho(mu) = (italic("Sat"), italic("Sat")) \
+"and" theta = Theta[epsilon] union Theta[mu] \
+rho(theta) => italic("Sat")
+$
+
+After the completing verification of $Tau$ relations for consistency, we can provide a mathematical guarantee that *_VS_* has been modelled consistently.
+
+Having verified the constraints, we can leverage them as the guards during state transitions and can apply proofs from _temporal logic_ to verify that the described state transitions will take place under the described constraints.
+
+In the final stage, we can perform the symbolic execution of instructions in the function bodies with the constraints loaded in the global context of the system. Having tracked the states of different symbols, we can verify each function for reachability for described state transitions and provide strong guarantees of functional correctness of the system described in the smart contract.
+
+=== Other techniques
+
+The above examples leverage the static analysis of the program to derive its mathematical properties.
+It is worth noting that it is possible to apply other techniques of formal verification such as symbolic execution and interface discovery.
+
+In particular, we can provide even more fine-grained validation of the program by asserting user-defined constraints in the symbolic execution context. This enables to detect unsatisfability of reachability at the earlier stage of the execution. The traditional methods rely on composing these constraints at the runtime through the statistical discovery of the model bounds whereas Folidity offers this information at the compile time. 
+
+In the context of mutli-contract execution, which applies to EVM-compatible blockchains. Instead of carrying out interface discovery through statistical methods, we can potentially encode the function signature with its models bounds and constraints into the metadata and leverage this information at the runtime in order to verify the model consistency and constraint satisfiability as illustrated earlier.
+
+#pagebreak()
+= Implementation
+
+== Outline
+
+The language is implemented using Rust #footnote[https://www.rust-lang.org] due to its memory-safety guarantees and efficiency. 
+The compiler uses Lalrpop #footnote[https://github.com/lalrpop/lalrpop] parser-generator to streamline the development process.
 Folidity also requires SMT-solver for formal verification and generation of runtime assertions. In order to facilitate this functionality,
 Z3#footnote[https://microsoft.github.io/z3guide] will be used since it also provides Rust bindings. It was debated to use Boogie, since it provides
 a higher-level abstraction, but it was quickly discarded due to lack of documentation and increased development time.
@@ -394,6 +709,7 @@ a higher-level abstraction, but it was quickly discarded due to lack of document
 As a target blockchain for the language, Algorand #footnote[https://developer.algorand.org] has been selected. 
 Algorand is a decentralized blockchain platform designed for high-performance and low-cost transactions, 
 utilising a unique consensus algorithm called Pure Proof-of-Stake to achieve scalability, security, and decentralisation @algorand.
+
 One of the potential drawbacks of Folidity is a computational overhead due to complex abstractions and additional assertions. 
 EVM-based blockchains have varying costs for the execution, i.e. fees, that depend on the complexity of a SC. 
 On the contrary, although Algorand has a limited execution stack, it offers fixed, low transaction fees.
@@ -401,16 +717,39 @@ Additionally, Algorand execution context explicitly operates in terms of state t
 Finally, Algorand offers opt-in functionality and local wallet storage, allowing users to explicitly opt-in to use the SC.
 This provides additional support in the role-based access control in Folidity.
 
-As a target compilation language, Tealish #footnote[https://tealish.tinyman.org] has been chosen.
-Although, Algorand offers Teal #footnote[https://developer.algorand.org/docs/get-details/dapps/avm/teal/] –
-a low-level, stack-based programming language. Due to time limitations of the project, it is more realistic to use Tealish.
-It operates on the same level as Teal while offering useful abstractions speeding up the development of Folidity.
+The Folidity compiler emits Algoran AVM Teal #footnote[https://developer.algorand.org/docs/get-details/dapps/avm/teal/] bytecode. It was originally planned to emit an intermediate representation in Tealish #footnote[https://tealish.tinyman.org/en/latest]. However, this option was soon invalidated due to reduced developer activity in the project and the absence of audits that may compromise the intrinsic security of the Folidity compiler. 
 
+Overall, the compilation workflow can be summarised in @Figure:compilation_proccess
+
+#figure(
+  diagram(
+    spacing: (20mm, 20mm),
+    node-stroke: 0.5pt,
+    node((0,0), [1. Lexing]),
+    edge("->", "Tokens"),
+    node((1,0), [2. Parsing]),
+    edge("->", "Tree"),
+    node((2,0), [3. Semantics + Typing]),
+    edge("->", "Definition"),
+    node((2,1), [4. Formal Verification]),
+    node((0,1), [5. Teal emit]),
+    node((1,2), [6. CLI Output]),
+
+    edge((2,0), (0,1), "->", "Definition"),
+    edge((0,1), (1,2), "->", "Binary"),
+    edge((2,1), (1,2), "->", "Result"),
+  ),
+  caption: "Compilation process"
+) <Figure:compilation_proccess>
+
+Step logics are composed into Rust crates (i.e. modules) for modularity and testability.
+
+Steps 1 and 2 are processed by the `folidity-parser` crate. They produce a syntax AST, which is fed to the `folidity-semantics` for semantic analysis and type checking (step 3). The resulting contract definition is then independently piped into the `folidity-verifier` crate for formal verification (step 4) and the `folidity-emitter` for the final build compilation of binary Teal code (step 5). The artifacts of the compilation and the result of verification are then supplied back to the calling the CLI crate (`folidity`) to display the result to the user and write artifacts into the file (step 6).
 
 == Scope
 
 As part of the development process, it has been decided to limit the scope to supporting only a single SC execution.
-Cross-contract calls require extra consideration in design and development. Therefore, #ref_scv(6) may not be fully addressed in the final report.
+Cross-contract calls require extra consideration in design and development. Therefore, #ref_scv(6) is only addressed in the theoretical context of this paper.
 Additionally, optimisation of the execution is not considered relevant at this stage in favour of safety and simplicity.
 Finally, Algorand offers smart signatures, a program that is delegated a signing authority #footnote[https://developer.algorand.org/docs/get-details/dapps/smart-contracts/smartsigs].
 As they operate in a different way from SCs, they are also outside the scope of this project.
@@ -431,6 +770,9 @@ From the beginning of January, the first iteration of grammar should be complete
 #counter(heading.where(level: 1)).update(0)
 #counter(heading).update(0)
 #set heading(numbering: "A.")
+
+= Folidity Grammar <Appendix:Grammar>
+
 
 = Gannt Chart <Appendix:Gannt>
 

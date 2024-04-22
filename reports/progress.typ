@@ -18,6 +18,13 @@
   link(label("Requirement:" + str(code)))[_Requirement #str(code)_]
 }
 
+#let rotatex(angle, body)= style(styles => layout(size => {
+  let size = measure(block(width: size.width, body), styles)
+  box(inset:(x: -size.width/2+(size.width*calc.abs(calc.cos(angle))+size.height*calc.abs(calc.sin(angle)))/2,
+             y: -size.height/2+(size.height*calc.abs(calc.cos(angle))+size.width*calc.abs(calc.sin(angle)))/2),
+             rotate(body,angle))
+}))
+
 #show figure: i-figured.show-figure
 #show heading: i-figured.reset-counters
 
