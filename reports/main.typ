@@ -3,7 +3,8 @@
 #import "@preview/i-figured:0.2.3"
 #import "@preview/timeliney:0.0.1": *
 #import "@preview/fletcher:0.4.3" as fletcher: diagram, node, edge
-#import fletcher.shapes: circle
+#import fletcher.shapes: circle, rect
+#import "@preview/wordometer:0.1.1": word-count, total-words
 
 
 #let abstract = "This paper addresses the long-lasting problem involving the exploits of Smart Contract vulnerabilities. There are tools, such as in the formal verification field and alternative Smart Contract languages, that attempt to address these issues. However, neither approach has managed to combine the static formal verification and the generation of runtime assertions. Furthermore, this work believes that implicit hidden state transition is the root cause of security compromises. In light of the above, we introduce Folidity, a formally verifiable Smart Contract language with a unique approach to reasoning about the modelling and development of Smart Contract systems. Folidity features explicit state transition checks, a model-first approach, and built-in formal verification compilation stage."
@@ -26,6 +27,7 @@
 #let ref_req(code) = {
   link(label("Requirement:" + str(code)))[_Requirement #str(code)_]
 }
+#let word_count = 0;
 
 #let rotatex(angle, body)= style(styles => layout(size => {
   let size = measure(block(width: size.width, body), styles)
@@ -64,11 +66,13 @@
     reuse: "I have not submitted any part of this work for another assessment.",
     participants: "My work did not involve human participants, their cells or data, or animals."
   ),
-  display_word_count: false,
   doc
 )
 
 = Introduction <test>
+
+#word-count(total => [
+
 
 The concept of "smart contract" (SC) was first coined by Nick Szabo as a computerised transaction protocol @nz_sc.
 He later defined smart contracts as observable, verifiable, privity-applicable, and enforceable programs @nz_sc_bb.
@@ -450,7 +454,7 @@ Furthermore, Folidity borrows the idea of model refinements from Event-B by allo
 
 
 States facilitate the tracked mutation of the storage. They can encapsulate models, have raw fields in the body, or not contain any data at all.
-They are essentially _the_ data structures that can encoded and stored as raw bytes in the contract storage.
+They are essentially _the_ data structures that get encoded and stored as raw bytes in the contract storage.
 
 #figure(
   ```
@@ -507,7 +511,7 @@ Let's look at the signature of a typical function in Folidity;
 )
 
 Starting from the top: `@init` is an optional attribute that indicates the function is used for instantiation of the contract.
-Followed by the end attribute, `@(any)`, a developer can specify who can call the contract. `any` is a wildcard variable indicating that anyone can call it.
+Followed by the next attribute, `@(any)`, a developer can specify who can call the contract. `any` is a wildcard variable indicating that anyone can call it.
 However, it is possible to specify a list of addresses or a specific address using data from the incoming state `@(s1.whitelist | a"<some_address>")`.
 
 If no attributes are specified, then it is assumed that the function is private and internal and can only be called within the contract.
@@ -742,7 +746,6 @@ EVM-based blockchains have varying costs for the execution, i.e. fees, that depe
 On the contrary, although Algorand has a limited execution stack, it offers fixed, low transaction fees.
 Additionally, Algorand execution context explicitly operates in terms of state transition, which perfectly suits the paradigm of Folidity.
 Finally, Algorand offers opt-in functionality and local wallet storage, allowing users to explicitly opt-in to use the SC.
-This provides additional support in the role-based access control in Folidity.
 
 The Folidity compiler emits Algoran AVM Teal #footnote[https://developer.algorand.org/docs/get-details/dapps/avm/teal/] bytecode. It was originally planned to emit an intermediate representation in Tealish #footnote[https://tealish.tinyman.org/en/latest]. However, this option was soon invalidated due to reduced developer activity in the project and the absence of audits that may compromise the intrinsic security of the Folidity compiler. 
 
@@ -1013,7 +1016,7 @@ Generic type has similar semantics to `ExpectedType` it contains the list of sup
 
 == Verifier
 
-As mentioned earlier, Folidiy offers first-class support for verification as part of the compilation process. `folidity-verifier` heavily relies on Microsoft's work around SMT solver by leveraging their Z3 C++ library in combination with FII wrapper, z3.rs create.
+As mentioned earlier, Folidiy offers first-class support for verification as part of the compilation process. `folidity-verifier` heavily relies on Microsoft's work around SMT solver by leveraging their Z3 C++ library in combination with FFI wrapper, z3.rs crate #footnote[https://github.com/prove-rs/z3.rs].
 
 === Z3 basics
 
@@ -1026,7 +1029,7 @@ Z3 also offers tactics and optimisation techniques which currently beyond the sc
 Folidity compiler assumes a global proving context in the scope of the whole SC code, that is, also symbols and formulas are defined within the single proving context.
 
 To prove the functional correctness of the program, we essentially need to translate Folidity Expression into Z3 #link("https://docs.rs/z3/0.12.1/z3/ast/index.html")[AST types].
-As shown in @Section:ConstraintsProof, we want to collect the list of constraints for each declaration and prove their consistency independently of each other. However, we also want to build a graph of relationships between declarations in order to prove that the combination of their constraints is satisfiable as well.
+As shown in @Section:ConstraintsProof, we want to collect the list of constraints for each declaration and prove their consistency independently of each other. However, we also want to build a graph of relationships between declarations to prove that the combination of their constraints is satisfiable as well.
 
 #figure(
 ```rust
@@ -1044,7 +1047,7 @@ pub struct DeclarationBounds<'ctx> {
 caption: "Representation of bounds in declarations"
 )
 
-We first resolve models. Since they can inherit each other and refine the constraints, they do not have any links. Consequently, we resolve states and functions, initialise them with empty links and add them to the delay for later resolution of dependencies. During the resolution of each declaration, we add respective fields and parameters to the separate z3 scope of constants to be referenced in Z3 expressions. Constants in Z3 can be referenced by an unsigned 32-bit integer.
+We first resolve models. Since they can inherit each other and refine the constraints, they do not have any links. Consequently, we resolve states and functions, initialise them with empty links and add them to the delay for later resolution of dependencies. During the resolution of each declaration, we add respective fields and parameters to the separate Z3 scope of constants to be referenced in Z3 expressions. Constants in Z3 can be referenced by an unsigned 32-bit integer.
 
 #figure(
 ```rust
@@ -1056,7 +1059,6 @@ caption: "Z3 scope used in the crate"
 )
 
 After that, we resolve links in the delays by updating `links` fields with indices of the structure the current declaration depends on.
-
 Then, we are ready to transform Folidity `Expression` into the `Z3Expression`.
 
 #figure(
@@ -1071,7 +1073,7 @@ pub struct Z3Expression<'ctx> {
 caption: "Transformed Z3 expression"
 )
 Each expression is transformed to Z3 AST type similarly to how it was resolved in semantics. The resulting expression is then cast to the generic `Dynamic` type to be composable with each other. 
-Variables are transformed into the Z3 constants that are identified by the integer. If we have a variable or a member access that references another structure. The Z3 constant that corresponds to the symbol in another structure is looked up in its scope and returned, this is done to ensure that when combining two different blocks of constraints, the variables correspond to the same Z3 constants.
+Variables are transformed into the Z3 constants that are identified by integers. If we have a variable or a member access that references another structure, the Z3 constant that identifies the symbol in another structure is looked up in its scope and returned. This is done to ensure that when combining two different blocks of constraints, the variables correspond to the same Z3 constants.
 Specifically, if `StateA` has a field named `a` which is referenced by the `k!3` constant, and some function accesses this variable via `s.a`, that `s.a` is resolved to `k!3` respectively. 
 
 It is worth looking at how arrays and sorts in Z3 are used in the transformations. Sorts in Z3 enable describing some user-defined datatype. They can be based on some concrete type (i.e. `Sort::int(...)`) or uninterpreted, that is, of some abstract type `A`.
@@ -1192,10 +1194,11 @@ The next stage of boilerplate code generation is the function call blocks. Funct
 
 === Function resolution
 
-For each function, the emitter creates a mapping of concrete values for variables. That is the list of chunks that allow to access concrete values of a variable. These chunks are then prepended whenever the variable is referenced. As a starting point, the emitter saves the current arguments to the function into the scratch and adds concrete `load i` chunks for each respective variable to the map. A similar procedure is done for the state variables and access variables.
+For each function, the emitter creates a mapping of concrete values for variables. That is the list of chunks that allow to access concrete values. These chunks are then prepended whenever the variable is referenced. As a starting point, the emitter saves the current arguments to the function into the scratch and adds concrete `load i` chunks for each respective variable to the map. A similar procedure is done for the state variables and access variables.
 
 The emitter then resolves each statement iteratively, and for each expression, it walks down the AST emitting chunks of opcodes as explained below.
 
+#pagebreak()
 ==== Emitting expressions
 
 Primitive types are pushed onto the stack using the standard set of opcode allowing encoding any non-standard types into AVM-recognised types. For signed integers two's complement conversion is performed. Floating point numbers are encoded using IEEE 754 standard.
@@ -1390,10 +1393,13 @@ While not all the essential features have been implemented, this iteration of th
 We have also seen the recent improvements in the performance in SMT solvers such as Z3 that enable fast and efficient computation on SMT formulas. This further proves the viability of introducing of a formal verification stage into the compilation process that can eliminate the mentioned vulnerabilities without any compromises in the developer experience.
 
 However, this project does not account for the networking effect of the adoption of the language. Therefore, whether SC developers are ready to adopt a new SCL in times when a new SCL is released every month is an open question and can only be resolved with time.
+
+The body of the report has *#total.words words*.
+
+])
+
 #pagebreak()
-
 #text(weight: "bold", size: 35pt, "Appendix")
-
 #counter(heading.where(level: 1)).update(0)
 #counter(heading).update(0)
 #set heading(numbering: "A.")
@@ -2224,6 +2230,47 @@ The Gannt chart that demonstrates the actual work.
 )
 ]
 ])
+
+#pagebreak()
+
+= Archive Table of Contents
+#let cell_content(content, width: 15em) = {
+  block(align(left, content), width: width)
+}
+#diagram(spacing: (1mm, 3mm), cell-size: 10mm,
+  node((0, 0), text(weight: "bold", "root")),
+  node((1, 1), cell_content([`README.md` description])),
+  node((1, 2), cell_content(`CHANGELOG.md`)),
+  node((1, 3), cell_content([`Cargo.toml` dependencies])),
+  node((1, 4), cell_content([`[crates]` crates locations]), stroke: 0.5pt),
+
+  node((1.5, 5), cell_content([`[derive_node]` macros]), stroke: 0.5pt),
+  node((1.5, 6), cell_content([`[diagnostics]` \ `folidity-diagnostics` crate]), stroke: 0.5pt),
+  node((1.5, 7), cell_content([`[emitter]` `folidity-emitter` crate]), stroke: 0.5pt),
+  node((1.5, 8), cell_content([`[parser]` `folidity-parser` crate]), stroke: 0.5pt),
+  node((1.5, 9), cell_content([`[semantics]` \ `folidity-semantics` crate]), stroke: 0.5pt),
+  node((1.5, 10), cell_content([`[verifier]` \ `folidity-verifier` crate]), stroke: 0.5pt),
+  node((1.5, 11), cell_content([`[folidity]` `folidity` crate]), stroke: 0.5pt),
+
+  node((1, 12), cell_content([`[examples]` \ example contracts]), stroke: 0.5pt),
+  node((1.5, 13), cell_content([`[counter]` \ Counter contract]), stroke: 0.5pt),
+
+  edge((0, 0), (0, 1), (1, 1)),
+  edge((0, 0), (0, 2), (1, 2)),
+  edge((0, 0), (0, 3), (1, 3)),
+  edge((0, 0), (0, 4), (1, 4)),
+
+  edge((0.3, 4), (0.3, 5), (1, 5)),
+  edge((0.3, 4), (0.3, 6), (1, 6)),
+  edge((0.3, 4), (0.3, 7), (1, 7)),
+  edge((0.3, 4), (0.3, 8), (1, 8)),
+  edge((0.3, 4), (0.3, 9), (1, 9)),
+  edge((0.3, 4), (0.3, 10), (1, 10)),
+  edge((0.3, 4), (0.3, 11), (1, 11)),
+
+  edge((0, 0), (0, 12), (1, 12)),
+  edge((0.3, 12), (0.3, 13), (1, 13)),
+)
 
 #pagebreak()
 
