@@ -8,6 +8,8 @@
 
 #let abstract = "This paper addresses the long-lasting problem involving the exploits of Smart Contract vulnerabilities. There are tools, such as in the formal verification field and alternative Smart Contract languages, that attempt to address these issues. However, neither approach has managed to combine the static formal verification and the generation of runtime assertions. Furthermore, this work believes that implicit hidden state transition is the root cause of security compromises. In light of the above, we introduce Folidity, a formally verifiable Smart Contract language with a unique approach to reasoning about the modelling and development of Smart Contract systems. Folidity features explicit state transition checks, a model-first approach, and built-in formal verification compilation stage."
 
+#let ack = "I want to thank my supervisor Prof. Vladimiro Sassone for the guidance throughout the project that enabled me to push myself. I also would like to thank Stefano De Angelis who partook in proof-reading of my work. Finally, I dedicate this work to my parents and siblings who were a massive support for me during the last few years of my degree."
+
 #let resources = [
   - Solang - https://github.com/hyperledger/solang
   - Open Source libraries listed in @Appendix:Libraries[Appendix]
@@ -53,7 +55,7 @@
   program: "BSc Computer Science",
   is_progress_report: false,
   abstract_text: abstract,
-  acknowledgments_text: none,
+  acknowledgments_text: ack,
   originality_statements: (
     acknowledged: "I have acknowledged all sources, and identified any content taken from elsewhere.",
     resources: resources,
@@ -62,7 +64,7 @@
     reuse: "I have not submitted any part of this work for another assessment.",
     participants: "My work did not involve human participants, their cells or data, or animals."
   ),
-  display_word_count: true,
+  display_word_count: false,
   doc
 )
 
@@ -779,6 +781,7 @@ Additionally, optimisation of the execution is not considered relevant at this s
 Finally, Algorand offers smart signatures, a program that is delegated a signing authority #footnote[https://developer.algorand.org/docs/get-details/dapps/smart-contracts/smartsigs].
 As they operate in a different way from SCs, they are also outside the scope of this project.
 
+#pagebreak()
 == Diagnostics
 
 The `folidity-diagnostics` module is one of the core pieces of the compiler, it enables the aggregation of a list of reports across multiple crates and its presentation to the user. Folidity compiler offers `folidity-diagnostics` crate that contains `Report` structures 
@@ -1155,15 +1158,238 @@ In the example above, the algorithm will return two sets of nodes: `[1, 2, 3]` a
 
 The constraints from these blocks and consequently composed into a single list and verified for consistency in a similar manner.
 
+== Emitter
+
+Emission of the target code is the final stage of the compilation process. Similarly to the verifier, it also accepts `ContractDefintion` as an input. As an output, the crate returns a list of bytes of Teal instructions. During this iteration of the development, optimisation was not considered as a priority.
+
+=== Teal and AVM basics
+
+Teal is a stack-based language that is interpreted by the Alogrand Virtual Machine #footnote[https://developer.algorand.org/docs/get-details/dapps/avm/teal/specification]. The typical smart contract program in Algorand is called the _approval_ program. An approval can signal the successful execution by returning a positive number.
+The stack types consist only of `uint64` and `bytes` types. However, Teal provides a number of pseudo-opcodes that automatically encode the data into the primitive types. As an example `byte "Hello World"` encodes string literal into the byte array of UTF-8 characters. 
+
+Like in any stack-based language arguments to expression are popped from the top of a stack. Similarly, it is possible to push numerous onto the stack.
+As an equivalent to registers, Teal offers the _Scratch Space_. It allows to store up to 256 values during a single execution of a program. Values can be accessed or written using `load i` and `store i` commands. 
+Additionally, Teal offers blockchain-specific opcode to access the transaction information (`txn ..`) and the global state of the consensus (`global ...`).
+
+AVM offers different types of storage spaces, global, local and boxes. Global storage can contain up to 64 values of total of 8K bytes and paid for by the contract's creator. Local storage requires the user to opt into the contract and can only offer 16 values, the opted user is responsible for funding it. Box storage has no limit on the number of "boxes" a contract can create, and offers up to 32K bytes of storage capacity. Therefore, box storage was chosen to allow for more flexibility in the storage functionality.
+
+=== Entrypoint code generation 
+
+First, the crate emits the boilerplate code to handle incoming arguments and direct execution flow to the respective function. If the `ApplicationID` of the current transaction is `0`, then it means that the contract is being created, and we direct execution to the constructor function. Then we handle other AVM-specific operations such as application update, deletion, etc. Afterwards, if the current transaction call is the call to the function, then we parse the arguments in order. The first argument corresponds to the function name encoded as bytes. If the function exists, then branch to the respective function blocks, otherwise error is returned.
+
+The next stage of boilerplate code generation is the function call blocks. Functions can return different values, but the AVM expects the code to be returned at the end of the execution. Therefore, the emitter creates a labeled wrapper block for each function where the return value is logged before the code is returned. Any arguments that are meant to be supplied to the function are pushed onto the stack, the `callsub` opcode then redirects the execution flow to the specific label indicating the start of the function where the arguments are handled.
+
+#figure(
+  ```
+  __block__incr_by: 
+  txn ApplicationArgs 1
+  callsub __incr_by
+  pushint 1
+  return 
+  ```,
+  caption: "Example fo wrapper function block"
+)
+
+=== Function resolution
+
+For each function, the emitter creates a mapping of concrete values for variables. That is the list of chunks that allow to access concrete values of a variable. These chunks are then prepended whenever the variable is referenced. As a starting point, the emitter saves the current arguments to the function into the scratch and adds concrete `load i` chunks for each respective variable to the map. A similar procedure is done for the state variables and access variables.
+
+The emitter then resolves each statement iteratively, and for each expression, it walks down the AST emitting chunks of opcodes as explained below.
+
+==== Emitting expressions
+
+Primitive types are pushed onto the stack using the standard set of opcode allowing encoding any non-standard types into AVM-recognised types. For signed integers two's complement conversion is performed. Floating point numbers are encoded using IEEE 754 standard.
+Variables are resolved by accessing concrete chunks and prepending them to the current piece of a stack.
+
+Enums are resolved by encoding them into a byte array of 2 uint64 integers where the first value indicates the index of the enum in the contract definition, and the other one corresponds to the variant's position. Binay operations (e.g. summation, subtraction) are emitted by pushing left and right values onto the stack before pushing the operation opcode.
+
+Moving to the complex operations, function calls are emitted similarly to the top-level call by pushing arguments onto the stack before the subroutine call. The most complex part is the handling of the storage-based operations. Currently, Folidity offers limited support for dynamically-sized types (e.g. lists, strings, etc.). They are assumed to have a fixed capacity that is 512 bytes. Therefore, all types have a known size at the compile time. This is heavily used when encoding structures as a byte array that gets pushed to the storage. An example of the binary layout shown in @Table:StructLayout for the struct listed in @Listing:EncodingStruct demonstrates how any data structures can be encoded.
+
+#figure(
+  ```
+  struct MyStruct {
+    a: int,
+    b: list<int>,
+    c: address
+  }
+  ```,
+  caption: "An example of encoded struct"
+) <Listing:EncodingStruct>
+
+#figure(
+  [
+    #table(
+      columns: 4,
+      [`a`: 8 bytes],
+      [`len_b`: 8 bytes],
+      [`b`: 512 bytes],
+      [`c`: 32 bytes],
+    )
+  ],
+  caption: "Struct layout representation"
+) <Table:StructLayout>
+
+When working with states, the layout representation is calculated from either the raw fields of the state declaration or the model's fields and its parents, that the state encapsulates. 
+
+Dynamic generation of assertions is one of the features of Folidity compiler. It is done any structure with an `st` block is instantiated. Firstly, the byte array is composed as described above and stored in the scratch. Secondly, each field is extracted by calculating the offset of a field in the array which is derived from the definition of the structure, the same procedure is done for the member access expression. Each field's data gets stored in the scratch and `load i` chunk gets added to the map of concrete vars. Then, each constraint expression is pushed onto the stack, followed by the `assert` opcode. After all expressions have been emitted, the original byte array is loaded from the scratch space.
+
+==== Statements
+
+Resolving statements is done similarly to expressions. Variable declaration and assignment results in the storage of value in the scratch and update of of map of concrete chunks.
+
+`If-else` blocks are emitted with the use of branching opcodes. The emits the indexed `else` and `end` labels. `end` label is appended after the `else` block of statements. `else` label is pushed before the `else` statements. If the condition in `if` block is satisfied, then the execution jumps to the `end`, otherwise it goes to the `else` block.
+
+`For` loop is handled with labels as well. The `end` label is pushed at the end. If the the increment condition is `false`, then jump to the `end` occurs, otherwise the body of the loop is executed, followed by the incrementer instructions that are prepended with the `incr` label. `incr` label is introduced for the use of the `skip` statement that simply jumps to it whenever present in the loop context.
+
+When the state transition statement `move` is present, the emitter first performs the expression resolution as explained earlier, and then, similarly, to the struct constraint assertion it asserts any function's state bounds if present. Afterwards, it saves the corresponding byte array in the box named with the state identifier. 
+
+The `return` statement is handled in a similar fashion and followed by the `retsub` opcode which returns the execution to the subroutine caller point. 
+
+=== Final compilation
+
+You can view a sample smart contract written in Folidity and the resulted Teal code listed in @Appendix:EmitExample[Appendix].
+
+After all the functions have been emitted, the emitter writes them into a single string and encodes them as a byte array which gets returned to the caller. As well as approval program, AVM required a _clear_ program, a specialised logic used when an account opts out of smart contracts. Since opt-in functionality is not used in Folidity. It simply emits three opcodes that return a positive result.
+
+== CLI
+
+The entry point to the Foldity compiler is the `folidity` crate that represents a CLI tool. It allows to: 
+- Generate a template - `folidity new ...`
+- Semantically check the source code -  `folidity check ...`
+- Formally verify the contract - `folidity verify ...`
+- Compile the contract to Teal executing previous stages as well - `folidity compile ...`.
+
+More command and options can be displayed via `folidity help` or `folidity <command> help` commands.
+
+It interacts with the aforementioned crates directly and retrieves the result if successful which is passed down to the next stage of compilation. If errors are returned, the crate uses `ariadne` #footnote[https://github.com/zesterer/ariadne] crate to nicely format and display the error and associated code with it.
+
+An example of a failed formal verification report is shown in @Figure:ariadne.
+
+#figure(
+  image("figures/ariadne.png", width: 90%),
+  caption: "Example of an error report",
+) <Figure:ariadne>
+
+#pagebreak()
+= Testing strategies
+
+During the development test-driven development and extreme programming techniques were applied. Each crate was extensively tested using unit tests. An output of the most recent test cases is illustrated below.
+
+```bash
+Running unittests src/lib.rs (target/debug/deps/folidity_emitter-48d869f47acfd0e3)
+
+running 3 tests
+test tests::simple_exprs ... ok
+test tests::test_simple_emit ... ok
+test tests::test_complex_emit ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+Running unittests src/lib.rs (target/debug/deps/folidity_parser-b98c477b893c2171)
+
+running 11 tests
+test tests::comment_token ... ok
+test tests::simple_int ... ok
+test tests::strings ... ok
+test tests::simple_mixed_numbers ... ok
+test tests::simple_floats ... ok
+test tests::test_factorial ... ok
+test tests::test_lists ... ok
+test tests::test_simple_func ... ok
+test tests::test_structs_enums ... ok
+test tests::test_factorial_tree ... ok
+test tests::parse_complete_program ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+Running unittests src/lib.rs (target/debug/deps/folidity_semantics-6b5b84edbb60c4f3)
+
+running 11 tests
+test expression::tests::test_mul ... ok
+test expression::tests::test_eval ... ok
+test expression::tests::test_list ... ok
+test expression::tests::member_access ... ok
+test expression::tests::init_struct ... ok
+test expression::tests::test_var ... ok
+test tests::test_first_pass ... ok
+test expression::tests::pipe ... ok
+test expression::tests::test_func ... ok
+test tests::test_err_program ... ok
+test tests::test_program ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+Running unittests src/lib.rs (target/debug/deps/folidity_verifier-cdc6c95be6b65382)
+
+running 8 tests
+test tests::mul_transform ... ok
+test tests::string_hex_transform ... ok
+test tests::var_transform ... ok
+test tests::list_transform ... ok
+test tests::in_transform ... ok
+test tests::test_incorrect_linked_bounds ... ok
+test tests::test_incorrect_bounds ... ok
+test tests::test_correct_bounds ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+```
+
+Furthermore, an integration test of the example counter contract and GitHub CI workflows have been introduced to acquire architecture-independent results and better code quality.
+
+The CI workflow stages include:
+- Tests
+- Check clippy and documentation
+- Check formatting
+- Compile and formally test examples
+
+Finally, `dependabot` #footnote[https://github.com/dependabot] is used to protect the compiler the supply chain attacks and any outdated dependencies.
+
+#pagebreak()
+= Limitations and Future Work
+
+== Formal verification
+
+The theoretical model currently lacks a more concrete proof of the functional correctness from the symblic execution techniques. While this is theoretically achievable, more work and research should be done in order to determine how well the current version of grammar can facilitate such an approach. While it is possible to implement the symbolic execution of statements and expressions in the verifier crate. This objective was beyond the scope of this paper. 
+Additionally, the current implementation of the verifier does not function calls and struct initialisation in expression as it requires further work on the expression transformation to be done, potentially using the _array theory_. Finally, resolving generic types in the verifier requires coercing the expression to a concrete type which is not a trivial type since it is only achievable with the introduction of monomorphisation.
+
+== Semantic analysis & Grammar
+
+As mentioned before, the groundwork for generic types has been laid. However, their use is limited only to the internal code generation of standrd library functions which have not been done either. It requires further adjustments to grammar and the support for monomorphisation, similar to verification. 
+
+Additionally, object destructuring and struct instantiation-by-object were originally planned but were not implemented due to the limited time available for the project. However, the current project structure allows for the introduction of these features in the future.
+
+Since the standard library have not been introduced it is currently not possible to handle operational side effects such as integer overflow. This partially affects the #ref_scv(5) and #ref_req(8). However, similar safety guarantees can be achieved by the right use of constraints. Furthermore, Algorand automatically handles integer overflows by immediately returning an error. 
+
+Finally, type-casting is currently unsupported which may result in false negatives results in type-checking. This requires further refinements of grammar by potentially introducing `as` keyword.
+
+== Emitter
+
+Emitter is currently at the pre-alpha stage. It produces unoptimised Teal code. This can be addressed by the introduction of control flow graphs that can efficiently eliminate redundant code. Multi-pass compilation should also be considered as an optimisation strategy. Additionally, curernt iteration does not support the inclusion operator (`in`) that restricts the use of iterators and `a in list` expression in the code. This can be achieved by revising the layout generation of an array, and, similar to member access, accessing each element in the list by offset. 
+
+Finally, support for multiple targets such as the Ethereum Virtual Machine should be one of the priorities for future development in order to access a larger system of developers to acquire more developer feedback, hence, fostering the community development of the compiler.
+
+== General remarks
+
+Due to the reduced scope of the project, multi-contract support have not been implemented. It requires the finalisation of the grammar of the language that can lead to the development of the language-specific ABI #footnote("Abstract Binary Interface") metadata that can be used by CLI tools and contracts to call the contract. It also further required conducting more research in the field of interface discovery in order to provide evidence that it is possible to achieve a reasonable level of security across multiple SCs when the source code is not available.
+
+Finally, the corresponding CLI tools should be developed to enable ABI metadata generation.
+
+#pagebreak()
 = Project Planning
 
-A significant groundwork in research of current solutions and their limitations has been done as illustrated by the Gannt chart in @Appendix:Gannt[Appendix].
-Since the requirements have been collected, some progress has been made in the design of BNF grammar that will later pave the way for the development
-of the parser. It is still possible to research more formal verification methods during the grammar design. 
+Project development did not see any major deviation from the original plan. This was achieved via rigorous planning and iterative feature development. Each module was written as a separate pull request on GitHub that enabled me to review the existing code and test it carefully before beginning the development of the next one. I have reviewed pull requests myself before merging them into the main branch which allowed me to carefully evaluate features I have implemented and document them for future reference.
 
-From the beginning of January, the first iteration of grammar should be completed, and the active development of the type checker and formal verifier should begin.
+However, the development of the semantics crate took slightly more time than expected due to realisation of the importance of the functional correctness of the crate in the scope of other crates. Therefore, more time was dedicated to testing and development which shifted the deadline for the rest of the planned work. @Appendix:ActualGannt illustrates the actual time it took to complete the project and the updated objectives.
 
+= Final words
 
+The goal of this paper was to prove that formal verification techniques can integrated into the development and compilation process as first-class citizens. It addresses numerous problems associated with the security and safety of typical SCs and provides theoretical and practical proof of how they can be addressed at the language level.
+
+While not all the essential features have been implemented, this iteration of the project has laid the groundwork for the future development of the compiler and language grammar. The mathematical model proves that planned features can and should be addressed.
+
+We have also seen the recent improvements in the performance in SMT solvers such as Z3 that enable fast and efficient computation on SMT formulas. This further proves the viability of introducing of a formal verification stage into the compilation process that can eliminate the mentioned vulnerabilities without any compromises in the developer experience.
+
+However, this project does not account for the networking effect of the adoption of the language. Therefore, whether SC developers are ready to adopt a new SCL in times when a new SCL is released every month is an open question and can only be resolved with time.
 #pagebreak()
 
 #text(weight: "bold", size: 35pt, "Appendix")
@@ -1330,6 +1556,543 @@ Due to limited time, this project will only focus on a single-contract execution
 caption: [`Cargo.toml` file]
 )
 
+= Emit example <Appendix:EmitExample>
+
+An example of a Folidty SC that represents counter application with some additional function to demonstrate other statements and expressions used and the compiled teal approval program.
+
+#text(weight: "bold", size: 15pt, "Folidity Smart Contract")
+
+```
+state CounterState {
+    counter: int,
+} st [
+    # example bounds
+    counter < 1000,
+    counter > -1000
+]
+
+# This is an constructor.
+@init
+# Anyone can call this function.
+@(any)
+fn () initialise() when () -> CounterState {
+    loops(5.0);
+    conditionals(false, 10);
+    move_state();
+    move CounterState : { 0 };
+}
+
+@(any)
+fn () incr_by(value: int) when (CounterState s) -> CounterState
+st [
+    value > 100,
+] {
+    let value = s.counter + value;
+    move CounterState : { value };
+}
+
+@(any)
+fn () decr_by(value: int) when (CounterState s) -> CounterState 
+st [
+    value > 100,
+] {
+    let value = s.counter - value;
+    move CounterState : { value };
+}
+
+@(any)
+view(CounterState s) fn int get_value() {
+    return s.counter;
+}
+
+fn () loops(value: float) {
+    for (let mut i = 0; i < 10; i + 1) {
+        let value = value + 123.0;
+        skip;
+    }
+    let some_list = [-3, 4, 5];
+}
+
+fn () conditionals(cond: bool, value: int) {
+    let scoped = -10;
+    let mut s = s"Hello";
+    s = s + s" " + s"World";
+    if cond {
+        let a = scoped + 3;
+    } else if value > 1 {
+        let b = scoped + 4;
+    } else {
+        let c = scoped + 5;
+    }
+}
+
+fn () move_state() when (CounterState s1) -> (CounterState s2) {
+    let a = a"2FMLYJHYQWRHMFKRHKTKX5UNB5DGO65U57O3YVLWUJWKRE4YYJYC2CWWBY";
+    let b = [1, 2, 3];
+    let c = -5;
+    let d = s"Hello World";
+
+    let counter = s1.counter;
+
+
+    move CounterState : { counter };
+}
+```
+
+#text(weight: "bold", size: 15pt, "Compiled Teal code")
+
+```
+#pragma version 8
+ 
+txn ApplicationID
+pushint 0
+== 
+bz create_end
+b __block__initialise
+create_end: 
+txn OnCompletion
+pushint 0
+== 
+bnz on_call
+txn OnCompletion
+pushint 5
+== 
+bnz check_creator
+txn OnCompletion
+pushint 1
+== 
+bnz fail
+txn OnCompletion
+pushint 2
+== 
+bnz fail
+txn OnCompletion
+pushint 4
+== 
+bnz check_creator
+err 
+ 
+ 
+check_creator: 
+txn Sender
+global CreatorAddress
+== 
+assert 
+pushint 1
+return 
+ 
+ 
+fail: 
+pushint 0
+return 
+ 
+ 
+on_call: 
+txna ApplicationArgs 0
+pushbytes "initialise"
+== 
+bnz __block__initialise
+txna ApplicationArgs 0
+pushbytes "incr_by"
+== 
+bnz __block__incr_by
+txna ApplicationArgs 0
+pushbytes "decr_by"
+== 
+bnz __block__decr_by
+txna ApplicationArgs 0
+pushbytes "get_value"
+== 
+bnz __block__get_value
+txna ApplicationArgs 0
+pushbytes "loops"
+== 
+bnz __block__loops
+txna ApplicationArgs 0
+pushbytes "conditionals"
+== 
+bnz __block__conditionals
+txna ApplicationArgs 0
+pushbytes "move_state"
+== 
+bnz __block__move_state
+err 
+ 
+ 
+__block__initialise: 
+callsub __initialise
+pushint 1
+return 
+ 
+ 
+__block__incr_by: 
+txn ApplicationArgs 1
+callsub __incr_by
+pushint 1
+return 
+ 
+ 
+__block__decr_by: 
+txn ApplicationArgs 1
+callsub __decr_by
+pushint 1
+return 
+ 
+ 
+__block__get_value: 
+callsub __get_value
+log 
+pushint 1
+return 
+ 
+ 
+__block__loops: 
+txn ApplicationArgs 1
+callsub __loops
+pushint 1
+return 
+ 
+ 
+__block__conditionals: 
+txn ApplicationArgs 1
+txn ApplicationArgs 2
+callsub __conditionals
+pushint 1
+return 
+ 
+ 
+__block__move_state: 
+callsub __move_state
+pushint 1
+return 
+ 
+ 
+ 
+ 
+__initialise: 
+ 
+ 
+pushint 4617315517961601024
+callsub __loops
+ 
+ 
+pushint 0
+pushint 10
+callsub __conditionals
+ 
+ 
+callsub __move_state
+ 
+ 
+pushbytes "__CounterState"
+pushint 8
+bzero 
+store 0
+pushint 0
+store 1
+load 0
+load 1
+replace 0
+store 0
+load 0
+pushint 0
+extract_uint64 
+pushint 1000
+< 
+assert 
+load 0
+pushint 0
+extract_uint64 
+pushint 18446744073709550616
+> 
+assert 
+load 0
+box_put 
+ 
+ 
+retsub 
+ 
+ 
+__incr_by: 
+store 0
+load 0
+pushint 100
+> 
+assert 
+ 
+ 
+pushbytes "__CounterState"
+box_get 
+assert 
+store 2
+load 2
+pushint 0
+extract_uint64 
+load 0
++ 
+store 3
+ 
+ 
+pushbytes "__CounterState"
+pushint 8
+bzero 
+store 4
+load 3
+store 5
+load 4
+load 5
+replace 0
+store 4
+load 4
+pushint 0
+extract_uint64 
+pushint 1000
+< 
+assert 
+load 4
+pushint 0
+extract_uint64 
+pushint 18446744073709550616
+> 
+assert 
+load 4
+box_put 
+ 
+ 
+retsub 
+ 
+ 
+__decr_by: 
+store 1
+load 1
+pushint 100
+> 
+assert 
+ 
+ 
+pushbytes "__CounterState"
+box_get 
+assert 
+store 6
+load 6
+pushint 0
+extract_uint64 
+load 1
+- 
+store 7
+ 
+ 
+pushbytes "__CounterState"
+pushint 8
+bzero 
+store 8
+load 7
+store 9
+load 8
+load 9
+replace 0
+store 8
+load 8
+pushint 0
+extract_uint64 
+pushint 1000
+< 
+assert 
+load 8
+pushint 0
+extract_uint64 
+pushint 18446744073709550616
+> 
+assert 
+load 8
+box_put 
+ 
+ 
+retsub 
+ 
+ 
+__get_value: 
+ 
+ 
+pushbytes "__CounterState"
+box_get 
+assert 
+store 10
+load 10
+pushint 0
+extract_uint64 
+retsub 
+ 
+ 
+retsub 
+ 
+ 
+__loops: 
+store 2
+ 
+ 
+pushint 0
+store 11
+load 11
+pushint 10
+< 
+bnz 0_loop_end
+ 
+load 2
+pushint 4638355772470722560
++ 
+store 12
+ 
+ 
+b 0_loop_incr
+ 
+0_loop_incr: 
+load 11
+pushint 1
++ 
+0_loop_end: 
+ 
+ 
+pushint 18446744073709551613
+pushint 4
+concat 
+pushint 5
+concat 
+store 13
+ 
+ 
+retsub 
+ 
+ 
+__conditionals: 
+store 3
+store 4
+ 
+ 
+pushint 18446744073709551606
+store 14
+ 
+ 
+pushbytes "Hello"
+store 15
+ 
+ 
+load 15
+pushbytes " "
+concat 
+pushbytes "World"
+concat 
+store 15
+ 
+ 
+load 3
+bz 5_else
+ 
+ 
+load 14
+pushint 3
++ 
+store 16
+ 
+ 
+b 5_if_end
+5_else: 
+ 
+load 4
+pushint 1
+> 
+bz 6_else
+ 
+ 
+load 14
+pushint 4
++ 
+store 17
+ 
+ 
+b 6_if_end
+6_else: 
+ 
+ 
+load 14
+pushint 5
++ 
+store 18
+ 
+ 
+6_if_end: 
+ 
+5_if_end: 
+ 
+ 
+retsub 
+ 
+ 
+__move_state: 
+ 
+ 
+addr 2FMLYJHYQWRHMFKRHKTKX5UNB5DGO65U57O3YVLWUJWKRE4YYJYC2CWWBY
+store 19
+ 
+ 
+pushint 1
+pushint 2
+concat 
+pushint 3
+concat 
+store 20
+ 
+ 
+pushint 18446744073709551611
+store 21
+ 
+ 
+pushbytes "Hello World"
+store 22
+ 
+ 
+pushbytes "__CounterState"
+box_get 
+assert 
+store 23
+load 23
+pushint 0
+extract_uint64 
+store 24
+ 
+ 
+pushbytes "__CounterState"
+pushint 8
+bzero 
+store 25
+load 24
+store 26
+load 25
+load 26
+replace 0
+store 25
+load 25
+pushint 0
+extract_uint64 
+pushint 1000
+< 
+assert 
+load 25
+pushint 0
+extract_uint64 
+pushint 18446744073709550616
+> 
+assert 
+load 25
+store 27
+load 27
+box_put 
+ 
+ 
+retsub 
+
+```
+
 = Old Gannt Chart <Appendix:Gannt>
 
 The Gannt chart that demonstrates the planned work.
@@ -1402,6 +2165,65 @@ The Gannt chart that demonstrates the planned work.
 = Actual Gannt Chart <Appendix:ActualGannt>
 
 The Gannt chart that demonstrates the actual work.
+#pagebreak()
+#v(3em)
+#rotatex(90deg, [
+#let grad = gradient.linear(red, gray, angle: 0deg)
+#let task-line-style = (stroke: (paint: green, thickness: 6pt))
+#let milestone-line-style = (stroke: (paint: black, dash: "dashed"))
+#block(width: 140%)[
+#timeline(
+  show-grid: true,
+  spacing: 3pt,
+  line-style: (stroke: (paint: black, thickness: 4pt, cap: "round")),
+  {
+    headerline(group(([*Month*], 30)))
+    headerline(
+      group(([October], 4)),
+      group(([November], 4)),
+      group(([December], 4)),
+      group(([January], 4)),
+      group(([February], 4)),
+      group(([March], 4)),
+      group(([April], 4)),
+      group(([May], 2)),
+    )
+    taskgroup(title: [*Overview of vulnerabilities*], {
+      task("Common smart contract exploits", (1, 7), style: task-line-style)
+      task("Suvery of SC languages", (3, 8), style: task-line-style)
+      task("Formal verification analysis", (5, 9), style: task-line-style)
+      task("Evaluation of solutions and issues", (6, 8), style: task-line-style)
+    })
+    taskgroup(title: [*The design of solution*], {
+      task("Requirements", (6, 8), style: task-line-style)
+      task("BNF Grammar", (6, 9), style: task-line-style)
+      task("Sample programs", (8, 12), style: task-line-style)
+      task("Evaluation of the BNF grammar", (11, 14), style: task-line-style)
+    })
+    taskgroup(title: [*Implementation*], {
+      task("Semantics & Typing", (12, 22), style: task-line-style)
+      task("Verifier", (22, 26), style: task-line-style)
+      task("Emitter", (24, 27), style: task-line-style)
+    })
+    taskgroup(title: [*Evaluation*], {
+      task("Testing", (22, 26), style: task-line-style)
+      task("Report writing", (26, 28), style: task-line-style)
+    })
+
+    milestone(
+      at: 9,
+      style: milestone-line-style,
+      align(center, [_Progress Report \ submission deadline_ \ *December, 12*])
+    )
+    milestone(
+      at: 28,
+      style: milestone-line-style,
+      align(center, [_Final Report \ submission deadline_ \ *April, 30*])
+    )
+  }
+)
+]
+])
 
 #pagebreak()
 
