@@ -71,7 +71,7 @@
 
 = Introduction <test>
 
-#word-count(total => [
+#word-count(exclude: (heading, figure, <Appendix>), total => [
 
 
 The concept of "smart contract" (SC) was first coined by Nick Szabo as a computerised transaction protocol @nz_sc.
@@ -110,7 +110,7 @@ Another less-known example is the "King of the Ether" attack, which was caused b
 The "King of the Ether Throne" contract could not recognise the failed transaction on the wallet side. Instead, the contract proceeded with the operation, incorrectly mutating its internal state. 
 
 Other issues involve the _safety_ and _liveness_ of SCs. 
-The term _safety_ is used to describe the _functional safety_ and _type safety_. _Functional safety_ refers to the guarantees that the system behaves according to the specification irrespective of the input data @func_safety,
+The term _safety_ is used to describe _functional safety_ and _type safety_. _Functional safety_ refers to the guarantees that the system behaves according to the specification irrespective of the input data @func_safety,
 whereas _type safety_ refers to the guarantees that the language provides a sound type system @types_pierce.
 The two are often used interchangeably with the _security_ of code
 as compromising the former affects the latter. When talking about _liveness_, we describe the business logic of a DApp, particularly whether it transitions into the expected new state @liveness_rob.
@@ -199,7 +199,7 @@ We can generally categorise them into two groups: safe SCLs, which allow users t
 and formal verification tools used alongside traditional SCLs presented in @Chapter:FVT.
 
 This chapter reviews both categories of tools, allowing us to evaluate their effectiveness in correlation to usability,
-aiming to provide a concise framework to analyse and work with the SC tools dedicated to producing
+aiming to provide a concise framework to analyse the SC tools dedicated to producing
 error-proof DApps. 
 
 == Formal Verification Tools <Chapter:FVT>
@@ -257,10 +257,8 @@ It also provides overflow checking, signed integers, and other safe arithmetic o
 and the recent bug in the compiler caused a massive re-entrance exploit in the _curve.fi_ AMM protocol @curve.
 Furthermore, Vyper still suffers from the same implicit state transition problem as Solidity.
 
-// To address the problem, it has been realised that a functional programming style may be better for SC development due to
-// an explicit approach to reason about a state transition. Although some small effort has been made to adapt Haskell, neither project received any long-term support. It is still worth looking at some of the languages that suggest novice approaches to development. 
 
-Flint is an experiment language with protected calls and asset types @flint. Protected calls introduce a role-based access system
+Flint is an experimental language with protected calls and asset types @flint. Protected calls introduce a role-based access system
 where the SC developer can specify the permitted caller to a message function. Another unique feature is array-bounded loops
 that partially address the halting problem. Flint also addresses a state-transition problem by allowing developers to specify
 all possible states in the contract. The message functions need to specify the state transition, which occurs explicitly.
@@ -295,7 +293,7 @@ In light of the above, we believe there is a need for a solution that combines t
 about their program in terms of FSM models that can be verified at the compile time for functional correctness and model consistency,
 and enable an automatic generation of invariants and constraints to validate the data at runtime.
 
-We propose _Folidity_, a safe smart contract language. Folidity offers a model-first approach to the development process
+We propose _Folidity_, a safe smart contract language. Folidity offers a model-first approach to development
 while featuring a functional-friendly programming style. The language intends to offer a safe and secure-by-design approach to the programming, 
 ensuring the developer is aware of any state transitions during execution.
 
@@ -321,7 +319,7 @@ As part of the language design, the SC building workflow is illustrated in @Figu
   caption: "Build workflow",
 ) <Figure:compilation>
 
-As one of the core features of Folidity, formal verification is part of the build process.
+Formal verification is a novel addition to the workflow.
 Having verified the model consistency, invariants, and constraints, the program is considered safe to generate runtime assertions.
 
 Another core feature is a pure computation context of the SC in Folidity. As illustrated in @fig:context:old,
@@ -344,12 +342,12 @@ whereas _local state_ describes the storage of an individual SC.
 
 == Language design
 
-Folidity features a rich grammar that allows one to abstract away from low-level operations while providing a high level of readability and expressivity.
+Folidity features a rich grammar that abstracts away from low-level operations while providing a high level of readability and expressivity.
 Certain considerations have been taken into account to reflect the desired features described in @Section:Outline.
 
 Folidity is described using LR(1) #footnote("https://en.wikipedia.org/wiki/LR_parser") grammar as outlined in @Appendix:Grammar[Appendix].
 One of the advantages of using LR(1) grammar is its expressiveness and clarity which allows describing sophisticated data structures. 
-It additionally enables easier implementation of the error-recovery @sorkin2012lr1 for reporting purposes which lies at the core of the Folidity compiler.
+It additionally enables easier implementation of the error-recovery @sorkin2012lr1 for reporting purposes which lies at the core of the compiler.
 
 === Primitives, Expressions and Statements
 
@@ -369,7 +367,7 @@ Starting from primitives, Folidity provides numerous data types allowing encodin
 - `char` - character, provided as `'a'`
 - `bool` - boolean literals `true` or `false`
 
-By describing the type of relations in mappings, we can combine Event-B approach of proof obligation with symbolic execution to provide strong formal guarantees of member inclusion and member relations.
+By describing the type of relations in mappings, we can combine the Event-B approach of proof obligation with symbolic execution to provide strong formal guarantees of member inclusion and member relations.
 
 Specifically, we can define some axiom where we can have a mapping of partial injective relation between addresses (`address`) and asset ids (`uint`) `assets: mapping<address >-/> int>`:
 
@@ -390,12 +388,12 @@ with few additions.
 let result: int = a + 1_000_000_000 :> handle((_) -> return 0);
 ```
 
-Statements have close resemblances to Rust syntax by following the following syntax:
+Statements have close resemblances to Rust syntax and are defined in @Appendix:Grammar[Appendix].
 ```rust
 let <var_ident>: <optional_type> = <expr>; 
 ```
 
-The type can be derived at the compile time from the expression. Other simple statements are similar to Rust statements and are defined in @Appendix:Grammar[Appendix].
+The type can be derived at the compile time from the expression.
 
 It is worth looking at the unique additions such as struct instantiation and state transition.
 
@@ -414,10 +412,10 @@ move <state_ident> : { <args>, ..<object> };
 
 A typical program in Folidity consists of data structures that describe models, states, and functions that can interact with each other. Models are one of the core structures that provide the model consistency guarantee in Folidity. States can encapsulate different of the same models and describe explicit state transition or state mutations as part of program execution, and functions are the driving points in program execution. Functions declare and describe the state transitions.
 
-As mentioned multiple times before, models lie within the core of Folidity design. They resemble regular `struct` structures in "C-like" languages with
+Models resemble regular `struct` structures in "C-like" languages with
 few differences.
 
-Models describe some representation of the storage layout that is encapsulated within explicit states.
+They describe some representation of the storage layout that is encapsulated within explicit states.
 
 #figure(
   ```
@@ -432,7 +430,7 @@ Models describe some representation of the storage layout that is encapsulated w
   caption: "Simple model with constraints"
 )
 
-Folidity provides developers with a syntax to further constraint the data that the model can accept by specifying model bounds in `st` #footnote("States for \"such that\"") blocks. This syntax can also be used in state and function declarations as illustrated later.
+Folidity enables developers to further constrain the data that the model can accept by specifying model bounds in `st` #footnote("States for \"such that\"") blocks. This syntax can also be used in state and function declarations as illustrated later.
 To support context transformation, any global state variables (e.g. block number, current caller) are injected into a model as fields and can be accessed in `st` blocks and expressions in functions.
 Furthermore, Folidity borrows the idea of model refinements from Event-B by allowing a model to inherit another model's fields and refine its constraints as shown in @Listing:ModelRefinememt. 
 
@@ -490,7 +488,7 @@ Additionally, states' bounds can further be restricted by specifying the incomin
   caption: "State transition bounds"
 )
 
-As mentioned earlier, functions facilitate the model mutation of the Folidiy SC. Functions provide a controlled interface for the user and other contracts (non-AVM type of contracts) to interact with the business logic and the state of the application. Therefore, it is important to enable developers to control the execution flow of the incoming data and provide them with fine-grained control over output data and storage mutation.
+As mentioned earlier, functions facilitate the model mutation of the Folidiy SC. Functions provide a controlled interface for the user and other contracts to interact with the state of the application. Therefore, it is important to enable developers to control the execution flow of the incoming data and provide them with fine-grained control over output data and storage mutation.
 
 Let's look at the signature of a typical function in Folidity;
 
@@ -511,17 +509,17 @@ Let's look at the signature of a typical function in Folidity;
 )
 
 Starting from the top: `@init` is an optional attribute that indicates the function is used for instantiation of the contract.
-Followed by the next attribute, `@(any)`, a developer can specify who can call the contract. `any` is a wildcard variable indicating that anyone can call it.
+Followed by the `@(any)`, a developer can specify who can call the contract. `any` is a wildcard variable indicating that anyone can call it.
 However, it is possible to specify a list of addresses or a specific address using data from the incoming state `@(s1.whitelist | a"<some_address>")`.
 
-If no attributes are specified, then it is assumed that the function is private and internal and can only be called within the contract.
+If no attributes are specified, then it is assumed that the function is private and internal.
 
-Moving on, `(out: int)` is a return type bound by the variable `out` that can be used to specify a post-execution condition to ensure that the function produces results within an acceptable model's range. It is also possible to just specify the return type, `fn int my_func(...)`. The `my_func` is an identifier of the function, followed by the list of typed parameters.
+Moving on, `(out: int)` is a return type bound by the variable `out` that can be used to specify a post-execution condition to ensure that the function's output is within the specification. It is also possible to just specify the return type, `fn int my_func(...)`. The `my_func` is an identifier of the function, followed by the list of typed parameters.
 
 Functions in Folidity feature `where` blocks enabling developers to specify state transition bounds and are also used to inject the current state into the function's execution context. Certain functions can only be executed if the input state matches the current state. After `->` we have a final state that indicates which state we transition to, this can be the same state, meaning that the function only mutates the current state and doesn't logically advance. Both input and output states can be bound by variables
-in order to specify pre and post mutation constraints. You can notice that state's variables are declared in a different fashion from other data types. This is a conscious design decision to differentiate the state mutation parts from the traditional manipulation of primitive data.
+to specify pre and post-mutation constraints. Notice that states' variables are declared differently from other data types. This is a conscious design decision to differentiate the state mutation parts from the traditional manipulation of primitive data.
 
-Additionally, Folidity offers a unique type of function: _view functions_. They are used exclusively for enquiring current or previous state variables and are explicitly restricted from modifying the state of the contract.
+Additionally, Folidity offers a unique type of function: _view functions_. They are used exclusively for enquiring about current or previous state variables and are explicitly restricted from modifying the state of the contract.
 
 ```
 view(BeginState s) fn list<address> get_voters() {
@@ -529,16 +527,15 @@ view(BeginState s) fn list<address> get_voters() {
 }
 ```
 
-These functions are prefixed with the `view(StateName v)` tokens that indicate what state the function accesses. These functions also do not require any attributes since they are public by default and can not be used for instantiation. 
+These functions are prefixed with the `view(StateName v)` tokens that indicate what state the function accesses. They do not require any attributes since they are public by default and can not be used for instantiation. 
 
 Finally, Folidity offers `struct` and `enum` declarations resembling the ones in Rust. They can be used as a type in the variable or field type annotations.
 
 == Formal Verification
 
-Formal verification is one of the unique features of Folidity.
-The grammar is structured with first-class support for formal verification in mind. Therefore, the compiler can imply and prove certain mathematical and functional properties of the program directly from the code without the need to perform any context translations like its done in the aforementioned solutions. 
+Folidity's grammar is structured with first-class support for formal verification in mind. Therefore, the compiler can imply and prove certain mathematical and functional properties of the program directly from the code without the need to perform any context translations like it is done in the aforementioned solutions. 
 
-This chapter illustrates a couple of examples how model consistency and constraint satisfiability can be directly proven directly from the source code of a typical Folidity program. 
+This chapter illustrates a couple of examples of how model consistency and constraint satisfiability can be directly proven directly from the source code of a typical Folidity program. 
 
 === Model consistency
 
@@ -679,7 +676,7 @@ A = { e_0, e_1, ..., e_k } \
 (and.big_(i) rho(Theta[e_i]) )=> italic("Sat or Unsat") 
 $ 
 
-The next stage is to verify co-dependent symbols in the system for satisfiability of their respective constraints.
+The next stage is to verify co-dependent symbols in the system for the satisfiability of their respective constraints.
 
 Let's look at the models $bold(Mu)$, we want to ensure that
 $
@@ -724,7 +721,7 @@ It is worth noting that it is possible to apply other techniques of formal verif
 
 In particular, we can provide even more fine-grained validation of the program by asserting user-defined constraints in the symbolic execution context. This enables unsatisfability detection of reachability at the earlier stage of the execution. The traditional methods rely on composing these constraints at the runtime through the statistical discovery of the model bounds whereas Folidity offers this information at the compile time. 
 
-In the context of mutli-contract execution, which applies to EVM-compatible blockchains. Instead of carrying out interface discovery through statistical methods, we can potentially encode the function signature with its models bounds and constraints into the metadata and leverage this information at the runtime in order to verify the model consistency and constraint satisfiability as illustrated earlier.
+In the context of mutli-contract execution, which applies to EVM-compatible blockchains. Instead of carrying out interface discovery through statistical methods, we can potentially encode the function signature with its model's bounds and constraints into the metadata and leverage this information at the runtime to verify the model consistency and constraint satisfiability as illustrated earlier.
 
 #pagebreak()
 = Implementation
@@ -733,12 +730,12 @@ In the context of mutli-contract execution, which applies to EVM-compatible bloc
 
 The language is implemented using Rust #footnote[https://www.rust-lang.org] due to its memory-safety guarantees and efficiency. 
 The compiler uses Lalrpop #footnote[https://github.com/lalrpop/lalrpop] parser-generator to streamline the development process.
-Folidity also requires SMT-solver for formal verification and generation of runtime assertions. In order to facilitate this functionality,
+Folidity also requires SMT-solver for formal verification and generation of runtime assertions. To facilitate this functionality,
 Z3#footnote[https://microsoft.github.io/z3guide] will be used since it also provides Rust bindings. It was debated to use Boogie, since it provides
 a higher-level abstraction, but it was quickly discarded due to lack of documentation and increased development time.
 
 As a target blockchain for the language, Algorand #footnote[https://developer.algorand.org] has been selected. 
-Algorand is a decentralised blockchain platform designed for high-performance and low-cost transactions, 
+Algorand is a blockchain platform designed for high-performance and low-cost transactions, 
 utilising a unique consensus algorithm called Pure Proof-of-Stake to achieve scalability, security, and decentralisation @algorand.
 
 One of the potential drawbacks of Folidity is a computational overhead due to complex abstractions and additional assertions. 
@@ -813,7 +810,7 @@ At each stage of the compilation, if an error occurs, then the crate composes a 
 
 == Parser
 
-Parsing has been significantly bootstrapped using Rust crates. Logos #footnote[https://crates.io/crates/logos] is used for tokenisation. It scans strings, matches them against patterns and produces a list of `enum` tokens that can directly be referenced in Rust code. As mentioned before, Lalrpop is a powerful parser-generator and library that allows developers to describe grammar using easy-to-use syntax and generate an AST. Its syntax is expressive and effective when managing grammar ambiguities.
+Parsing has been significantly bootstrapped using Rust crates. Logos #footnote[https://crates.io/crates/logos] is used for tokenisation. It scans strings, matches them against patterns and produces a list of `enum` tokens that can directly be referenced in Rust code. Lalrpop is a powerful parser-generator and library that allows developers to describe grammar using easy-to-use syntax and generate an AST. Its syntax is expressive and effective when managing grammar ambiguities.
 In addition, Lalrpop provides built-in support for error recovery producing a descriptive list of error reports. Finally, the library has been actively used in the industry by production-ready languages such as Solang #footnote[https://github.com/hyperledger/solang] and Gluon #footnote[https://github.com/gluon-lang/gluon].
 
 #figure(
@@ -928,7 +925,7 @@ caption: "Symbol table and scope used in the crate."
 
 Moving on, the function's attributes are resolved. `is_init` is stored as a boolean flag. When resolving an access attribute, we resolve the respective expressions in the attribute's body and match that the referenced fields exist in the incoming state adding it to the scope. Then, we resolve state bounds while injecting bound variables into the scope. 
 Afterwards, the function's parameters are added to the scope as a variable. 
-The variables are added in the order as they are described in order to maintain the valid stack of symbol tables that is used to control the variable access as explained later.
+The variables are added in the order as they are described to maintain the valid stack of symbol tables that is used to control the variable access as explained later.
 
 Having resolved the function's signature, the crate has finished resolving signatures of declarations and is ready to resolve `st` blocks.
 
@@ -940,7 +937,7 @@ If after each stage of semantic analysis no reports have been pushed, the `Contr
 
 === Expressions <Chapter:Expressions>
 
-Folidity features a type resolution at the compile time, similar to Rust. We define the following `enum` in @Listing:ExpectedType. We use this information in order to resolve an expression to a specific type.
+Folidity features a type resolution at the compile time, similar to Rust. We define the following `enum` in @Listing:ExpectedType. We use this information to resolve an expression to a specific type.
 
 #figure(
   ```rust
@@ -997,7 +994,7 @@ Finally, accessing a member (e.g. a field of a model) is done by retrieving the 
 
 === Statements <Chapter:Statements>
 
-In contrast with expressions, statements are resolved iteratively. Starting with the variable declaration, we first resolve the assigned expression if any, and then add it to the current symbol table in the function's scope with resolved or annotated type.
+Statements are resolved iteratively. Starting with the variable declaration, we first resolve the assigned expression if any, and then add it to the current symbol table in the function's scope with resolved or annotated type.
 Further reassignment of the variable simply updates the current entry in the table if the variable is mutable, that is, it has been annotated with the `mut` keyword.
 
 `If-Else` blocks are resolved by first resolving the conditional expression, and resolving the list of statements in the body, then `else` statements are resolved if any. Since the `else` statements can be another `if`, we achieve `else if {}` block.
@@ -1072,12 +1069,11 @@ pub struct Z3Expression<'ctx> {
 ```,
 caption: "Transformed Z3 expression"
 )
-Each expression is transformed to Z3 AST type similarly to how it was resolved in semantics. The resulting expression is then cast to the generic `Dynamic` type to be composable with each other. 
+Each expression is transformed to Z3 AST type similarly to how it was resolved in semantics.
 Variables are transformed into the Z3 constants that are identified by integers. If we have a variable or a member access that references another structure, the Z3 constant that identifies the symbol in another structure is looked up in its scope and returned. This is done to ensure that when combining two different blocks of constraints, the variables correspond to the same Z3 constants.
 Specifically, if `StateA` has a field named `a` which is referenced by the `k!3` constant, and some function accesses this variable via `s.a`, that `s.a` is resolved to `k!3` respectively. 
 
-It is worth looking at how arrays and sorts in Z3 are used in the transformations. Sorts in Z3 enable describing some user-defined datatype. They can be based on some concrete type (i.e. `Sort::int(...)`) or uninterpreted, that is, of some abstract type `A`.
-
+Sorts in Z3 enable describing some user-defined datatype. They can be based on some concrete type (i.e. `Sort::int(...)`) or uninterpreted, that is, of some abstract type `A`.
 Z3 leverages the array theory by McCarthy expressing them as select-store axioms @array_theory. Z3 assumes that arrays are extensional over function space. Hence, since mapping in Folidity is in space of functions, we can model mapping between two types as an array with the domain of type `A` and range of type `B`. 
 
 In the verification context, it is assumed that lists and sets are both can be reduced to some user-defined `set` sort. Similarly, models, structs and states and transformed to uninterpreted types as well.
@@ -1117,7 +1113,7 @@ In the end, a list of expressions in individual `st` blocks gets transformed int
 
 After the transformation of expressions, the crate verifies the satisfiability of individual blocks of constraints in each declaration. 
 
-For each block, we create a solver with the global context and assert (i.e. push) the corresponding constraints. The solver then executes the verification and creates a model if successful. Otherwise, the unsatisfiability core is extracted from the solver. This core consists of the constants that contradict each other which then get reported.
+For each block, we create a solver with the global context and assert constraints. The solver then executes the verification and creates a model if successful. Otherwise, the unsatisfiability core is extracted from the solver. This core consists of the constants that contradict each other which then get reported.
 
 As an example let's look at the following set of constraints.
 
@@ -1136,7 +1132,7 @@ From the above set, the solver will return the unsatisfiable core of \
 
 === Constraint satisfiability in joined blocks
 
-As a final stage of verification, the crate produces lists of joined blocks of constraints based on the dependencies between declarations. In order to eliminate the redundancy in computation, it is essential to compose lists of unique sets of constraints. To achieve that, an undirected graph of linked nodes is assembled first. Then, Tarjan's SCC algorithm is used to find any strongly connected components. In the case of an undirected graph, the strongly connected component corresponds to a set of interconnected nodes that are disjoint from other components as shown in @Listing:SCCBlocks.
+As a final stage, lists of joined blocks of constraints based on the dependencies between declarations are produced. to eliminate the redundancy in computation, it is essential to compose lists of unique sets of constraints. To achieve that, an undirected graph of linked nodes is assembled first. Then, Tarjan's SCC algorithm is used to find any strongly connected components. In the case of an undirected graph, the strongly connected component corresponds to a set of interconnected nodes that are disjoint from other components as shown in @Listing:SCCBlocks.
 
 #figure(
   diagram(
@@ -1162,7 +1158,7 @@ The constraints from these blocks and consequently composed into a single list a
 
 == Emitter
 
-Emission of the target code is the final stage of the compilation process. Similarly to the verifier, it also accepts `ContractDefintion` as an input. As an output, the crate returns a list of bytes of Teal instructions. During this iteration of the development, optimisation was not considered as a priority.
+Emission of the target code is the final stage of the compilation process. Similarly to the verifier, it also accepts `ContractDefintion` as an input. As an output, the crate returns a list of bytes of Teal instructions.
 
 === Teal and AVM basics
 
@@ -1194,14 +1190,14 @@ The next stage of boilerplate code generation is the function call blocks. Funct
 
 === Function resolution
 
-For each function, the emitter creates a mapping of concrete values for variables. That is the list of chunks that allow to access concrete values. These chunks are then prepended whenever the variable is referenced. As a starting point, the emitter saves the current arguments to the function into the scratch and adds concrete `load i` chunks for each respective variable to the map. A similar procedure is done for the state variables and access variables.
+For each function, the emitter creates a mapping of concrete chunks for variables that allow to access concrete values. These chunks are then prepended whenever the variable is referenced. As a starting point, the emitter saves the current arguments to the function into the scratch and adds `load i` chunks for each respective variable to the map. A similar procedure is done for the state variables and access variables.
 
-The emitter then resolves each statement iteratively, and for each expression, it walks down the AST emitting chunks of opcodes as explained below.
+The emitter then resolves each statement iteratively, and for each expression, it walks down the AST emitting chunks of opcodes.
 
 #pagebreak()
-==== Emitting expressions
+==== Expressions
 
-Primitive types are pushed onto the stack using the standard set of opcode allowing encoding any non-standard types into AVM-recognised types. For signed integers two's complement conversion is performed. Floating point numbers are encoded using IEEE 754 standard.
+Primitive types are pushed onto the stack using the standard set of opcodes allowing encoding non-standard types into AVM-recognised types. For signed integers, two's complement conversion is performed. Floating point numbers are encoded using IEEE 754 standard.
 Variables are resolved by accessing concrete chunks and prepending them to the current piece of a stack.
 
 Enums are resolved by encoding them into a byte array of 2 uint64 integers where the first value indicates the index of the enum in the contract definition, and the other one corresponds to the variant's position. Binay operations (e.g. summation, subtraction) are emitted by pushing left and right values onto the stack before pushing the operation opcode.
@@ -1234,7 +1230,7 @@ Moving to the complex operations, function calls are emitted similarly to the to
 
 When working with states, the layout representation is calculated from either the raw fields of the state declaration or the model's fields and its parents, that the state encapsulates. 
 
-Dynamic generation of assertions is one of the features of Folidity compiler. It is done any structure with an `st` block is instantiated. Firstly, the byte array is composed as described above and stored in the scratch. Secondly, each field is extracted by calculating the offset of a field in the array which is derived from the definition of the structure, the same procedure is done for the member access expression. Each field's data gets stored in the scratch and `load i` chunk gets added to the map of concrete vars. Then, each constraint expression is pushed onto the stack, followed by the `assert` opcode. After all expressions have been emitted, the original byte array is loaded from the scratch space.
+Dynamic generation of assertions is done when any structure with an `st` block is instantiated. Firstly, the byte array is composed as described above and stored in the scratch. Secondly, each field is extracted by calculating the offset of a field in the array which is derived from the definition of the structure, the same procedure is done for the member access expression. Each field's data gets stored in the scratch and `load i` chunk gets added to the map of concrete vars. Then, each constraint expression is pushed onto the stack, followed by the `assert` opcode. After all expressions have been emitted, the original byte array is loaded from the scratch space.
 
 ==== Statements
 
@@ -1246,13 +1242,13 @@ Resolving statements is done similarly to expressions. Variable declaration and 
 
 When the state transition statement `move` is present, the emitter first performs the expression resolution as explained earlier, and then, similarly, to the struct constraint assertion it asserts any function's state bounds if present. Afterwards, it saves the corresponding byte array in the box named with the state identifier. 
 
-The `return` statement is handled in a similar fashion and followed by the `retsub` opcode which returns the execution to the subroutine caller point. 
+The `return` statement is handled similarly and followed by the `retsub` opcode which returns the execution to the subroutine caller point. 
 
 === Final compilation
 
 You can view a sample smart contract written in Folidity and the resulted Teal code listed in @Appendix:EmitExample[Appendix].
 
-After all the functions have been emitted, the emitter writes them into a single string and encodes them as a byte array which gets returned to the caller. As well as approval program, AVM required a _clear_ program, a specialised logic used when an account opts out of smart contracts. Since opt-in functionality is not used in Folidity. It simply emits three opcodes that return a positive result.
+After all the functions have been emitted, the emitter writes them into a single string and encodes them as a byte array which gets returned to the caller.
 
 == CLI
 
@@ -1276,21 +1272,28 @@ An example of a failed formal verification report is shown in @Figure:ariadne.
 #pagebreak()
 = Testing strategies
 
-During the development test-driven development and extreme programming techniques were applied. Each crate was extensively tested using unit tests. An output of the most recent test cases is illustrated below.
+During the development test-driven development and extreme programming techniques were applied. Each crate was extensively tested using unit tests. An output is displayed in @Listing:TestCases.
+
+Furthermore, an integration test of the example counter contract and GitHub CI workflows have been introduced to acquire architecture-independent results and better code quality.
+
+The CI workflow stages include:
+- Tests
+- Check clippy and documentation
+- Check formatting
+- Compile and formally test examples
+
+Finally, `dependabot` #footnote[https://github.com/dependabot] is used to protect the compiler the supply chain attacks and any outdated dependencies.
+
+
+#figure(
 
 ```bash
-Running unittests src/lib.rs (target/debug/deps/folidity_emitter-48d869f47acfd0e3)
-
-running 3 tests
 test tests::simple_exprs ... ok
 test tests::test_simple_emit ... ok
 test tests::test_complex_emit ... ok
 
-test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+...
 
-Running unittests src/lib.rs (target/debug/deps/folidity_parser-b98c477b893c2171)
-
-running 11 tests
 test tests::comment_token ... ok
 test tests::simple_int ... ok
 test tests::strings ... ok
@@ -1303,11 +1306,8 @@ test tests::test_structs_enums ... ok
 test tests::test_factorial_tree ... ok
 test tests::parse_complete_program ... ok
 
-test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+...
 
-Running unittests src/lib.rs (target/debug/deps/folidity_semantics-6b5b84edbb60c4f3)
-
-running 11 tests
 test expression::tests::test_mul ... ok
 test expression::tests::test_eval ... ok
 test expression::tests::test_list ... ok
@@ -1320,11 +1320,8 @@ test expression::tests::test_func ... ok
 test tests::test_err_program ... ok
 test tests::test_program ... ok
 
-test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+...
 
-Running unittests src/lib.rs (target/debug/deps/folidity_verifier-cdc6c95be6b65382)
-
-running 8 tests
 test tests::mul_transform ... ok
 test tests::string_hex_transform ... ok
 test tests::var_transform ... ok
@@ -1333,26 +1330,16 @@ test tests::in_transform ... ok
 test tests::test_incorrect_linked_bounds ... ok
 test tests::test_incorrect_bounds ... ok
 test tests::test_correct_bounds ... ok
-
-test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
-```
-
-Furthermore, an integration test of the example counter contract and GitHub CI workflows have been introduced to acquire architecture-independent results and better code quality.
-
-The CI workflow stages include:
-- Tests
-- Check clippy and documentation
-- Check formatting
-- Compile and formally test examples
-
-Finally, `dependabot` #footnote[https://github.com/dependabot] is used to protect the compiler the supply chain attacks and any outdated dependencies.
+```,
+caption: "Test cases"
+) <Listing:TestCases>
 
 #pagebreak()
 = Limitations and Future Work
 
 == Formal verification
 
-The theoretical model currently lacks a more concrete proof of the functional correctness from the symblic execution techniques. While this is theoretically achievable, more work and research should be done in order to determine how well the current version of grammar can facilitate such an approach. While it is possible to implement the symbolic execution of statements and expressions in the verifier crate. This objective was beyond the scope of this paper. 
+The theoretical model currently lacks a more concrete proof of the functional correctness from the symblic execution techniques. While this is theoretically achievable, more work and research should be done to determine how well the current version of grammar can facilitate such an approach. While it is possible to implement the symbolic execution of statements and expressions in the verifier crate. This objective was beyond the scope of this paper. 
 Additionally, the current implementation of the verifier does not function calls and struct initialisation in expression as it requires further work on the expression transformation to be done, potentially using the _array theory_. Finally, resolving generic types in the verifier requires coercing the expression to a concrete type which is not a trivial type since it is only achievable with the introduction of monomorphisation.
 
 == Semantic analysis & Grammar
@@ -1367,13 +1354,13 @@ Finally, type-casting is currently unsupported which may result in false negativ
 
 == Emitter
 
-Emitter is currently at the pre-alpha stage. It produces unoptimised Teal code. This can be addressed by the introduction of control flow graphs that can efficiently eliminate redundant code. Multi-pass compilation should also be considered as an optimisation strategy. Additionally, curernt iteration does not support the inclusion operator (`in`) that restricts the use of iterators and `a in list` expression in the code. This can be achieved by revising the layout generation of an array, and, similar to member access, accessing each element in the list by offset. 
+Emitter is currently at the pre-alpha stage. It produces unoptimised Teal code. This can be addressed by the introduction of control flow graphs that can efficiently eliminate redundant code. Multi-pass compilation should also be considered as an optimisation strategy. Additionally, currernt iteration does not support the inclusion operator (`in`) that restricts the use of iterators and `a in list` expression in the code. This can be achieved by revising the layout generation of an array, and, similar to member access, accessing each element in the list by offset. 
 
-Finally, support for multiple targets such as the Ethereum Virtual Machine should be one of the priorities for future development in order to access a larger system of developers to acquire more developer feedback, hence, fostering the community development of the compiler.
+Finally, support for multiple targets such as EVM should be one of the priorities for future development to access a larger system of developers to acquire more developer feedback, hence, fostering the community development of the compiler.
 
 == General remarks
 
-Due to the reduced scope of the project, multi-contract support have not been implemented. It requires the finalisation of the grammar of the language that can lead to the development of the language-specific ABI #footnote("Abstract Binary Interface") metadata that can be used by CLI tools and contracts to call the contract. It also further required conducting more research in the field of interface discovery in order to provide evidence that it is possible to achieve a reasonable level of security across multiple SCs when the source code is not available.
+Due to the reduced scope of the project, multi-contract support has not been implemented. It requires the finalisation of the grammar of the language that can lead to the development of the language-specific ABI #footnote("Abstract Binary Interface") metadata that can be used by CLI tools and contracts to call the contract. It also further required conducting more research in the field of interface discovery to provide evidence that it is possible to achieve a reasonable level of security across multiple SCs when the source code is not available.
 
 Finally, the corresponding CLI tools should be developed to enable ABI metadata generation.
 
@@ -1394,9 +1381,7 @@ We have also seen the recent improvements in the performance in SMT solvers such
 
 However, this project does not account for the networking effect of the adoption of the language. Therefore, whether SC developers are ready to adopt a new SCL in times when a new SCL is released every month is an open question and can only be resolved with time.
 
-The body of the report has *#total.words words*.
-
-])
+#[
 
 #pagebreak()
 #text(weight: "bold", size: 35pt, "Appendix")
@@ -2272,6 +2257,15 @@ The Gannt chart that demonstrates the actual work.
   edge((0.3, 12), (0.3, 13), (1, 13)),
 )
 
+
+= Word count
+
+The body of the report has *#total.words words*.
+
+] <Appendix>
+
 #pagebreak()
+
+])
 
 #bibliography("ECS.bib", style: "institute-of-electrical-and-electronics-engineers")
