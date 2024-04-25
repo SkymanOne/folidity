@@ -10,29 +10,20 @@
   }
 }
 
-// Rotate content, presetcing width
-#let rotatex(angle, body)= style(styles => layout(size => {
-  let size = measure(block(width: size.width, body), styles)
-  box(inset:(x: -size.width/2+(size.width*calc.abs(calc.cos(angle))+size.height*calc.abs(calc.sin(angle)))/2,
-             y: -size.height/2+(size.height*calc.abs(calc.cos(angle))+size.width*calc.abs(calc.sin(angle)))/2),
-             rotate(body,angle))
-}))
-
-
 #let margins = (inside: 1.4in, outside: 1.0in, top: 1.0in, bottom: 1.0in)
+
+#let body-font = "New Computer Modern"
+#let sans-font = "New Computer Modern Sans"
 
 #let page_style(
   page_numbering: "1",
   title_numbering: "1.",
   doc
 ) = {
-
   set page(
     numbering: page_numbering,
     margin: margins,
   )
-  let body-font = "New Computer Modern"
-  let sans-font = "New Computer Modern Sans"
   set text(
     font: body-font, 
     size: 12pt, 
@@ -52,7 +43,7 @@
     let counter_display = if it.numbering != none {
       counter(heading).display(it.numbering)
     }
-    pad(top: 1.2em, bottom: 1.0em, left: 0.2em, [
+    pad(top: 1.4em, bottom: 1.4em, left: 0.2em, [
         #table(
           columns: 2,
           stroke: none,
@@ -104,7 +95,7 @@
         let h_counter = counter(heading.where(level: 1)).display()
         let last_header = before_elems.last().body
         v(4em)
-        if last_header == text("Statement of Originality") {
+        if last_header == text("Statement of Originality") or last_header == text("Bibliography") {
           emph(last_header) + h(1fr) + counter(page).display(page_numbering)
         } else {
           emph(h_counter + " " + last_header) + h(1fr) + counter(page).display(page_numbering)
@@ -158,10 +149,11 @@
     ),
     date: "December 22, 2023",
     program: "BSc Computer Science",
+    department: "Electronics and Computer Science",
+    faculty: "Faculty of Engineering and Physical Sciences",
+    university: "University of Southampton",
     is_progress_report: false,
 ) = {
-  let body-font = "New Computer Modern"
-  let sans-font = "New Computer Modern Sans"
 
   set document(title: title, author: author.at("name"))
   set page(
@@ -179,9 +171,9 @@
 
   v(7em) 
   par()[
-      #text(14pt, "Electronics and Computer Science") \
-      #text(14pt, "Faculty of Engineering and Physical Sciences") \
-      #text(14pt, "University of Southampton")
+      #text(14pt, department) \
+      #text(14pt, faculty) \
+      #text(14pt, university)
   ]
 
   v(6.5em)
@@ -220,7 +212,6 @@
     #text(14pt, program)
   ]
   
-
 }
 
 #let abstract(
@@ -229,6 +220,9 @@
     email: none,
   ),
   program: "Program name",
+  department: "Electronics and Computer Science",
+  faculty: "Faculty of Engineering and Physical Sciences",
+  university: "University of Southampton",
   is_progress_report: false,
   content: lorem(150),
 ) = {
@@ -239,8 +233,6 @@
   counter(page).update(0)
   
   set align(center)
-  let body-font = "New Computer Modern"
-  let sans-font = "New Computer Modern Sans"
   set text(
       font: body-font, 
       size: 12pt, 
@@ -248,15 +240,15 @@
   )
 
   v(8.5em)
-  text("UNIVESITY OF SOUTHAMPTON")
+  text(upper(university))
 
   v(0.5em)
   underline(text("ABSTRACT"))
 
   v(0.5em)
   par()[
-    #text("FACULTY OF ENGINEERING AND PHYSICAL SCIENCES") \
-    #text("ELECTRONICS AND COMPUTER SCINCE")
+    #text(upper(faculty)) \
+    #text(upper(department))
   ]
 
   v(0.5em)
@@ -397,6 +389,9 @@
   ),
   date: "December 22, 2023",
   program: "BSc Computer Science",
+  department: "Electronics and Computer Science",
+  faculty: "Faculty of Engineering and Physical Sciences",
+  university: "University of Southampton",
   is_progress_report: false,
   originality_statements: (
     acknowledged: "I have acknowledged all sources, and identified any content taken from elsewhere.",
@@ -410,7 +405,6 @@
   acknowledgments_text: lorem(50),
   page_numbering: "1",
   title_numbering: "1.",
-
   doc
 ) = {
   cover(
@@ -420,12 +414,18 @@
     author: author,
     date: date,
     program: program,
+    department: department,
+    faculty: faculty,
+    university: university,
     is_progress_report: is_progress_report
   )
 
   abstract(
     author: author,
     program: program,
+    department: department,
+    faculty: faculty,
+    university: university,
     is_progress_report: is_progress_report,
     content: abstract_text
   )

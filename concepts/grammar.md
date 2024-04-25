@@ -24,7 +24,7 @@ Based on holistic approach
 
 <st_block>     := `st` <expr>
 
-<statement>    := <var> | <assign> | <if> | <for> | <foreach> | <return> | <func_call> | <state_t> `;`
+<statement>    := <var> | <assign> | <if> | <for> | <foreach> | <return> | <func_call> | <state_t> `skip` `;`
 <state_t>      := `move` <struct_init>
 <var>          := let `mut`? <var_ident> (`:` <type>)? (`=` <expr>)?
 <var_ident>    := (<ident> | <decon>)

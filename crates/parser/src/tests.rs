@@ -937,7 +937,7 @@ fn () execute() when (RevealState s) -> ExecuteState {
     }
 }
 
-view(BeginState s) fn list<Address> get_voters() {
+view(BeginState s) fn list<address> get_voters() {
     return s.voters;
 }
 "#;
