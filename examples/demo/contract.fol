@@ -6,9 +6,15 @@ state CounterState {
     counter > -1000
 ]
 
+# This is an constructor.
 @init
+# Anyone can call this function.
 @(any)
 fn () initialise() when () -> CounterState {
+    loops(5.0);
+    conditionals(false, 10);
+    move_state();
+    let p = one(1, 2) :> two(1) :> three(10);
     move CounterState : { 0 };
 }
 
@@ -16,7 +22,6 @@ fn () initialise() when () -> CounterState {
 fn () incr_by(value: int) when (CounterState s) -> CounterState
 st [
     value > 100,
-    value < 100
 ] {
     let value = s.counter + value;
     move CounterState : { value };
@@ -34,4 +39,49 @@ st [
 @(any)
 view(CounterState s) fn int get_value() {
     return s.counter;
+}
+
+fn () loops(value: float) {
+    for (let mut i = 0; i < 10; i + 1) {
+        let value = value + 123.0;
+        skip;
+    }
+    let some_list = [-3, 4, 5];
+}
+
+fn () conditionals(cond: bool, value: int) {
+    let scoped = -10;
+    let mut s = s"Hello";
+    s = s + s" " + s"World";
+    if cond {
+        let a = scoped + 3;
+    } else if value > 1 {
+        let b = scoped + 4;
+    } else {
+        let c = scoped + 5;
+    }
+}
+
+fn () move_state() when (CounterState s1) -> (CounterState s2) {
+    let a = a"2FMLYJHYQWRHMFKRHKTKX5UNB5DGO65U57O3YVLWUJWKRE4YYJYC2CWWBY";
+    let b = [1, 2, 3];
+    let c = -5;
+    let d = s"Hello World";
+
+    let counter = s1.counter;
+
+
+    move CounterState : { counter };
+}
+
+fn int one(a: int, b: int) {
+    return a * b;
+}
+
+fn int two(a: int, b: int) {
+    return a - b;
+}
+
+fn int three(a: int, b: int) {
+    return a + b;
 }
