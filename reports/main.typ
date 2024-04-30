@@ -1198,7 +1198,8 @@ The emitter then resolves each statement iteratively, walking down the AST for e
 #pagebreak()
 ==== Expressions
 
-Primitive types are pushed onto the stack using the standard set of opcodes, which allows the encoding of non-standard types into AVM-recognised types. For signed integers, twos-complement conversion is performed. Floating point numbers are encoded using the IEEE 754 standard.
+Primitive types are pushed onto the stack using the standard set of opcodes, which allows the encoding of non-standard types into AVM-recognised types. For signed integers, a signed-magnitude technique is used #footnote[https://en.wikipedia.org/wiki/Signed_number_representations]. Signed integers are represented using 16-byte arrays, where the first 8 bytes correspond to the sign, and the other 8 represent the magnitude. The compiler then injects helper functions for signed operations in Teal into the final binary.
+Floating point numbers are encoded using the IEEE 754 standard.
 Variables are resolved by accessing concrete chunks and prepending them to the current piece of a stack.
 
 Enums are resolved by encoding them into a byte array of 2 uint64 integers where the first value indicates the index of the enum in the contract definition, and the other one corresponds to the variant's position. Binay operations (e.g. summation, subtraction) are emitted by pushing left and right values onto the stack before pushing the operation opcode.
@@ -1252,6 +1253,7 @@ After all the functions have been emitted, the emitter writes them into a single
 
 Algorand also requires a _clear_ program that contains an account opt-out logic. As this functionality is not currently used, the compiler emits a binary that returns a `0` status code.
 
+#pagebreak()
 == CLI
 
 The entry point to the Foldity compiler is the `folidity` crate that represents a CLI tool. It allows to: 
@@ -1290,6 +1292,7 @@ Finally, the `dependabot` #footnote[https://github.com/dependabot] protects the 
 #figure(
 
 ```bash
+test tests::signed_mul ... ok
 test tests::simple_exprs ... ok
 test tests::test_simple_emit ... ok
 test tests::test_complex_emit ... ok
@@ -2086,6 +2089,8 @@ retsub
 
 ```
 
+Helper functions are omitted from the listing.
+
 = Old Gannt Chart <Appendix:Gannt>
 
 The Gannt chart that demonstrates the planned work.
@@ -2224,7 +2229,7 @@ The Gannt chart that demonstrates the actual work.
 #let cell_content(content, width: 15em) = {
   block(align(left, content), width: width)
 }
-#diagram(spacing: (1mm, 3mm), cell-size: 10mm,
+#diagram(spacing: (1mm, 2mm), cell-size: 10mm,
   node((0, 0), text(weight: "bold", "root")),
   node((1, 1), cell_content([`README.md` description])),
   node((1, 2), cell_content(`CHANGELOG.md`)),
@@ -2241,6 +2246,7 @@ The Gannt chart that demonstrates the actual work.
 
   node((1, 12), cell_content([`[examples]` \ example contracts]), stroke: 0.5pt),
   node((1.5, 13), cell_content([`[counter]` \ Counter contract]), stroke: 0.5pt),
+  node((1.5, 14), cell_content([`[demo]` \ Demo contract]), stroke: 0.5pt),
 
   edge((0, 0), (0, 1), (1, 1)),
   edge((0, 0), (0, 2), (1, 2)),
@@ -2257,6 +2263,7 @@ The Gannt chart that demonstrates the actual work.
 
   edge((0, 0), (0, 12), (1, 12)),
   edge((0.3, 12), (0.3, 13), (1, 13)),
+  edge((0.3, 12), (0.3, 14), (1, 14)),
 )
 
 

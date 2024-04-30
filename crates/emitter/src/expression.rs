@@ -20,7 +20,7 @@ use folidity_semantics::{
 };
 use num_bigint::{
     BigInt,
-    ToBigInt,
+    BigUint,
 };
 use num_rational::BigRational;
 use num_traits::ToPrimitive;
@@ -48,14 +48,7 @@ pub fn emit_expression(
 
         // literals
         Expression::Int(u) => int(&u.element, &u.loc, chunks, args),
-        Expression::UInt(u) => {
-            int(
-                &u.element.to_bigint().expect("always `Some`"),
-                &u.loc,
-                chunks,
-                args,
-            )
-        }
+        Expression::UInt(u) => uint(&u.element, &u.loc, chunks, args),
         Expression::Boolean(u) => bool(u, chunks, args),
         Expression::Char(u) => char(u, chunks, args),
         Expression::String(u) => string(u, chunks),
@@ -351,11 +344,7 @@ fn extract_field(
         ]);
     } else if matches!(
         ty,
-        TypeVariant::Int
-            | TypeVariant::Uint
-            | TypeVariant::Float
-            | TypeVariant::Bool
-            | TypeVariant::Char
+        TypeVariant::Uint | TypeVariant::Float | TypeVariant::Bool | TypeVariant::Char
     ) {
         local_chunks.push(Chunk::new_empty(Instruction::ExtractUint))
     } else {
@@ -449,9 +438,15 @@ fn add(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
     let _ = emit_expression(&b.left, &mut local_chunks, args)?;
     let _ = emit_expression(&b.right, &mut local_chunks, args)?;
 
-    let op = match &b.left.ty() {
-        TypeVariant::Int | TypeVariant::Uint | TypeVariant::Float => Instruction::Plus,
-        TypeVariant::String => Instruction::Concat,
+    let chunk = match &b.left.ty() {
+        TypeVariant::Uint | TypeVariant::Float => Chunk::new_empty(Instruction::Plus),
+        TypeVariant::Int => {
+            Chunk::new_single(
+                Instruction::CallSub,
+                Constant::StringLit("signed_add".to_string()),
+            )
+        }
+        TypeVariant::String => Chunk::new_empty(Instruction::Plus),
         _ => {
             args.diagnostics.push(Report::emit_error(
                 b.loc.clone(),
@@ -461,8 +456,7 @@ fn add(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
         }
     };
 
-    local_chunks.push(Chunk::new_empty(op));
-
+    local_chunks.push(chunk);
     chunks.extend(local_chunks);
 
     Ok(b.ty.size_hint(args.emitter.definition))
@@ -475,8 +469,14 @@ fn sub(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
     let _ = emit_expression(&b.left, &mut local_chunks, args)?;
     let _ = emit_expression(&b.right, &mut local_chunks, args)?;
 
-    let op = match &b.left.ty() {
-        TypeVariant::Int | TypeVariant::Uint | TypeVariant::Float => Instruction::Minus,
+    let chunk = match &b.left.ty() {
+        TypeVariant::Uint | TypeVariant::Float => Chunk::new_empty(Instruction::Minus),
+        TypeVariant::Int => {
+            Chunk::new_single(
+                Instruction::CallSub,
+                Constant::StringLit("signed_sub".to_string()),
+            )
+        }
         _ => {
             args.diagnostics.push(Report::emit_error(
                 b.loc.clone(),
@@ -486,8 +486,7 @@ fn sub(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
         }
     };
 
-    local_chunks.push(Chunk::new_empty(op));
-
+    local_chunks.push(chunk);
     chunks.extend(local_chunks);
 
     Ok(b.ty.size_hint(args.emitter.definition))
@@ -500,8 +499,14 @@ fn mul(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
     let _ = emit_expression(&b.left, &mut local_chunks, args)?;
     let _ = emit_expression(&b.right, &mut local_chunks, args)?;
 
-    let op = match &b.left.ty() {
-        TypeVariant::Int | TypeVariant::Uint | TypeVariant::Float => Instruction::Mul,
+    let chunk = match &b.left.ty() {
+        TypeVariant::Uint | TypeVariant::Float => Chunk::new_empty(Instruction::Mul),
+        TypeVariant::Int => {
+            Chunk::new_single(
+                Instruction::CallSub,
+                Constant::StringLit("signed_mul".to_string()),
+            )
+        }
         _ => {
             args.diagnostics.push(Report::emit_error(
                 b.loc.clone(),
@@ -511,8 +516,7 @@ fn mul(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
         }
     };
 
-    local_chunks.push(Chunk::new_empty(op));
-
+    local_chunks.push(chunk);
     chunks.extend(local_chunks);
 
     Ok(b.ty.size_hint(args.emitter.definition))
@@ -525,8 +529,14 @@ fn div(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
     let _ = emit_expression(&b.left, &mut local_chunks, args)?;
     let _ = emit_expression(&b.right, &mut local_chunks, args)?;
 
-    let op = match &b.left.ty() {
-        TypeVariant::Int | TypeVariant::Uint | TypeVariant::Float => Instruction::Div,
+    let chunk = match &b.left.ty() {
+        TypeVariant::Uint | TypeVariant::Float => Chunk::new_empty(Instruction::Div),
+        TypeVariant::Int => {
+            Chunk::new_single(
+                Instruction::CallSub,
+                Constant::StringLit("signed_div".to_string()),
+            )
+        }
         _ => {
             args.diagnostics.push(Report::emit_error(
                 b.loc.clone(),
@@ -536,8 +546,7 @@ fn div(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
         }
     };
 
-    local_chunks.push(Chunk::new_empty(op));
-
+    local_chunks.push(chunk);
     chunks.extend(local_chunks);
 
     Ok(b.ty.size_hint(args.emitter.definition))
@@ -548,19 +557,24 @@ fn modulo(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) ->
     let _ = emit_expression(&b.left, &mut local_chunks, args)?;
     let _ = emit_expression(&b.right, &mut local_chunks, args)?;
 
-    let op = match &b.left.ty() {
-        TypeVariant::Int | TypeVariant::Uint => Instruction::Mod,
+    let chunk = match &b.left.ty() {
+        TypeVariant::Uint => Chunk::new_empty(Instruction::Mod),
+        TypeVariant::Int => {
+            Chunk::new_single(
+                Instruction::CallSub,
+                Constant::StringLit("signed_mod".to_string()),
+            )
+        }
         _ => {
             args.diagnostics.push(Report::emit_error(
                 b.loc.clone(),
-                "This type is not supported".to_string(),
+                "This type is not yet supported".to_string(),
             ));
             return Err(());
         }
     };
 
-    local_chunks.push(Chunk::new_empty(op));
-
+    local_chunks.push(chunk);
     chunks.extend(local_chunks);
 
     Ok(b.ty.size_hint(args.emitter.definition))
@@ -571,9 +585,15 @@ fn le(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Emi
     emit_expression(&b.left, &mut local_chunks, args)?;
     emit_expression(&b.right, &mut local_chunks, args)?;
 
-    let op = match &b.left.ty() {
-        TypeVariant::Int | TypeVariant::Uint | TypeVariant::Char | TypeVariant::Float => {
-            Instruction::Less
+    let chunk = match &b.left.ty() {
+        TypeVariant::Uint | TypeVariant::Char | TypeVariant::Float => {
+            Chunk::new_empty(Instruction::Less)
+        }
+        TypeVariant::Int => {
+            Chunk::new_single(
+                Instruction::CallSub,
+                Constant::StringLit("signed_le".to_string()),
+            )
         }
         _ => {
             args.diagnostics.push(Report::emit_error(
@@ -584,8 +604,7 @@ fn le(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Emi
         }
     };
 
-    local_chunks.push(Chunk::new_empty(op));
-
+    local_chunks.push(chunk);
     chunks.extend(local_chunks);
 
     Ok(b.ty.size_hint(args.emitter.definition))
@@ -596,9 +615,15 @@ fn leq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
     emit_expression(&b.left, &mut local_chunks, args)?;
     emit_expression(&b.right, &mut local_chunks, args)?;
 
-    let op = match &b.left.ty() {
-        TypeVariant::Int | TypeVariant::Uint | TypeVariant::Char | TypeVariant::Float => {
-            Instruction::LessEq
+    let chunk = match &b.left.ty() {
+        TypeVariant::Uint | TypeVariant::Char | TypeVariant::Float => {
+            Chunk::new_empty(Instruction::LessEq)
+        }
+        TypeVariant::Int => {
+            Chunk::new_single(
+                Instruction::CallSub,
+                Constant::StringLit("signed_leq".to_string()),
+            )
         }
         _ => {
             args.diagnostics.push(Report::emit_error(
@@ -609,8 +634,7 @@ fn leq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
         }
     };
 
-    local_chunks.push(Chunk::new_empty(op));
-
+    local_chunks.push(chunk);
     chunks.extend(local_chunks);
 
     Ok(b.ty.size_hint(args.emitter.definition))
@@ -621,9 +645,15 @@ fn ge(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Emi
     emit_expression(&b.left, &mut local_chunks, args)?;
     emit_expression(&b.right, &mut local_chunks, args)?;
 
-    let op = match &b.left.ty() {
-        TypeVariant::Int | TypeVariant::Uint | TypeVariant::Char | TypeVariant::Float => {
-            Instruction::More
+    let chunk = match &b.left.ty() {
+        TypeVariant::Uint | TypeVariant::Char | TypeVariant::Float => {
+            Chunk::new_empty(Instruction::Greater)
+        }
+        TypeVariant::Int => {
+            Chunk::new_single(
+                Instruction::CallSub,
+                Constant::StringLit("signed_ge".to_string()),
+            )
         }
         _ => {
             args.diagnostics.push(Report::emit_error(
@@ -634,8 +664,7 @@ fn ge(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Emi
         }
     };
 
-    local_chunks.push(Chunk::new_empty(op));
-
+    local_chunks.push(chunk);
     chunks.extend(local_chunks);
 
     Ok(b.ty.size_hint(args.emitter.definition))
@@ -646,9 +675,15 @@ fn geq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
     emit_expression(&b.left, &mut local_chunks, args)?;
     emit_expression(&b.right, &mut local_chunks, args)?;
 
-    let op = match &b.left.ty() {
-        TypeVariant::Int | TypeVariant::Uint | TypeVariant::Char | TypeVariant::Float => {
-            Instruction::MoreEq
+    let chunk = match &b.left.ty() {
+        TypeVariant::Uint | TypeVariant::Char | TypeVariant::Float => {
+            Chunk::new_empty(Instruction::GreaterEq)
+        }
+        TypeVariant::Int => {
+            Chunk::new_single(
+                Instruction::CallSub,
+                Constant::StringLit("signed_geq".to_string()),
+            )
         }
         _ => {
             args.diagnostics.push(Report::emit_error(
@@ -659,8 +694,7 @@ fn geq(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
         }
     };
 
-    local_chunks.push(Chunk::new_empty(op));
-
+    local_chunks.push(chunk);
     chunks.extend(local_chunks);
 
     Ok(b.ty.size_hint(args.emitter.definition))
@@ -787,7 +821,24 @@ fn var(u: &UnaryExpression<usize>, chunks: &mut Vec<Chunk>, args: &mut EmitArgs)
     Ok(u.ty.size_hint(args.emitter.definition))
 }
 
-/// Handle signed and unsigned integers as bytes.
+/// Handle unsigned integers.
+fn uint(n: &BigUint, loc: &Span, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
+    let Some(int_val) = n.to_u64() else {
+        args.diagnostics.push(Report::emit_error(
+            loc.clone(),
+            String::from("Integer value is too large."),
+        ));
+        return Err(());
+    };
+
+    let c = Constant::Uint(int_val);
+    let chunk = Chunk::new_single(Instruction::PushInt, c);
+    chunks.push(chunk);
+
+    Ok(TypeVariant::Int.size_hint(args.emitter.definition))
+}
+
+/// Handle unsigned integers.
 fn int(n: &BigInt, loc: &Span, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     let Some(int_val) = n.to_i64() else {
         args.diagnostics.push(Report::emit_error(
@@ -797,11 +848,23 @@ fn int(n: &BigInt, loc: &Span, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> 
         return Err(());
     };
 
-    let bytes = int_val.to_be_bytes();
-    let val = u64::from_be_bytes(bytes);
-    let c = Constant::Uint(val);
+    let abs = int_val.unsigned_abs();
+    let c = Constant::Uint(abs);
     let chunk = Chunk::new_single(Instruction::PushInt, c);
-    chunks.push(chunk);
+
+    chunks.extend_from_slice(&[
+        Chunk::new_single(Instruction::PushInt, Constant::Uint(16)),
+        Chunk::new_empty(Instruction::ArrayInit),
+        chunk,
+        Chunk::new_single(Instruction::Replace, Constant::Uint(8)),
+    ]);
+
+    if int_val.is_negative() {
+        chunks.extend_from_slice(&[
+            Chunk::new_single(Instruction::PushInt, Constant::Uint(1)),
+            Chunk::new_single(Instruction::Replace, Constant::Uint(0)),
+        ]);
+    }
 
     Ok(TypeVariant::Int.size_hint(args.emitter.definition))
 }

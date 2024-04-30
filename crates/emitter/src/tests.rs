@@ -15,7 +15,10 @@ use folidity_semantics::{
     Span,
 };
 use indexmap::IndexMap;
-use num_bigint::BigUint;
+use num_bigint::{
+    BigInt,
+    BigUint,
+};
 use num_traits::FromPrimitive;
 
 use crate::{
@@ -61,18 +64,18 @@ fn simple_exprs() {
     let e1 = Expression::UInt(UnaryExpression {
         loc: loc.clone(),
         element: BigUint::from_i64(100).unwrap(),
-        ty: TypeVariant::Int,
+        ty: TypeVariant::Uint,
     });
     let e2 = Expression::UInt(UnaryExpression {
         loc: loc.clone(),
         element: BigUint::from_i64(2).unwrap(),
-        ty: TypeVariant::Int,
+        ty: TypeVariant::Uint,
     });
     let mul = Expression::Multiply(BinaryExpression {
         loc: loc.clone(),
         left: Box::new(e1),
         right: Box::new(e2),
-        ty: TypeVariant::Int,
+        ty: TypeVariant::Uint,
     });
 
     let mut chunks = vec![];
@@ -91,6 +94,103 @@ fn simple_exprs() {
         Chunk {
             op: Instruction::Mul,
             constants: vec![],
+        },
+    ];
+
+    assert_eq!(chunks, expected)
+}
+
+#[test]
+fn signed_mul() {
+    let definition = ContractDefinition::default();
+    let mut emitter = TealEmitter::new(&definition);
+    let loc = Span { start: 0, end: 0 };
+
+    let mut args = EmitArgs {
+        scratch: &mut ScratchTable::default(),
+        diagnostics: &mut vec![],
+        emitter: &mut emitter,
+        delayed_bounds: &mut vec![],
+        func: &Function::new(
+            loc.clone(),
+            false,
+            FunctionVisibility::Priv,
+            FuncReturnType::Type(Type::default()),
+            Identifier {
+                loc: loc.clone(),
+                name: "my_func".to_string(),
+            },
+            IndexMap::default(),
+            None,
+        ),
+        loop_labels: &mut vec![],
+    };
+
+    let e1 = Expression::Int(UnaryExpression {
+        loc: loc.clone(),
+        element: BigInt::from_i64(100).unwrap(),
+        ty: TypeVariant::Int,
+    });
+    let e2 = Expression::Int(UnaryExpression {
+        loc: loc.clone(),
+        element: BigInt::from_i64(-2).unwrap(),
+        ty: TypeVariant::Int,
+    });
+    let mul = Expression::Multiply(BinaryExpression {
+        loc: loc.clone(),
+        left: Box::new(e1),
+        right: Box::new(e2),
+        ty: TypeVariant::Int,
+    });
+
+    let mut chunks = vec![];
+    let res = emit_expression(&mul, &mut chunks, &mut args);
+    assert!(res.is_ok());
+
+    let expected = vec![
+        Chunk {
+            op: Instruction::PushInt,
+            constants: vec![Constant::Uint(16)],
+        },
+        Chunk {
+            op: Instruction::ArrayInit,
+            constants: vec![],
+        },
+        Chunk {
+            op: Instruction::PushInt,
+            constants: vec![Constant::Uint(100)],
+        },
+        Chunk {
+            op: Instruction::Replace,
+            constants: vec![Constant::Uint(8)],
+        },
+        Chunk {
+            op: Instruction::PushInt,
+            constants: vec![Constant::Uint(16)],
+        },
+        Chunk {
+            op: Instruction::ArrayInit,
+            constants: vec![],
+        },
+        Chunk {
+            op: Instruction::PushInt,
+            constants: vec![Constant::Uint(2)],
+        },
+        Chunk {
+            op: Instruction::Replace,
+            constants: vec![Constant::Uint(8)],
+        },
+        Chunk {
+            op: Instruction::PushInt,
+            constants: vec![Constant::Uint(1)],
+        },
+        Chunk {
+            op: Instruction::Replace,
+            constants: vec![Constant::Uint(0)],
+        },
+        Chunk {
+            op: Instruction::CallSub,
+            constants: vec![Constant::StringLit("signed_mul".to_string())],
         },
     ];
 

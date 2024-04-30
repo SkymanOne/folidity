@@ -1,0 +1,1049 @@
+#pragma version 8
+ 
+txn ApplicationID
+pushint 0
+== 
+bz create_end
+b __block__initialise
+create_end: 
+txn OnCompletion
+pushint 0
+== 
+bnz on_call
+txn OnCompletion
+pushint 5
+== 
+bnz check_creator
+txn OnCompletion
+pushint 1
+== 
+bnz fail
+txn OnCompletion
+pushint 2
+== 
+bnz fail
+txn OnCompletion
+pushint 4
+== 
+bnz check_creator
+err 
+ 
+ 
+check_creator: 
+txn Sender
+global CreatorAddress
+== 
+assert 
+pushint 1
+return 
+ 
+ 
+fail: 
+pushint 0
+return 
+ 
+ 
+on_call: 
+txna ApplicationArgs 0
+pushbytes "initialise"
+== 
+bnz __block__initialise
+txna ApplicationArgs 0
+pushbytes "incr_by"
+== 
+bnz __block__incr_by
+txna ApplicationArgs 0
+pushbytes "decr_by"
+== 
+bnz __block__decr_by
+txna ApplicationArgs 0
+pushbytes "get_value"
+== 
+bnz __block__get_value
+txna ApplicationArgs 0
+pushbytes "loops"
+== 
+bnz __block__loops
+txna ApplicationArgs 0
+pushbytes "conditionals"
+== 
+bnz __block__conditionals
+txna ApplicationArgs 0
+pushbytes "move_state"
+== 
+bnz __block__move_state
+txna ApplicationArgs 0
+pushbytes "one"
+== 
+bnz __block__one
+txna ApplicationArgs 0
+pushbytes "two"
+== 
+bnz __block__two
+txna ApplicationArgs 0
+pushbytes "three"
+== 
+bnz __block__three
+err 
+ 
+ 
+__block__initialise: 
+callsub __initialise
+pushint 1
+return 
+ 
+ 
+__block__incr_by: 
+txn ApplicationArgs 1
+callsub __incr_by
+pushint 1
+return 
+ 
+ 
+__block__decr_by: 
+txn ApplicationArgs 1
+callsub __decr_by
+pushint 1
+return 
+ 
+ 
+__block__get_value: 
+callsub __get_value
+log 
+pushint 1
+return 
+ 
+ 
+__block__loops: 
+txn ApplicationArgs 1
+callsub __loops
+pushint 1
+return 
+ 
+ 
+__block__conditionals: 
+txn ApplicationArgs 1
+txn ApplicationArgs 2
+callsub __conditionals
+pushint 1
+return 
+ 
+ 
+__block__move_state: 
+callsub __move_state
+pushint 1
+return 
+ 
+ 
+__block__one: 
+txn ApplicationArgs 1
+txn ApplicationArgs 2
+callsub __one
+log 
+pushint 1
+return 
+ 
+ 
+__block__two: 
+txn ApplicationArgs 1
+txn ApplicationArgs 2
+callsub __two
+log 
+pushint 1
+return 
+ 
+ 
+__block__three: 
+txn ApplicationArgs 1
+txn ApplicationArgs 2
+callsub __three
+log 
+pushint 1
+return 
+ 
+ 
+ 
+ 
+__initialise: 
+ 
+ 
+pushint 4617315517961601024
+callsub __loops
+ 
+ 
+pushint 0
+pushint 16
+bzero 
+pushint 10
+replace 8
+callsub __conditionals
+ 
+ 
+callsub __move_state
+ 
+ 
+pushint 16
+bzero 
+pushint 1
+replace 8
+pushint 16
+bzero 
+pushint 2
+replace 8
+callsub __one
+pushint 16
+bzero 
+pushint 1
+replace 8
+callsub __two
+pushint 16
+bzero 
+pushint 10
+replace 8
+callsub __three
+store 0
+ 
+ 
+pushbytes "__CounterState"
+pushint 16
+bzero 
+store 1
+pushint 16
+bzero 
+pushint 0
+replace 8
+store 2
+load 1
+load 2
+replace 0
+store 1
+load 1
+pushint 0
+pushint 16
+extract3 
+pushint 16
+bzero 
+pushint 1000
+replace 8
+callsub signed_le
+assert 
+load 1
+pushint 0
+pushint 16
+extract3 
+pushint 16
+bzero 
+pushint 1000
+replace 8
+pushint 1
+replace 0
+callsub signed_ge
+assert 
+load 1
+box_put 
+ 
+ 
+retsub 
+ 
+ 
+__incr_by: 
+store 0
+load 0
+pushint 16
+bzero 
+pushint 100
+replace 8
+callsub signed_ge
+assert 
+ 
+ 
+pushbytes "__CounterState"
+box_get 
+assert 
+store 3
+load 3
+pushint 0
+pushint 16
+extract3 
+load 0
+callsub signed_add
+store 4
+ 
+ 
+pushbytes "__CounterState"
+pushint 16
+bzero 
+store 5
+load 4
+store 6
+load 5
+load 6
+replace 0
+store 5
+load 5
+pushint 0
+pushint 16
+extract3 
+pushint 16
+bzero 
+pushint 1000
+replace 8
+callsub signed_le
+assert 
+load 5
+pushint 0
+pushint 16
+extract3 
+pushint 16
+bzero 
+pushint 1000
+replace 8
+pushint 1
+replace 0
+callsub signed_ge
+assert 
+load 5
+box_put 
+ 
+ 
+retsub 
+ 
+ 
+__decr_by: 
+store 1
+load 1
+pushint 16
+bzero 
+pushint 100
+replace 8
+callsub signed_ge
+assert 
+ 
+ 
+pushbytes "__CounterState"
+box_get 
+assert 
+store 7
+load 7
+pushint 0
+pushint 16
+extract3 
+load 1
+callsub signed_sub
+store 8
+ 
+ 
+pushbytes "__CounterState"
+pushint 16
+bzero 
+store 9
+load 8
+store 10
+load 9
+load 10
+replace 0
+store 9
+load 9
+pushint 0
+pushint 16
+extract3 
+pushint 16
+bzero 
+pushint 1000
+replace 8
+callsub signed_le
+assert 
+load 9
+pushint 0
+pushint 16
+extract3 
+pushint 16
+bzero 
+pushint 1000
+replace 8
+pushint 1
+replace 0
+callsub signed_ge
+assert 
+load 9
+box_put 
+ 
+ 
+retsub 
+ 
+ 
+__get_value: 
+ 
+ 
+pushbytes "__CounterState"
+box_get 
+assert 
+store 11
+load 11
+pushint 0
+pushint 16
+extract3 
+retsub 
+ 
+ 
+retsub 
+ 
+ 
+__loops: 
+store 2
+ 
+ 
+pushint 16
+bzero 
+pushint 0
+replace 8
+store 12
+load 12
+pushint 16
+bzero 
+pushint 10
+replace 8
+callsub signed_le
+bnz 0_loop_end
+ 
+load 2
+pushint 4638355772470722560
++ 
+store 13
+ 
+ 
+b 0_loop_incr
+ 
+0_loop_incr: 
+load 12
+pushint 16
+bzero 
+pushint 1
+replace 8
+callsub signed_add
+0_loop_end: 
+ 
+ 
+pushint 16
+bzero 
+pushint 3
+replace 8
+pushint 1
+replace 0
+pushint 16
+bzero 
+pushint 4
+replace 8
+concat 
+pushint 16
+bzero 
+pushint 5
+replace 8
+concat 
+store 14
+ 
+ 
+retsub 
+ 
+ 
+__conditionals: 
+store 3
+store 4
+ 
+ 
+pushint 16
+bzero 
+pushint 10
+replace 8
+pushint 1
+replace 0
+store 15
+ 
+ 
+pushbytes "Hello"
+store 16
+ 
+ 
+load 16
+pushbytes " "
++ 
+pushbytes "World"
++ 
+store 16
+ 
+ 
+load 3
+bz 5_else
+ 
+ 
+load 15
+pushint 16
+bzero 
+pushint 3
+replace 8
+callsub signed_add
+store 17
+ 
+ 
+b 5_if_end
+5_else: 
+ 
+load 4
+pushint 16
+bzero 
+pushint 1
+replace 8
+callsub signed_ge
+bz 6_else
+ 
+ 
+load 15
+pushint 16
+bzero 
+pushint 4
+replace 8
+callsub signed_add
+store 18
+ 
+ 
+b 6_if_end
+6_else: 
+ 
+ 
+load 15
+pushint 16
+bzero 
+pushint 5
+replace 8
+callsub signed_add
+store 19
+ 
+ 
+6_if_end: 
+ 
+5_if_end: 
+ 
+ 
+retsub 
+ 
+ 
+__move_state: 
+ 
+ 
+addr 2FMLYJHYQWRHMFKRHKTKX5UNB5DGO65U57O3YVLWUJWKRE4YYJYC2CWWBY
+store 20
+ 
+ 
+pushint 16
+bzero 
+pushint 1
+replace 8
+pushint 16
+bzero 
+pushint 2
+replace 8
+concat 
+pushint 16
+bzero 
+pushint 3
+replace 8
+concat 
+store 21
+ 
+ 
+pushint 16
+bzero 
+pushint 5
+replace 8
+pushint 1
+replace 0
+store 22
+ 
+ 
+pushbytes "Hello World"
+store 23
+ 
+ 
+pushbytes "__CounterState"
+box_get 
+assert 
+store 24
+load 24
+pushint 0
+pushint 16
+extract3 
+store 25
+ 
+ 
+pushbytes "__CounterState"
+pushint 16
+bzero 
+store 26
+load 25
+store 27
+load 26
+load 27
+replace 0
+store 26
+load 26
+pushint 0
+pushint 16
+extract3 
+pushint 16
+bzero 
+pushint 1000
+replace 8
+callsub signed_le
+assert 
+load 26
+pushint 0
+pushint 16
+extract3 
+pushint 16
+bzero 
+pushint 1000
+replace 8
+pushint 1
+replace 0
+callsub signed_ge
+assert 
+load 26
+store 28
+load 28
+box_put 
+ 
+ 
+retsub 
+ 
+ 
+__one: 
+store 7
+store 8
+ 
+ 
+load 7
+load 8
+callsub signed_mul
+retsub 
+ 
+ 
+retsub 
+ 
+ 
+__two: 
+store 9
+store 10
+ 
+ 
+load 9
+load 10
+callsub signed_sub
+retsub 
+ 
+ 
+retsub 
+ 
+ 
+__three: 
+store 11
+store 12
+ 
+ 
+load 11
+load 12
+callsub signed_add
+retsub 
+ 
+ 
+retsub 
+ 
+// Helper functions for signed arithmetic
+
+// A + B
+signed_add: 
+    // A
+    // B
+    store 0
+    store 1
+
+    load 0
+    pushint 0
+    extract_uint64
+
+    load 1
+    pushint 0
+    extract_uint64
+
+    ^
+
+    bnz sub
+    pushint 16
+    bzero
+
+    load 0
+    pushint 8
+    extract_uint64
+
+    load 1
+    pushint 8
+    extract_uint64
+
+    +
+    replace 8
+
+    load 1
+    pushint 0
+    extract_uint64
+    replace 0
+    retsub
+
+
+    sub:
+
+    load 0
+    pushint 0
+    extract_uint64
+
+    bnz add_sub_a
+
+    load 0
+
+    pushint 16
+    bzero
+    load 1
+    pushint 8
+    extract_uint64
+    replace 8
+
+    callsub signed_sub
+    retsub
+
+    add_sub_a:
+    load 1
+    pushint 16
+    bzero
+    load 0
+    pushint 8
+    extract_uint64
+    replace 8
+    callsub signed_sub
+    retsub
+
+
+// A - B
+signed_sub:
+    // A
+    // B
+    store 0
+    store 1
+
+    load 0
+    pushint 0
+    extract_uint64
+
+    // -A
+    bnz a_minus
+    // +A
+    load 1
+    pushint 0
+    extract_uint64 
+
+    // A - (-B) => A + B
+    bnz turn_to_add
+
+    // A - B
+    load 0
+    load 1
+    callsub signed_geq
+
+    bnz swap_return
+
+    pushint 16
+    bzero
+
+    load 0
+    pushint 8
+    extract_uint64
+
+    load 1
+    pushint 8
+    extract_uint64
+
+    -
+    replace 8
+    retsub
+
+
+    swap_return:
+    callsub swap_a
+    replace 8
+
+    pushint 1
+    replace 0
+ 
+    retsub
+
+
+    // -A
+    a_minus:
+        load 1
+        pushint 0
+        extract_uint64 
+
+        // (-A) - (-B) => B - A
+        bnz swap_a
+        // (-A) - B => - (A+B)
+        pushint 16
+        bzero
+        pushint 1
+        replace 0
+
+        load 0
+        pushint 8
+        extract_uint64
+
+        load 1
+        pushint 8
+        extract_uint64  
+
+        +
+        replace 8
+        retsub
+
+    turn_to_add:
+        // (A) - (-B) => A + B
+        load 0
+
+        pushint 16
+        bzero
+        load 1 
+        pushint 8
+        extract_uint64
+        replace 8
+
+        replace 0
+        callsub signed_add
+        retsub
+
+
+        // (-A) - (-B) => B - A
+    swap_a:
+        pushint 16
+        bzero
+        load 1
+        replace 8
+        extract_uint64
+
+        pushint 16
+        bzero
+        load 0
+        extract_uint64
+        replace 8
+
+        callsub signed_sub
+        retsub
+
+
+// A * B
+signed_mul:
+    // A
+    // B
+    store 0
+    store 1
+
+    pushint 16
+    bzero
+
+    load 0
+    pushint 8
+    extract_uint64
+
+    load 1
+    pushint 8
+    extract_uint64 
+
+    *
+    replace 8
+
+    load 0
+    pushint 0
+    extract_uint64
+
+    load 1
+    pushint 0
+    extract_uint64 
+
+    ^
+    replace 0
+
+    retsub
+
+// A / B
+signed_div:
+    // A
+    // B
+    store 0
+    store 1
+
+    pushint 16
+    bzero
+
+    load 0
+    pushint 8
+    extract_uint64
+
+    load 1
+    pushint 8
+    extract_uint64 
+
+    /
+    replace 8
+
+    load 0
+    pushint 0
+    extract_uint64
+
+    load 1
+    pushint 0
+    extract_uint64 
+
+    ^
+    replace 0
+
+    retsub
+
+// A % B
+signed_mod:
+    // A
+    // B
+    store 0
+    store 1
+
+    pushint 16
+    bzero
+
+    load 0
+    pushint 8
+    extract_uint64
+
+    load 1
+    pushint 8
+    extract_uint64 
+
+    %
+    replace 8
+
+    load 1
+    pushint 0
+    extract_uint64 
+    replace 0
+
+    retsub
+
+
+// A > B
+signed_ge:
+    // A
+    // B
+    store 0
+    store 1
+
+    load 0
+    pushint 0
+    extract_uint64
+    // -A
+    bnz a_ge_minus
+
+    // +A
+    load 1
+    pushint 0
+    extract_uint64
+
+    // A > -B
+    bnz b_ge_minus
+    // A > B
+    store 0
+    pushint 8
+    extract_uint64
+    store 1
+    pushint 8
+    extract_uint64
+    >
+    retsub
+
+    // A > -B
+    b_ge_minus:
+        pushint 1
+        retsub
+
+    // -A
+    a_ge_minus:
+        load 1
+        pushint 0
+        extract_uint64 
+
+        // -A > -B => B > A
+        bnz swap_ge_a
+        // -A > +B
+        pushint 0
+        retsub
+
+        // -A > -B => B > A
+    swap_ge_a:
+        pushint 16
+        bzero
+        load 1
+        pushint 8
+        extract_uint64 
+        replace 8
+
+        pushint 16
+        bzero
+        load 0
+        pushint 8
+        extract_uint64
+        replace 8
+
+        callsub signed_ge
+        retsub
+
+
+// A >= B
+signed_geq:
+    // A
+    // B
+    store 0
+    store 1
+
+    load 0
+    load 1
+    ==
+
+    bz geq_ge
+
+    pushint 1
+    retsub
+
+    geq_ge:
+        load 0
+        load 1
+        callsub signed_ge  
+        retsub
+
+signed_le:
+    store 0
+    store 1
+
+    load 1
+    load 0
+    callsub signed_ge
+    retsub
+
+signed_leq:
+    store 0
+    store 1
+
+    load 1
+    load 0
+    callsub signed_ge
+    retsub

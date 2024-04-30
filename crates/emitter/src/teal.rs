@@ -238,7 +238,7 @@ impl<'a> TealEmitter<'a> {
             .fold("#pragma version 8".to_string(), |init, c| {
                 format!("{}\n{}", init, c)
             });
-        let approval_bytes: Vec<u8> = approval_string.bytes().collect();
+        let mut approval_bytes: Vec<u8> = approval_string.bytes().collect();
 
         let clear_chunks = [
             Chunk::new_single(Instruction::PushInt, Constant::Uint(0)),
@@ -250,6 +250,9 @@ impl<'a> TealEmitter<'a> {
                 format!("{}\n{}", init, c)
             });
         let clear_bytes: Vec<u8> = clear_string.bytes().collect();
+
+        let helper_bytes = include_bytes!("../helpers/signed_arithmetic.teal");
+        approval_bytes.extend_from_slice(helper_bytes);
 
         TealArtifacts {
             approval_bytes,

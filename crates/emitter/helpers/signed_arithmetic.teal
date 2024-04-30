@@ -1,0 +1,391 @@
+
+// Helper functions for signed arithmetic
+
+// A + B
+signed_add: 
+    // A
+    // B
+    store 0
+    store 1
+
+    load 0
+    pushint 0
+    extract_uint64
+
+    load 1
+    pushint 0
+    extract_uint64
+
+    ^
+
+    bnz sub
+    pushint 16
+    bzero
+
+    load 0
+    pushint 8
+    extract_uint64
+
+    load 1
+    pushint 8
+    extract_uint64
+
+    +
+    replace 8
+
+    load 1
+    pushint 0
+    extract_uint64
+    replace 0
+    retsub
+
+
+    sub:
+
+    load 0
+    pushint 0
+    extract_uint64
+
+    bnz add_sub_a
+
+    load 0
+
+    pushint 16
+    bzero
+    load 1
+    pushint 8
+    extract_uint64
+    replace 8
+
+    callsub signed_sub
+    retsub
+
+    add_sub_a:
+    load 1
+    pushint 16
+    bzero
+    load 0
+    pushint 8
+    extract_uint64
+    replace 8
+    callsub signed_sub
+    retsub
+
+
+// A - B
+signed_sub:
+    // A
+    // B
+    store 0
+    store 1
+
+    load 0
+    pushint 0
+    extract_uint64
+
+    // -A
+    bnz a_minus
+    // +A
+    load 1
+    pushint 0
+    extract_uint64 
+
+    // A - (-B) => A + B
+    bnz turn_to_add
+
+    // A - B
+    load 0
+    load 1
+    callsub signed_geq
+
+    bnz swap_return
+
+    pushint 16
+    bzero
+
+    load 0
+    pushint 8
+    extract_uint64
+
+    load 1
+    pushint 8
+    extract_uint64
+
+    -
+    replace 8
+    retsub
+
+
+    swap_return:
+    callsub swap_a
+    replace 8
+
+    pushint 1
+    replace 0
+ 
+    retsub
+
+
+    // -A
+    a_minus:
+        load 1
+        pushint 0
+        extract_uint64 
+
+        // (-A) - (-B) => B - A
+        bnz swap_a
+        // (-A) - B => - (A+B)
+        pushint 16
+        bzero
+        pushint 1
+        replace 0
+
+        load 0
+        pushint 8
+        extract_uint64
+
+        load 1
+        pushint 8
+        extract_uint64  
+
+        +
+        replace 8
+        retsub
+
+    turn_to_add:
+        // (A) - (-B) => A + B
+        load 0
+
+        pushint 16
+        bzero
+        load 1 
+        pushint 8
+        extract_uint64
+        replace 8
+
+        replace 0
+        callsub signed_add
+        retsub
+
+
+        // (-A) - (-B) => B - A
+    swap_a:
+        pushint 16
+        bzero
+        load 1
+        replace 8
+        extract_uint64
+
+        pushint 16
+        bzero
+        load 0
+        extract_uint64
+        replace 8
+
+        callsub signed_sub
+        retsub
+
+
+// A * B
+signed_mul:
+    // A
+    // B
+    store 0
+    store 1
+
+    pushint 16
+    bzero
+
+    load 0
+    pushint 8
+    extract_uint64
+
+    load 1
+    pushint 8
+    extract_uint64 
+
+    *
+    replace 8
+
+    load 0
+    pushint 0
+    extract_uint64
+
+    load 1
+    pushint 0
+    extract_uint64 
+
+    ^
+    replace 0
+
+    retsub
+
+// A / B
+signed_div:
+    // A
+    // B
+    store 0
+    store 1
+
+    pushint 16
+    bzero
+
+    load 0
+    pushint 8
+    extract_uint64
+
+    load 1
+    pushint 8
+    extract_uint64 
+
+    /
+    replace 8
+
+    load 0
+    pushint 0
+    extract_uint64
+
+    load 1
+    pushint 0
+    extract_uint64 
+
+    ^
+    replace 0
+
+    retsub
+
+// A % B
+signed_mod:
+    // A
+    // B
+    store 0
+    store 1
+
+    pushint 16
+    bzero
+
+    load 0
+    pushint 8
+    extract_uint64
+
+    load 1
+    pushint 8
+    extract_uint64 
+
+    %
+    replace 8
+
+    load 1
+    pushint 0
+    extract_uint64 
+    replace 0
+
+    retsub
+
+
+// A > B
+signed_ge:
+    // A
+    // B
+    store 0
+    store 1
+
+    load 0
+    pushint 0
+    extract_uint64
+    // -A
+    bnz a_ge_minus
+
+    // +A
+    load 1
+    pushint 0
+    extract_uint64
+
+    // A > -B
+    bnz b_ge_minus
+    // A > B
+    store 0
+    pushint 8
+    extract_uint64
+    store 1
+    pushint 8
+    extract_uint64
+    >
+    retsub
+
+    // A > -B
+    b_ge_minus:
+        pushint 1
+        retsub
+
+    // -A
+    a_ge_minus:
+        load 1
+        pushint 0
+        extract_uint64 
+
+        // -A > -B => B > A
+        bnz swap_ge_a
+        // -A > +B
+        pushint 0
+        retsub
+
+        // -A > -B => B > A
+    swap_ge_a:
+        pushint 16
+        bzero
+        load 1
+        pushint 8
+        extract_uint64 
+        replace 8
+
+        pushint 16
+        bzero
+        load 0
+        pushint 8
+        extract_uint64
+        replace 8
+
+        callsub signed_ge
+        retsub
+
+
+// A >= B
+signed_geq:
+    // A
+    // B
+    store 0
+    store 1
+
+    load 0
+    load 1
+    ==
+
+    bz geq_ge
+
+    pushint 1
+    retsub
+
+    geq_ge:
+        load 0
+        load 1
+        callsub signed_ge  
+        retsub
+
+signed_le:
+    store 0
+    store 1
+
+    load 1
+    load 0
+    callsub signed_ge
+    retsub
+
+signed_leq:
+    store 0
+    store 1
+
+    load 1
+    load 0
+    callsub signed_ge
+    retsub

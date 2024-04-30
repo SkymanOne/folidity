@@ -97,7 +97,7 @@ pub enum Instruction {
     #[display(fmt = "b<")]
     BLess,
     #[display(fmt = ">")]
-    More,
+    Greater,
     #[display(fmt = "b>")]
     BMore,
     #[display(fmt = "<=")]
@@ -105,7 +105,7 @@ pub enum Instruction {
     #[display(fmt = "b<=")]
     BLessEq,
     #[display(fmt = ">=")]
-    MoreEq,
+    GreaterEq,
     #[display(fmt = "b>=")]
     BMoreEq,
     #[display(fmt = "&&")]
@@ -204,11 +204,8 @@ pub trait TypeSizeHint {
 impl TypeSizeHint for TypeVariant {
     fn size_hint(&self, contract: &ContractDefinition) -> u64 {
         match self {
-            TypeVariant::Char
-            | TypeVariant::Bool
-            | TypeVariant::Int
-            | TypeVariant::Uint
-            | TypeVariant::Float => 8,
+            TypeVariant::Char | TypeVariant::Bool | TypeVariant::Uint | TypeVariant::Float => 8,
+            TypeVariant::Int => 16,
             TypeVariant::Address => 32,
             TypeVariant::Unit => 0,
             TypeVariant::Enum(_) => 16,
