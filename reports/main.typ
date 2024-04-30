@@ -53,7 +53,7 @@
     name: "Dr. Indu Bodala",
     email: "i.p.bodala@soton.ac.uk"
   ),
-  date: "April 20, 2024",
+  date: "April 29, 2024",
   program: "BSc Computer Science",
   is_progress_report: false,
   abstract_text: abstract,
@@ -1272,7 +1272,7 @@ An example of a failed formal verification report is shown in @Figure:ariadne.
 ) <Figure:ariadne>
 
 #pagebreak()
-= Testing strategies
+= Testing Strategies
 
 During the development test-driven development and extreme programming techniques were applied. Each crate was extensively tested using unit tests. An output is displayed in @Listing:TestCases.
 
@@ -1373,7 +1373,7 @@ Project development did not see any major deviation from the original plan. This
 
 However, the development of the semantics crate took slightly more time than expected due to the realisation of the importance of the functional correctness of the crate in the scope of other crates. Therefore, more time was dedicated to testing and development which shifted the deadline for the rest of the planned work. @Appendix:ActualGannt illustrates the actual time it took to complete the project and the updated objectives.
 
-= Final words
+= Final Words
 
 This paper's goal was to prove that formal verification techniques can be integrated into the development and compilation process as first-class citizens. It addresses numerous problems associated with the security and safety of typical SCs and provides theoretical and practical proof of how they can be addressed at the language level.
 
@@ -1549,7 +1549,7 @@ Due to limited time, this project will only focus on a single-contract execution
 caption: [`Cargo.toml` file]
 )
 
-= Emit example <Appendix:EmitExample>
+= Emit Example <Appendix:EmitExample>
 
 An example of a Folidty SC that represents counter application with some additional function to demonstrate other statements and expressions used and the compiled teal approval program.
 

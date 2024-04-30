@@ -254,7 +254,7 @@ pub fn resolve_func_call(
         ExpectedType::Concrete(ty) => {
             let mut error_return_ty = false;
 
-            if check_func_return_type(ty, func.return_ty.ty()) {
+            if !check_func_return_type(ty, func.return_ty.ty()) {
                 contract.diagnostics.push(Report::type_error(
                     loc.clone(),
                     String::from("Functional's return type mismatched the expected one."),
@@ -811,16 +811,66 @@ fn parse_args(
 fn check_func_return_type(ty: &TypeVariant, return_ty: &TypeVariant) -> bool {
     if let TypeVariant::List(l_ty) = return_ty {
         match l_ty.as_ref() {
-            TypeVariant::Generic(allowed_tys) => allowed_tys.contains(ty),
+            TypeVariant::Generic(allowed_tys) => {
+                for at in allowed_tys {
+                    if check_func_return_type(ty, at) {
+                        return true;
+                    }
+                }
+                false
+            }
             a_ty => check_func_return_type(ty, a_ty),
         }
     } else if let TypeVariant::Set(l_ty) = return_ty {
         match l_ty.as_ref() {
-            TypeVariant::Generic(allowed_tys) => allowed_tys.contains(ty),
+            TypeVariant::Generic(allowed_tys) => {
+                for at in allowed_tys {
+                    if check_func_return_type(ty, at) {
+                        return true;
+                    }
+                }
+                false
+            }
             a_ty => check_func_return_type(ty, a_ty),
         }
     } else if let TypeVariant::Generic(allowed_tys) = return_ty {
-        allowed_tys.contains(ty)
+        for at in allowed_tys {
+            if check_func_return_type(ty, at) {
+                return true;
+            }
+        }
+        false
+    } else if let TypeVariant::List(l_ty) = ty {
+        match l_ty.as_ref() {
+            TypeVariant::Generic(allowed_tys) => {
+                for at in allowed_tys {
+                    if check_func_return_type(at, return_ty) {
+                        return true;
+                    }
+                }
+                false
+            }
+            a_ty => check_func_return_type(a_ty, return_ty),
+        }
+    } else if let TypeVariant::Set(l_ty) = ty {
+        match l_ty.as_ref() {
+            TypeVariant::Generic(allowed_tys) => {
+                for at in allowed_tys {
+                    if check_func_return_type(at, return_ty) {
+                        return true;
+                    }
+                }
+                false
+            }
+            a_ty => check_func_return_type(a_ty, return_ty),
+        }
+    } else if let TypeVariant::Generic(allowed_tys) = ty {
+        for at in allowed_tys {
+            if check_func_return_type(at, return_ty) {
+                return true;
+            }
+        }
+        false
     } else {
         ty == return_ty
     }
