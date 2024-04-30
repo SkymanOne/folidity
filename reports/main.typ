@@ -1575,6 +1575,7 @@ fn () initialise() when () -> CounterState {
     loops(5.0);
     conditionals(false, 10);
     move_state();
+    let p = one(1, 2) :> two(1) :> three(10);
     move CounterState : { 0 };
 }
 
@@ -1633,8 +1634,21 @@ fn () move_state() when (CounterState s1) -> (CounterState s2) {
 
     move CounterState : { counter };
 }
+
+fn int one(a: int, b: int) {
+    return a * b;
+}
+
+fn int two(a: int, b: int) {
+    return a - b;
+}
+
+fn int three(a: int, b: int) {
+    return a + b;
+}
 ```
 
+#pagebreak()
 #text(weight: "bold", size: 15pt, "Compiled Teal code")
 
 ```
@@ -1712,6 +1726,18 @@ txna ApplicationArgs 0
 pushbytes "move_state"
 == 
 bnz __block__move_state
+txna ApplicationArgs 0
+pushbytes "one"
+== 
+bnz __block__one
+txna ApplicationArgs 0
+pushbytes "two"
+== 
+bnz __block__two
+txna ApplicationArgs 0
+pushbytes "three"
+== 
+bnz __block__three
 err 
  
  
@@ -1763,48 +1789,104 @@ pushint 1
 return 
  
  
+__block__one: 
+txn ApplicationArgs 1
+txn ApplicationArgs 2
+callsub __one
+log 
+pushint 1
+return 
  
+ 
+__block__two: 
+txn ApplicationArgs 1
+txn ApplicationArgs 2
+callsub __two
+log 
+pushint 1
+return 
+ 
+ 
+__block__three: 
+txn ApplicationArgs 1
+txn ApplicationArgs 2
+callsub __three
+log 
+pushint 1
+return 
  
 __initialise: 
- 
  
 pushint 4617315517961601024
 callsub __loops
  
- 
 pushint 0
+pushint 16
+bzero 
 pushint 10
+replace 8
 callsub __conditionals
- 
  
 callsub __move_state
  
+pushint 16
+bzero 
+pushint 1
+replace 8
+pushint 16
+bzero 
+pushint 2
+replace 8
+callsub __one
+pushint 16
+bzero 
+pushint 1
+replace 8
+callsub __two
+pushint 16
+bzero 
+pushint 10
+replace 8
+callsub __three
+store 0
  
 pushbytes "__CounterState"
-pushint 8
+pushint 16
 bzero 
-store 0
-pushint 0
 store 1
-load 0
+pushint 16
+bzero 
+pushint 0
+replace 8
+store 2
 load 1
+load 2
 replace 0
-store 0
-load 0
+store 1
+load 1
 pushint 0
-extract_uint64 
+pushint 16
+extract3 
+pushint 16
+bzero 
 pushint 1000
-< 
+replace 8
+callsub signed_le
 assert 
-load 0
+load 1
 pushint 0
-extract_uint64 
-pushint 18446744073709550616
-> 
+pushint 16
+extract3 
+pushint 16
+bzero 
+pushint 1000
+replace 8
+pushint 1
+replace 0
+callsub signed_ge
 assert 
-load 0
+load 1
 box_put 
- 
  
 retsub 
  
@@ -1812,284 +1894,366 @@ retsub
 __incr_by: 
 store 0
 load 0
+pushint 16
+bzero 
 pushint 100
-> 
+replace 8
+callsub signed_ge
 assert 
- 
  
 pushbytes "__CounterState"
 box_get 
 assert 
-store 2
-load 2
-pushint 0
-extract_uint64 
-load 0
-+ 
 store 3
- 
+load 3
+pushint 0
+pushint 16
+extract3 
+load 0
+callsub signed_add
+store 4
  
 pushbytes "__CounterState"
-pushint 8
+pushint 16
 bzero 
-store 4
-load 3
 store 5
 load 4
+store 6
 load 5
+load 6
 replace 0
-store 4
-load 4
+store 5
+load 5
 pushint 0
-extract_uint64 
+pushint 16
+extract3 
+pushint 16
+bzero 
 pushint 1000
-< 
+replace 8
+callsub signed_le
 assert 
-load 4
+load 5
 pushint 0
-extract_uint64 
-pushint 18446744073709550616
-> 
+pushint 16
+extract3 
+pushint 16
+bzero 
+pushint 1000
+replace 8
+pushint 1
+replace 0
+callsub signed_ge
 assert 
-load 4
+load 5
 box_put 
- 
- 
+
 retsub 
  
  
 __decr_by: 
 store 1
 load 1
+pushint 16
+bzero 
 pushint 100
-> 
+replace 8
+callsub signed_ge
 assert 
- 
- 
 pushbytes "__CounterState"
 box_get 
 assert 
-store 6
-load 6
-pushint 0
-extract_uint64 
-load 1
-- 
 store 7
- 
- 
-pushbytes "__CounterState"
-pushint 8
-bzero 
-store 8
 load 7
+pushint 0
+pushint 16
+extract3 
+load 1
+callsub signed_sub
+store 8
+pushbytes "__CounterState"
+pushint 16
+bzero 
 store 9
 load 8
+store 10
 load 9
+load 10
 replace 0
-store 8
-load 8
+store 9
+load 9
 pushint 0
-extract_uint64 
+pushint 16
+extract3 
+pushint 16
+bzero 
 pushint 1000
-< 
+replace 8
+callsub signed_le
 assert 
-load 8
+load 9
 pushint 0
-extract_uint64 
-pushint 18446744073709550616
-> 
+pushint 16
+extract3 
+pushint 16
+bzero 
+pushint 1000
+replace 8
+pushint 1
+replace 0
+callsub signed_ge
 assert 
-load 8
-box_put 
- 
- 
+load 9
+box_put  
 retsub 
  
- 
 __get_value: 
- 
- 
 pushbytes "__CounterState"
 box_get 
 assert 
-store 10
-load 10
+store 11
+load 11
 pushint 0
-extract_uint64 
+pushint 16
+extract3 
 retsub 
- 
- 
 retsub 
  
  
 __loops: 
 store 2
  
- 
+pushint 16
+bzero 
 pushint 0
-store 11
-load 11
+replace 8
+store 12
+load 12
+pushint 16
+bzero 
 pushint 10
-< 
+replace 8
+callsub signed_le
 bnz 0_loop_end
  
 load 2
 pushint 4638355772470722560
 + 
-store 12
- 
+store 13
  
 b 0_loop_incr
  
 0_loop_incr: 
-load 11
+load 12
+pushint 16
+bzero 
 pushint 1
-+ 
+replace 8
+callsub signed_add
 0_loop_end: 
  
- 
-pushint 18446744073709551613
+pushint 16
+bzero 
+pushint 3
+replace 8
+pushint 1
+replace 0
+pushint 16
+bzero 
 pushint 4
+replace 8
 concat 
+pushint 16
+bzero 
 pushint 5
+replace 8
 concat 
-store 13
- 
- 
+store 14
+
 retsub 
- 
  
 __conditionals: 
 store 3
 store 4
  
- 
-pushint 18446744073709551606
-store 14
- 
+pushint 16
+bzero 
+pushint 10
+replace 8
+pushint 1
+replace 0
+store 15
  
 pushbytes "Hello"
-store 15
+store 16
  
- 
-load 15
+load 16
 pushbytes " "
-concat 
++ 
 pushbytes "World"
-concat 
-store 15
- 
++ 
+store 16
  
 load 3
 bz 5_else
  
- 
-load 14
+load 15
+pushint 16
+bzero 
 pushint 3
-+ 
-store 16
- 
+replace 8
+callsub signed_add
+store 17
  
 b 5_if_end
 5_else: 
  
 load 4
+pushint 16
+bzero 
 pushint 1
-> 
+replace 8
+callsub signed_ge
 bz 6_else
  
- 
-load 14
+load 15
+pushint 16
+bzero 
 pushint 4
-+ 
-store 17
- 
+replace 8
+callsub signed_add
+store 18
  
 b 6_if_end
 6_else: 
  
- 
-load 14
+load 15
+pushint 16
+bzero 
 pushint 5
-+ 
-store 18
- 
+replace 8
+callsub signed_add
+store 19
  
 6_if_end: 
- 
-5_if_end: 
- 
- 
+5_if_end:  
 retsub 
  
  
 __move_state: 
  
- 
 addr 2FMLYJHYQWRHMFKRHKTKX5UNB5DGO65U57O3YVLWUJWKRE4YYJYC2CWWBY
-store 19
- 
- 
-pushint 1
-pushint 2
-concat 
-pushint 3
-concat 
 store 20
  
- 
-pushint 18446744073709551611
+pushint 16
+bzero 
+pushint 1
+replace 8
+pushint 16
+bzero 
+pushint 2
+replace 8
+concat 
+pushint 16
+bzero 
+pushint 3
+replace 8
+concat 
 store 21
  
- 
-pushbytes "Hello World"
+pushint 16
+bzero 
+pushint 5
+replace 8
+pushint 1
+replace 0
 store 22
+pushbytes "Hello World"
+store 23
  
  
 pushbytes "__CounterState"
 box_get 
 assert 
-store 23
-load 23
-pushint 0
-extract_uint64 
 store 24
- 
+load 24
+pushint 0
+pushint 16
+extract3 
+store 25
  
 pushbytes "__CounterState"
-pushint 8
+pushint 16
 bzero 
-store 25
-load 24
 store 26
 load 25
-load 26
-replace 0
-store 25
-load 25
-pushint 0
-extract_uint64 
-pushint 1000
-< 
-assert 
-load 25
-pushint 0
-extract_uint64 
-pushint 18446744073709550616
-> 
-assert 
-load 25
 store 27
+load 26
 load 27
+replace 0
+store 26
+load 26
+pushint 0
+pushint 16
+extract3 
+pushint 16
+bzero 
+pushint 1000
+replace 8
+callsub signed_le
+assert 
+load 26
+pushint 0
+pushint 16
+extract3 
+pushint 16
+bzero 
+pushint 1000
+replace 8
+pushint 1
+replace 0
+callsub signed_ge
+assert 
+load 26
+store 28
+load 28
 box_put 
+retsub 
  
+ 
+__one: 
+store 7
+store 8
+load 7
+load 8
+callsub signed_mul
+retsub 
+retsub 
+ 
+__two: 
+store 9
+store 10
+load 9
+load 10
+callsub signed_sub
+retsub 
+retsub 
+ 
+__three: 
+store 11
+store 12
+load 11
+load 12
+callsub signed_add
+retsub 
  
 retsub 
+ 
+// Helper functions for signed arithmetic
 
 ```
 
-Helper functions are omitted from the listing.
+_Helper functions are omitted from the listing._
 
 = Old Gannt Chart <Appendix:Gannt>
 

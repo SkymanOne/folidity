@@ -835,7 +835,7 @@ fn uint(n: &BigUint, loc: &Span, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -
     let chunk = Chunk::new_single(Instruction::PushInt, c);
     chunks.push(chunk);
 
-    Ok(TypeVariant::Int.size_hint(args.emitter.definition))
+    Ok(TypeVariant::Uint.size_hint(args.emitter.definition))
 }
 
 /// Handle unsigned integers.
