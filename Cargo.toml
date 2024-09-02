@@ -29,7 +29,7 @@ folidity-emitter = { path = "crates/emitter" }
 derive-node = { path = "crates/derive_node" }
 logos = "0.14"
 lalrpop-util = "0.20"
-lalrpop = "0.20"
+lalrpop = "0.21"
 thiserror = "1.0"
 syn = "2.0"
 synstructure = "0.13"
