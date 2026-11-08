@@ -370,18 +370,15 @@ fn detect_model_cycle(contract: &mut ContractDefinition) {
 /// Detect cyclic state transition bounds.
 fn detect_state_cycle(contract: &mut ContractDefinition) {
     let mut edges = HashSet::new();
-    for edge in contract
-        .states
-        .iter()
-        .filter_map(|m| m.from.as_ref().map(|x| x.0.i))
-        .enumerate()
-    {
-        edges.insert(edge);
+    for (i, state) in contract.states.iter().enumerate() {
+        if let Some((parent, _)) = &state.from {
+            edges.insert((parent.i, i));
+        }
     }
     let graph: FieldGraph = Graph::from_edges(edges);
     let tarjan = tarjan_scc(&graph);
     let mut nodes = HashSet::new();
-    for node in tarjan.iter().flatten() {
+    for node in tarjan.iter().filter(|scc| scc.len() > 1).flatten() {
         nodes.insert(node);
     }
 
@@ -397,6 +394,14 @@ fn detect_state_cycle(contract: &mut ContractDefinition) {
                 for (a, _) in simple_path.windows(2).map(|p| (p[0], p[1])) {
                     contract.states[a.index()].recursive_parent = true;
                 }
+            }
+        }
+    }
+
+    for i in 0..contract.states.len() {
+        if let Some((parent, _)) = &contract.states[i].from {
+            if parent.i == i {
+                contract.states[i].recursive_parent = true;
             }
         }
     }

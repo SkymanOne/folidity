@@ -1,6 +1,9 @@
 use bounds::resolve_bounds;
 pub use contract::ContractDefinition;
-use folidity_diagnostics::Report;
+use folidity_diagnostics::{
+    Level,
+    Report,
+};
 use folidity_parser::ast::Source;
 pub use folidity_parser::{
     ast::Identifier,
@@ -86,7 +89,11 @@ impl Runner<Source, ContractDefinition> for ContractDefinition {
             let _ = resolve_func_body(&f.decl, f.i, &mut definition);
         }
 
-        if !definition.diagnostics.is_empty() {
+        if definition
+            .diagnostics
+            .iter()
+            .any(|d| d.level == Level::Error)
+        {
             return Err(CompilationError::Syntax(definition.diagnostics));
         }
 
