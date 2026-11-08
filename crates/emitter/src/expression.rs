@@ -446,7 +446,7 @@ fn add(b: &BinaryExpression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> Em
                 Constant::StringLit("signed_add".to_string()),
             )
         }
-        TypeVariant::String => Chunk::new_empty(Instruction::Plus),
+        TypeVariant::String => Chunk::new_empty(Instruction::Concat),
         _ => {
             args.diagnostics.push(Report::emit_error(
                 b.loc.clone(),

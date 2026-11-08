@@ -43,7 +43,7 @@ impl From<ParseIntError> for LogosError {
 pub type Spanned<Tok, Loc> = (Loc, Tok, Loc);
 
 #[derive(Logos, Debug, PartialEq, Clone)]
-#[logos(skip r"[\t\n\f]+")] // Ignore this regex pattern between tokens
+#[logos(skip r"[ \t\n\f]+")] // Ignore this regex pattern between tokens
 #[logos(error = LogosError)]
 pub enum Token<'input> {
     // Type values
@@ -125,7 +125,7 @@ pub enum Token<'input> {
     // Types
     #[token("int")]
     IntType,
-    #[token("unit")]
+    #[token("uint")]
     UIntType,
     #[token("float")]
     FloatType,
@@ -306,15 +306,15 @@ impl<'input> fmt::Display for Token<'input> {
     }
 }
 
-pub struct Lexer<'input> {
+pub struct Lexer<'input, 'err> {
     /// Input stream of lexed tokens.
     token_stream: SpannedIter<'input, Token<'input>>,
     /// List of recovered errors.
-    errors: &'input mut Vec<LexicalError>,
+    errors: &'err mut Vec<LexicalError>,
 }
 
-impl<'input> Lexer<'input> {
-    pub fn new(input: &'input str, errors: &'input mut Vec<LexicalError>) -> Self {
+impl<'input, 'err> Lexer<'input, 'err> {
+    pub fn new(input: &'input str, errors: &'err mut Vec<LexicalError>) -> Self {
         // the Token::lexer() method is provided by the Logos trait
         Self {
             token_stream: Token::lexer(input).spanned(),
@@ -323,7 +323,7 @@ impl<'input> Lexer<'input> {
     }
 }
 
-impl<'input> Iterator for Lexer<'input> {
+impl<'input, 'err> Iterator for Lexer<'input, 'err> {
     type Item = Spanned<Token<'input>, usize>;
 
     fn next(&mut self) -> Option<Self::Item> {

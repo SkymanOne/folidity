@@ -1161,8 +1161,8 @@ fn coerce_type(
         // todo: optimise later
         let mut scope = scope.clone();
         let mut contract = contract.clone();
-        // we find which types are allowed by checking whether the left hand side expression can
-        // be resolved to it.
+        // we find which types are allowed by checking whether the left hand side
+        // expression can be resolved to it.
         let filtered_tys: Vec<TypeVariant> = allowed_tys
             .iter()
             .filter(|&ty| {

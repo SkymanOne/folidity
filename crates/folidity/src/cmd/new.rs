@@ -8,7 +8,6 @@ use std::{
     io::Write,
     path::Path,
 };
-use walkdir::WalkDir;
 
 use clap::Args;
 
@@ -26,33 +25,25 @@ impl NewCommand {
     pub fn run(&self) -> Result<()> {
         let out_dir = self.name.clone().unwrap_or(OsString::from("."));
         let out_path = Path::new(&out_dir);
-        if out_path.exists() {
-            for entry in WalkDir::new(out_path)
-                .follow_links(true)
-                .into_iter()
-                .filter_map(|e| e.ok())
-            {
-                let f_name = entry.file_name().to_string_lossy();
-                let sec = entry.metadata()?.modified()?;
+        if !out_path.exists() {
+            create_dir(&out_dir)?;
+        }
 
-                if f_name.ends_with(".fol") && sec.elapsed()?.as_secs() < 86400 {
-                    anyhow::bail!(
-                        "Project with this name already exist in {}",
-                        out_dir.to_str().unwrap()
-                    );
-                }
-            }
-        } else {
-            create_dir(&out_dir).map(|_| anyhow::anyhow!("Cannot create project directory."))?;
+        let contract_path = out_path.join("contract.fol");
+        if contract_path.exists() {
+            anyhow::bail!(
+                "Project with this name already exist in {}",
+                out_dir.to_str().unwrap_or(".")
+            );
         }
 
         let contract_content = include_bytes!("../../../../examples/counter/contract.fol");
         let readme_content = include_bytes!("../../../../examples/counter/README.md");
 
-        let mut contract_file = File::create(Path::new(&out_dir).join("contract.fol"))?;
+        let mut contract_file = File::create(contract_path)?;
         contract_file.write_all(contract_content)?;
 
-        let mut readme_file = File::create(Path::new(&out_dir).join("README.md"))?;
+        let mut readme_file = File::create(out_path.join("README.md"))?;
         readme_file.write_all(readme_content)?;
 
         Ok(())

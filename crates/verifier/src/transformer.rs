@@ -19,12 +19,12 @@ use num_bigint::BigInt;
 use num_rational::BigRational;
 use z3::{
     ast::{
+        Array,
         Ast,
         Bool,
         Dynamic,
         Int,
         Real,
-        Set,
         String as Z3String,
     },
     Context,
@@ -91,11 +91,19 @@ pub fn transform_expr<'ctx>(
         Expression::List(u) => list(u, params),
         Expression::In(b) => in_(b, params),
 
-        Expression::FunctionCall(_) => {
-            todo!("Verification of function calls is currently unsupported.")
+        Expression::FunctionCall(f) => {
+            params.diagnostics.push(Report::ver_error(
+                f.loc.clone(),
+                String::from("Verification of function calls is currently unsupported."),
+            ));
+            Err(())
         }
-        Expression::StructInit(_) => {
-            todo!("Verification of struct initialisation is currently unsupported.")
+        Expression::StructInit(s) => {
+            params.diagnostics.push(Report::ver_error(
+                s.loc.clone(),
+                String::from("Verification of struct initialisation is currently unsupported."),
+            ));
+            Err(())
         }
     }
 }
@@ -104,12 +112,22 @@ fn in_<'ctx>(
     b: &BinaryExpression,
     params: &mut TransformParams<'ctx, '_>,
 ) -> Result<Z3Expression<'ctx>, ()> {
+    if let Expression::List(u) = b.right.as_ref() {
+        let e1 = transform_expr(&b.left, params)?;
+        let mut acc = Bool::from_bool(params.ctx, false);
+        for e in &u.element {
+            let z3_e = transform_expr(e, params)?;
+            acc = Bool::or(params.ctx, &[&acc, &e1.element._eq(&z3_e.element)]);
+        }
+        return Ok(Z3Expression::new(&b.loc, &acc));
+    }
+
     let e1 = transform_expr(&b.left, params)?;
     let e2 = transform_expr(&b.right, params)?;
     let set = e2.element.as_set().ok_or_else(|| {
         params.diagnostics.push(Report::ver_error(
             b.right.loc().clone(),
-            String::from("Expression can not be coerces to a Z3 `Set`"),
+            String::from("Expression can not be coerced to a Z3 `Set`"),
         ));
     })?;
 
@@ -122,12 +140,32 @@ fn list<'ctx>(
     u: &UnaryExpression<Vec<Expression>>,
     params: &mut TransformParams<'ctx, '_>,
 ) -> Result<Z3Expression<'ctx>, ()> {
-    let mut set = Set::empty(params.ctx, &type_to_sort(&u.ty, params.ctx));
-    for e in &u.element {
-        let z3_e = transform_expr(e, params)?;
-        set = set.add(&z3_e.element);
+    let elem_ty = match &u.ty {
+        TypeVariant::List(inner) => inner.as_ref(),
+        other => other,
+    };
+    let elem_sort = type_to_sort(elem_ty, params.ctx);
+    // shortcut: z3 crate has no Seq sort; arrays keep order and duplicates at 0..n-1.
+    let pad =
+        params
+            .z3_scope
+            .create_or_get("__list_pad", elem_sort.clone(), params.ctx, params.executor);
+    let mut arr = Array::const_array(params.ctx, &Sort::int(params.ctx), &pad);
+    // Length at -1 so [1,1] ≠ [1] even when the pad can equal an element.
+    if matches!(
+        elem_ty,
+        TypeVariant::Int | TypeVariant::Uint | TypeVariant::Char | TypeVariant::Enum(_)
+    ) {
+        arr = arr.store(
+            &Int::from_i64(params.ctx, -1),
+            &Int::from_u64(params.ctx, u.element.len() as u64),
+        );
     }
-    Ok(Z3Expression::new(&u.loc, &set))
+    for (i, e) in u.element.iter().enumerate() {
+        let z3_e = transform_expr(e, params)?;
+        arr = arr.store(&Int::from_u64(params.ctx, i as u64), &z3_e.element);
+    }
+    Ok(Z3Expression::new(&u.loc, &arr))
 }
 
 /// _A bit hacky approach._
@@ -212,7 +250,7 @@ pub fn type_to_sort<'ctx>(ty: &TypeVariant, ctx: &'ctx Context) -> Sort<'ctx> {
         TypeVariant::State(s) => Sort::uninterpreted(ctx, format!("S!{}", s.i).into()),
         TypeVariant::Struct(s) => Sort::uninterpreted(ctx, format!("SS!{}", s.i).into()),
         TypeVariant::Set(s_ty) => Sort::set(ctx, &type_to_sort(s_ty, ctx)),
-        TypeVariant::List(l_ty) => Sort::set(ctx, &type_to_sort(l_ty, ctx)),
+        TypeVariant::List(l_ty) => Sort::array(ctx, &Sort::int(ctx), &type_to_sort(l_ty, ctx)),
         TypeVariant::Mapping(m) => {
             Sort::array(
                 ctx,

@@ -109,6 +109,17 @@ pub fn build_report(content: &str, diagnostics: &[Report], file_name: &str) {
     }
 }
 
+pub fn report_warnings(content: &str, diagnostics: &[Report], file_name: &str) {
+    let warnings: Vec<Report> = diagnostics
+        .iter()
+        .filter(|r| r.level == Level::Warning)
+        .cloned()
+        .collect();
+    if !warnings.is_empty() {
+        build_report(content, &warnings, file_name);
+    }
+}
+
 /// Execute the compilation stage using the runner.
 pub fn exec<I, O, W: Runner<I, O>>(
     input: &I,

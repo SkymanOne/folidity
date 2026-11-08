@@ -273,9 +273,9 @@ pub fn resolve_func_call(
                 func.return_ty.ty().clone()
             } else {
                 match func.return_ty.ty() {
-                    // if the function type is generic, then we check that there is intersection of
-                    // generic types, and we return generic types with the intersection
-                    // of allowed types.
+                    // if the function type is generic, then we check that there is
+                    // intersection of generic types, and we return generic types with the
+                    // intersection of allowed types.
                     TypeVariant::Generic(allowed_tys) => {
                         let filtered_tys: Vec<TypeVariant> = allowed_tys
                             .iter()
@@ -384,8 +384,8 @@ pub fn resolve_func_call(
                             }
                         }
                     }
-                    // if function return type, then we check that it is in the list of allowed
-                    // types.
+                    // if function return type, then we check that it is in the list of
+                    // allowed types.
                     c_ty => {
                         if tys.contains(c_ty) {
                             c_ty.clone()
@@ -396,7 +396,8 @@ pub fn resolve_func_call(
                 }
             }
         }
-        // if the expected type is none, we just ignore the return type of the function call.
+        // if the expected type is none, we just ignore the return type of the function
+        // call.
         ExpectedType::Empty => func.return_ty.ty().clone(),
     };
 

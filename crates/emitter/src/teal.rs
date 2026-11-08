@@ -3,6 +3,7 @@ use folidity_semantics::{
     ast::{
         Expression,
         Function,
+        FunctionVisibility,
         TypeVariant,
     },
     ContractDefinition,
@@ -68,7 +69,8 @@ impl<'a> TealEmitter<'a> {
             definition,
             chunks: vec![],
             diagnostics: vec![],
-            scratch_index: 0,
+            // 0 and 1 are reserved for signed_arithmetic.teal helpers.
+            scratch_index: 2,
             loop_counter: 0,
             cond_counter: 0,
             concrete_vars: IndexMap::new(),
@@ -189,7 +191,11 @@ impl<'a> TealEmitter<'a> {
 
         chunks.push(Chunk::new_empty(Instruction::Label("on_call".to_string())));
 
-        for name in self.definition.functions.iter().map(|f| &f.name.name) {
+        for f in &self.definition.functions {
+            if f.is_init || matches!(f.vis, FunctionVisibility::Priv) {
+                continue;
+            }
+            let name = &f.name.name;
             chunks.extend_from_slice(&[
                 Chunk::new_multiple(
                     Instruction::Txna,
@@ -302,36 +308,44 @@ impl<'a> TealEmitter<'a> {
     fn emit_blocks(&mut self) -> Vec<Chunk> {
         let mut chunks = vec![];
 
-        for f in &self.definition.functions {
+        for i in 0..self.definition.functions.len() {
+            let f = &self.definition.functions[i];
+            if matches!(f.vis, FunctionVisibility::Priv) && !f.is_init {
+                continue;
+            }
+            let is_init = f.is_init;
+            let name = f.name.name.clone();
+            let param_tys: Vec<TypeVariant> = f.params.values().map(|p| p.ty.ty.clone()).collect();
+            let returns_unit = f.return_ty.ty() == &TypeVariant::Unit;
+
             let mut block_chunks = vec![];
-            let block_name = format!("__block__{}", f.name.name);
-            let func_name = format!("__{}", f.name.name);
+            let block_name = format!("__block__{}", name);
+            let func_name = format!("__{}", name);
 
             block_chunks.push(Chunk::new_empty(Instruction::Label(block_name)));
 
             // push argument into the function block.
-            // if the function is not a constructor, then the first app arg is a function signature.
-            let mut func_arg_index: u64 = if f.is_init { 0 } else { 1 };
-            f.params.iter().for_each(|_| {
-                let arg_chunk = Chunk::new_multiple(
-                    Instruction::Txn,
+            // if the function is not a constructor, then the first app arg is a function
+            // signature.
+            let mut func_arg_index: u64 = if is_init { 0 } else { 1 };
+            for ty in &param_tys {
+                block_chunks.push(Chunk::new_multiple(
+                    Instruction::Txna,
                     vec![
                         Constant::StringLit("ApplicationArgs".to_string()),
                         Constant::Uint(func_arg_index),
                     ],
-                );
-
-                block_chunks.push(arg_chunk);
-
+                ));
+                decode_app_arg(ty, &mut block_chunks, self);
                 func_arg_index += 1;
-            });
+            }
 
             block_chunks.push(Chunk::new_single(
                 Instruction::CallSub,
                 crate::ast::Constant::StringLit(func_name),
             ));
 
-            if f.return_ty.ty() != &TypeVariant::Unit {
+            if !returns_unit {
                 block_chunks.push(Chunk::new_empty(Instruction::Log));
             }
 
@@ -344,5 +358,27 @@ impl<'a> TealEmitter<'a> {
             chunks.extend(block_chunks);
         }
         chunks
+    }
+}
+
+fn decode_app_arg(ty: &TypeVariant, chunks: &mut Vec<Chunk>, emitter: &mut TealEmitter) {
+    match ty {
+        TypeVariant::Uint | TypeVariant::Bool | TypeVariant::Char | TypeVariant::Float => {
+            chunks.push(Chunk::new_empty(Instruction::Btoi));
+        }
+        TypeVariant::Int => {
+            chunks.push(Chunk::new_empty(Instruction::Btoi));
+            let Ok(tmp) = emitter.scratch_index_incr() else {
+                return;
+            };
+            chunks.extend_from_slice(&[
+                Chunk::new_single(Instruction::Store, Constant::Uint(tmp)),
+                Chunk::new_single(Instruction::PushInt, Constant::Uint(16)),
+                Chunk::new_empty(Instruction::ArrayInit),
+                Chunk::new_single(Instruction::Load, Constant::Uint(tmp)),
+                Chunk::new_single(Instruction::Replace, Constant::Uint(8)),
+            ]);
+        }
+        _ => {}
     }
 }

@@ -85,6 +85,12 @@ fn strings() {
     assert_eq!(tokens.next(), Some((22, Token::Hex("hex\"ABC\""), 30)));
 }
 
+#[test]
+fn rejects_invalid_token() {
+    let res = parse("fn () foo() { let x = $1; }");
+    assert!(res.is_err());
+}
+
 fn unwrap_tree(src: &str) -> Result<Source, String> {
     parse(src).map_err(|errs| {
         errs.iter()

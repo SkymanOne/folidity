@@ -47,7 +47,8 @@ impl<'ctx> Runner<ContractDefinition, ()> for SymbolicExecutor<'ctx> {
 
         err |= !executor.verify_individual_blocks(source);
 
-        // report errors in individual blocks earlier to avoid catching them in linked blocks.
+        // report errors in individual blocks earlier to avoid catching them in linked
+        // blocks.
         if err {
             return Err(CompilationError::Formal(executor.diagnostics));
         }

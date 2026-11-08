@@ -36,7 +36,7 @@ pub fn parse(src: &str) -> Result<Source, Vec<Report>> {
     let mut parser_errors: Vec<ErrorRecovery<usize, Token, LexicalError>> = Vec::new();
     let res = folidity::FolidityTreeParser::new().parse(&mut parser_errors, tokens);
 
-    let mut reports: Vec<Report> = Vec::new();
+    let mut reports: Vec<Report> = lexer_errors.into_iter().map(Report::from).collect();
 
     for pe in &parser_errors {
         reports.push(parser_error_to_report(&pe.error));
@@ -47,7 +47,7 @@ pub fn parse(src: &str) -> Result<Source, Vec<Report>> {
             reports.push(parser_error_to_report(&e));
             Err(reports)
         }
-        // Ok(_) if !reports.is_empty() => Err(reports),
+        Ok(_) if !reports.is_empty() => Err(reports),
         Ok(mut tree) => {
             tree.diagnostics.extend(reports);
             Ok(tree)

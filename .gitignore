@@ -311,3 +311,17 @@ reports/ecsproject.pdf
 .vscode
 
 /auto
+.agents/
+.yapi/
+# BEGIN chest (chest.toml)
+.agents/skills/.*-old
+.agents/skills/.*-staging
+.agents/skills/copywriting
+.agents/skills/rust-best-practices
+.agents/skills/writing-guidelines
+.yapi/chest/.*-old
+.yapi/chest/.*-staging
+.yapi/chest/pi-web-access
+.yapi/chest/ponytail
+.yapi/chest/rpiv-ask-user-question
+# END chest

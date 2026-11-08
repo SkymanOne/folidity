@@ -124,7 +124,7 @@ pub enum Instruction {
     Not,
     #[display(fmt = "len")]
     Len,
-    #[display(fmt = "&")]
+    #[display(fmt = "%")]
     Mod,
     #[display(fmt = "b&")]
     BMod,
@@ -144,7 +144,7 @@ pub enum Instruction {
     Store,
     #[display(fmt = "load")]
     Load,
-    #[display(fmt = "replace")]
+    #[display(fmt = "replace2")]
     Replace,
     #[display(fmt = "extract")]
     Extract,
@@ -162,6 +162,8 @@ pub enum Instruction {
     Error,
     #[display(fmt = "itob")]
     Itob,
+    #[display(fmt = "btoi")]
+    Btoi,
     #[display(fmt = "dup")]
     Dup,
     #[display(fmt = "{}:", _0)]

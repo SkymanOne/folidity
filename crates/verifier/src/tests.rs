@@ -24,13 +24,11 @@ use z3::{
     ast::{
         Ast,
         Int,
-        Set,
         String as Z3String,
     },
     Context,
     SatResult,
     Solver,
-    Sort,
 };
 
 use crate::{
@@ -216,35 +214,29 @@ fn list_transform() {
 
     assert!(z3_res.is_ok());
     let z3_e = z3_res.expect("Should be Ok");
-    let mut set = Set::empty(&context, &Sort::int(&context));
-    let elems = [
-        Int::from_i64(&context, 10),
-        Int::from_i64(&context, 20),
-        Int::from_i64(&context, 30),
-    ];
-    for e in &elems {
-        set = set.add(e);
-    }
-    assert_eq!(z3_e.element.as_set(), Some(set.clone()));
+    assert!(z3_e.element.as_array().is_some());
 
-    let parsed_set = z3_e.element.as_set().expect("must be set");
+    let shorter = Expression::List(UnaryExpression {
+        loc: loc.clone(),
+        element: vec![
+            Expression::Int(UnaryExpression {
+                loc: loc.clone(),
+                element: BigInt::from_i32(10).unwrap(),
+                ty: TypeVariant::Int,
+            }),
+            Expression::Int(UnaryExpression {
+                loc: loc.clone(),
+                element: BigInt::from_i32(20).unwrap(),
+                ty: TypeVariant::Int,
+            }),
+        ],
+        ty: TypeVariant::Int,
+    });
+    let z3_short = transform_expr(&shorter, &mut params).expect("Should be Ok");
 
     let solver = Solver::new(&context);
-    solver.push();
-    solver.assert(&parsed_set._eq(&set));
-    assert_eq!(solver.check(), SatResult::Sat);
-
-    solver.pop(1);
-    solver.push();
-
-    let distinct_set = set.del(&Int::from_i64(&context, 10));
-    solver.assert(&parsed_set._eq(&distinct_set).not());
-    assert_eq!(
-        solver.check(),
-        SatResult::Sat,
-        "{:#?}",
-        solver.get_assertions()
-    );
+    solver.assert(&z3_e.element._eq(&z3_short.element));
+    assert_eq!(solver.check(), SatResult::Unsat);
 }
 
 #[test]
@@ -555,4 +547,48 @@ fn test_incorrect_linked_bounds() {
         "{}",
         e.message
     );
+}
+
+#[test]
+fn list_keeps_duplicates() {
+    let loc = Span { start: 0, end: 0 };
+    let int = |n: i64| {
+        Expression::Int(UnaryExpression {
+            loc: loc.clone(),
+            element: BigInt::from(n),
+            ty: TypeVariant::Int,
+        })
+    };
+    let list = |elems: Vec<Expression>| {
+        Expression::List(UnaryExpression {
+            loc: loc.clone(),
+            element: elems,
+            ty: TypeVariant::List(Box::new(TypeVariant::Int)),
+        })
+    };
+    let eq = Expression::Equal(BinaryExpression {
+        loc: loc.clone(),
+        left: Box::new(list(vec![int(1), int(1)])),
+        right: Box::new(list(vec![int(1)])),
+        ty: TypeVariant::Bool,
+    });
+
+    let context = Context::new(&z3_cfg());
+    let mut executor = SymbolicExecutor::new(&context);
+    let mut diagnostics = vec![];
+    let scope = Scope::default();
+    let mut z3_scope = Z3Scope::default();
+    let contract = ContractDefinition::default();
+    let mut params = TransformParams {
+        ctx: &context,
+        z3_scope: &mut z3_scope,
+        scope: &scope,
+        contract: &contract,
+        diagnostics: &mut diagnostics,
+        executor: &mut executor,
+    };
+    let z3_e = transform_expr(&eq, &mut params).expect("transform");
+    let solver = Solver::new(&context);
+    solver.assert(&z3_e.element.as_bool().expect("bool"));
+    assert_eq!(solver.check(), SatResult::Unsat);
 }
