@@ -387,5 +387,5 @@ signed_leq:
 
     load 1
     load 0
-    callsub signed_ge
+    callsub signed_geq
     retsub

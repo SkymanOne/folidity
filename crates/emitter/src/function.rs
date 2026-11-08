@@ -44,10 +44,11 @@ pub fn emit_function(func: &Function, emitter: &mut TealEmitter) -> Result<Vec<C
     };
 
     // inject arguments as concrete vars.
-    // if the function is not a constructor, then the first app arg is a function signature.
+    // if the function is not a constructor, then the first app arg is a function
+    // signature.
     for (name, _) in &func.params {
         let (p_no, _) = func.scope.find_var_index(name).expect("should exist");
-        let arg_index = args.emitter.cond_index_incr()?;
+        let arg_index = args.emitter.scratch_index_incr()?;
         chunks.push(Chunk::new_single(
             Instruction::Store,
             Constant::Uint(arg_index),
@@ -78,10 +79,12 @@ pub fn emit_function(func: &Function, emitter: &mut TealEmitter) -> Result<Vec<C
         }
 
         error |= emit_expression(e, &mut access_chunks, &mut args).is_err();
-        chunks.push(Chunk::new_single(
+        access_chunks.push(Chunk::new_single(
             Instruction::Txn,
             Constant::StringLit("Sender".to_string()),
         ));
+        access_chunks.push(Chunk::new_empty(Instruction::Eq));
+        access_chunks.push(Chunk::new_empty(Instruction::Assert));
     }
 
     // if view function, emit similar concrete state var.
@@ -105,6 +108,14 @@ pub fn emit_function(func: &Function, emitter: &mut TealEmitter) -> Result<Vec<C
         error |= emit_statement(stmt, &mut body_chunks, &mut args).is_err();
     }
     chunks.extend(body_chunks);
+
+    if !args.delayed_bounds.is_empty() {
+        diagnostics.push(Report::emit_error(
+            func.loc.clone(),
+            "Unresolved state bounds could not be emitted.".to_string(),
+        ));
+        error = true;
+    }
 
     chunks.push(Chunk::new_empty(Instruction::ReturnSubroutine));
 

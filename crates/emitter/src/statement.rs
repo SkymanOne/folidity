@@ -88,7 +88,7 @@ fn variable(
         chunks.push(Chunk::new_empty(Instruction::ArrayInit));
     }
 
-    let index = args.scratch.add_var(var.pos, size, args.emitter) as u64;
+    let index = args.scratch.add_var(var.pos, size, args.emitter)? as u64;
     chunks.push(Chunk::new_single(Instruction::Store, Constant::Uint(index)));
 
     args.emitter.concrete_vars.insert(
@@ -149,17 +149,18 @@ fn block(stmts: &[Statement], chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> E
 fn for_loop(l: &ForLoop, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitResult {
     let mut loop_chunks = vec![];
     let loop_index = args.emitter.loop_index_incr()?;
+    let start_label = format!("{}_loop_start", loop_index);
     let incr_label = format!("{}_loop_incr", loop_index);
     let end_label = format!("{}_loop_end", loop_index);
     let mut error = false;
 
     // create var and store it.
     error |= variable(&l.var, &l.loc, &mut loop_chunks, args).is_err();
+    loop_chunks.push(Chunk::new_empty(Instruction::Label(start_label.clone())));
     // emit condition block
     error |= emit_expression(&l.condition, &mut loop_chunks, args).is_err();
-    // jump to end if satisfies (i.e. 1)
     loop_chunks.push(Chunk::new_single(
-        Instruction::BranchNotZero,
+        Instruction::BranchZero,
         Constant::StringLit(end_label.clone()),
     ));
 
@@ -168,9 +169,20 @@ fn for_loop(l: &ForLoop, chunks: &mut Vec<Chunk>, args: &mut EmitArgs) -> EmitRe
     error |= block(&l.body, &mut loop_chunks, args).is_err();
 
     // emit increment logic
-    // create increment label
     loop_chunks.push(Chunk::new_empty(Instruction::Label(incr_label.clone())));
     error |= emit_expression(&l.incrementer, &mut loop_chunks, args).is_err();
+    if let Some(var) = args.scratch.get_var(l.var.pos) {
+        loop_chunks.push(Chunk::new_single(
+            Instruction::Store,
+            Constant::Uint(var.index as u64),
+        ));
+    } else {
+        error = true;
+    }
+    loop_chunks.push(Chunk::new_single(
+        Instruction::Branch,
+        Constant::StringLit(start_label),
+    ));
 
     // emit end label.
     loop_chunks.push(Chunk::new_empty(Instruction::Label(end_label.clone())));
@@ -272,8 +284,8 @@ fn state_transition(e: &Expression, chunks: &mut Vec<Chunk>, args: &mut EmitArgs
     }
 
     // todo: support sizes of >4096 bytes
-    // push `box_put` onto the stack which creates a box or replaces contents of the existing
-    // one.
+    // push `box_put` onto the stack which creates a box or replaces contents of the
+    // existing one.
     let box_chunk = Chunk::new_empty(Instruction::BoxPut);
     local_chunks.push(box_chunk);
 

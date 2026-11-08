@@ -101,6 +101,16 @@ fn simple_exprs() {
 }
 
 #[test]
+fn modulo_is_percent() {
+    assert_eq!(Instruction::Mod.to_string().trim(), "%");
+}
+
+#[test]
+fn replace_is_replace2() {
+    assert_eq!(Instruction::Replace.to_string().trim(), "replace2");
+}
+
+#[test]
 fn signed_mul() {
     let definition = ContractDefinition::default();
     let mut emitter = TealEmitter::new(&definition);

@@ -18,11 +18,15 @@ pub struct ScratchTable {
 
 impl ScratchTable {
     /// Add variable to the virtual scratch table.
-    pub fn add_var(&mut self, var_no: usize, size: u64, emitter: &mut TealEmitter) -> u8 {
-        let index = emitter.scratch_index;
+    pub fn add_var(
+        &mut self,
+        var_no: usize,
+        size: u64,
+        emitter: &mut TealEmitter,
+    ) -> Result<u8, ()> {
+        let index = emitter.scratch_index_incr()? as u8;
         self.vars.insert(var_no, ScratchVariable { index, size });
-        emitter.scratch_index += 1;
-        index
+        Ok(index)
     }
 
     pub fn get_var(&self, no: usize) -> Option<&ScratchVariable> {
