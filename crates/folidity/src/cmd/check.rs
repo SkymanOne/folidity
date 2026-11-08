@@ -26,11 +26,10 @@ impl CheckCommand {
         let parse_result = parse(&contract_contents);
         match parse_result {
             Ok(tree) => {
-                let _ = exec::<_, _, ContractDefinition>(
-                    &tree,
-                    &contract_contents,
-                    self.contract.to_str().expect("Valid path name."),
-                )?;
+                let file_name = self.contract.to_str().expect("Valid path name.");
+                let contract =
+                    exec::<_, _, ContractDefinition>(&tree, &contract_contents, file_name)?;
+                super::report_warnings(&contract_contents, &contract.diagnostics, file_name);
                 println!("{}", "Program is semantically valid.".green().bold());
                 Ok(())
             }

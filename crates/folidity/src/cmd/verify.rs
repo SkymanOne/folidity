@@ -34,6 +34,7 @@ impl VerifyCommand {
             Ok(tree) => {
                 let contract =
                     exec::<_, _, ContractDefinition>(&tree, &contract_contents, file_name)?;
+                super::report_warnings(&contract_contents, &contract.diagnostics, file_name);
 
                 exec::<_, _, SymbolicExecutor>(&contract, &contract_contents, file_name)?;
                 println!(
