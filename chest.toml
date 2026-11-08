@@ -1,0 +1,16 @@
+# Installed with `chest install`, pinned in the lock beside this file.
+
+[folders]
+skills = [".agents/skills"]
+agents = [".yapi/agents"]
+extensions = ".yapi/chest"
+
+[skills]
+rust-best-practices = { git = "https://github.com/apollographql/skills", path = "skills/rust-best-practices" }
+copywriting = { git = "https://github.com/coreyhaines31/marketingskills", path = "skills/copywriting" }
+writing-guidelines = { git = "https://github.com/vercel-labs/agent-skills", path = "skills/writing-guidelines" }
+
+[extensions]
+rpiv-ask-user-question = { npm = "@juicesharp/rpiv-ask-user-question", capabilities=["all"] }
+pi-web-access = { npm = "pi-web-access", capabilities=["all"] }
+ponytail = { npm = "@dietrichgebert/ponytail", capabilities = ["fs", "env", "session"] }
