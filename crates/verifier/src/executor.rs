@@ -165,9 +165,9 @@ impl<'ctx> SymbolicExecutor<'ctx> {
             }
 
             let mut scope = Z3Scope::default();
-            for (_, p) in &f.params {
+            for (name, p) in &f.params {
                 let _ = scope.create_or_get(
-                    &f.name.name,
+                    name,
                     type_to_sort(&p.ty.ty, self.context),
                     self.context,
                     self,
