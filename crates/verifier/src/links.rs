@@ -32,7 +32,8 @@ fn find_link_components(executor: &SymbolicExecutor) -> Vec<Vec<usize>> {
 
     // collect into a graph.
     let graph: LinkGraph = LinkGraph::from_edges(&edges);
-    // since the graph is undirected, tarjan algo will just return sets of connected nodes.
+    // since the graph is undirected, tarjan algo will just return sets of connected
+    // nodes.
     let components = tarjan_scc(&graph)
         .iter()
         .map(|vec| vec.iter().map(|x| x.index()).collect())
