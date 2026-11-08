@@ -149,8 +149,8 @@ impl Scope {
         // we need to decide which variables we are allowed traverse depending on the
         // context of the current scope.
         let whitelists = match &table.context {
-            // if we are inside bound context, we can only traverse params, access attributes,
-            // return param, and state bounds.
+            // if we are inside bound context, we can only traverse params, access
+            // attributes, return param, and state bounds.
             ScopeContext::DeclarationBounds => {
                 vec![
                     VariableKind::Local,
@@ -160,8 +160,8 @@ impl Scope {
                     VariableKind::Return,
                 ]
             }
-            // if we inside loop, block or function body, then we can traverse them, function
-            // params, and initial state bound.
+            // if we inside loop, block or function body, then we can traverse them,
+            // function params, and initial state bound.
             ScopeContext::FunctionBody | ScopeContext::Block | ScopeContext::Loop => {
                 vec![
                     VariableKind::FromState,
